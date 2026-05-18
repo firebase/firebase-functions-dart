@@ -573,26 +573,32 @@ void main() {
         expect(func.allowedOrigins, ['https://example.com']);
       });
 
-      test('onCall defaults allowedOrigins to [*] when no cors option given', () {
-        https.onCall(
-          name: 'callableNoCors',
-          (request, response) async => CallableResult('OK'),
-        );
+      test(
+        'onCall defaults allowedOrigins to [*] when no cors option given',
+        () {
+          https.onCall(
+            name: 'callableNoCors',
+            (request, response) async => CallableResult('OK'),
+          );
 
-        final func = _findFunction(firebase, 'callable-no-cors')!;
-        expect(func.allowedOrigins, ['*']);
-      });
+          final func = _findFunction(firebase, 'callable-no-cors')!;
+          expect(func.allowedOrigins, ['*']);
+        },
+      );
 
-      test('onCallWithData defaults allowedOrigins to [*] when no cors option given', () {
-        https.onCallWithData<_GreetRequest, String>(
-          name: 'typedNoCors',
-          fromJson: _GreetRequest.fromJson,
-          (request, response) async => 'OK',
-        );
+      test(
+        'onCallWithData defaults allowedOrigins to [*] when no cors option given',
+        () {
+          https.onCallWithData<_GreetRequest, String>(
+            name: 'typedNoCors',
+            fromJson: _GreetRequest.fromJson,
+            (request, response) async => 'OK',
+          );
 
-        final func = _findFunction(firebase, 'typed-no-cors')!;
-        expect(func.allowedOrigins, ['*']);
-      });
+          final func = _findFunction(firebase, 'typed-no-cors')!;
+          expect(func.allowedOrigins, ['*']);
+        },
+      );
     });
   });
 }
