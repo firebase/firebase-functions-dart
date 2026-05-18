@@ -777,6 +777,16 @@ void main(List<String> args) async {
   });
 }
 
+/// This helper is intentionally not called from [main]. The manifest builder
+/// should only discover registrations reached during `runFunctions` setup.
+// ignore: unreachable_from_main
+void unregisteredHelper(Firebase firebase) {
+  firebase.https.onRequest(
+    name: 'unregisteredHelper',
+    (request) async => Response.ok('This function should not be discovered'),
+  );
+}
+
 /// Options assigned to a top-level const variable.
 const httpsVarOpts = HttpsOptions(
   region: Region(SupportedRegion.europeWest3),

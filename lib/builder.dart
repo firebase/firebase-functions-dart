@@ -301,26 +301,44 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   ///   firebase.https.onRequest(name: 'fn', options: opts, ...);
   final Map<String, InstanceCreationExpression> _variableToOptionsExpr = {};
 
+  /// Top-level function declarations, used to follow helpers that are invoked
+  /// from the `runFunctions`/`fireUp` registration callback.
+  final Map<String, FunctionDeclaration> _topLevelFunctions = {};
+
+  final Set<String> _visitedRegistrationHelpers = {};
+
+  var _registrationDepth = 0;
+
+  bool get _isCollectingRegistrations => _registrationDepth > 0;
+
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    super.visitMethodInvocation(node);
     final target = node.target;
     final methodName = node.methodName.name;
-    if (target != null) {
+
+    if (target == null && _isFunctionsRunnerInvocation(methodName)) {
+      _visitRegistrationRunner(node);
+      return;
+    }
+
+    if (_isCollectingRegistrations && target != null) {
       // Check against all namespaces
       for (final namespace in namespaces) {
         if (namespace.isNamespace(target)) {
           if (namespace.matches(methodName)) {
             namespace.extractor(node, methodName);
-            // Found a match, no need to check other namespaces for this node
+            // The function handler runs later, so don't scan its body as if it
+            // were part of initialization.
             return;
           }
         }
       }
-    } else {
+    } else if (target == null) {
       // Check for parameter definitions (top-level function calls with no target)
       if (_isParamDefinition(methodName)) {
         _extractParameterFromMethod(node, methodName);
+      } else if (_isCollectingRegistrations) {
+        _visitRegistrationHelper(methodName);
       }
     }
 
@@ -331,6 +349,11 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
     if (node.function case final SimpleIdentifier function) {
       final functionName = function.name;
+
+      if (_isFunctionsRunnerInvocation(functionName)) {
+        _visitRegistrationRunnerArguments(functionName, node.argumentList);
+        return;
+      }
 
       // Check for parameter definitions
       if (_isParamDefinition(functionName)) {
@@ -349,9 +372,57 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     for (final declaration in node.declarations) {
       if (declaration is TopLevelVariableDeclaration) {
         _trackOptionsVariables(declaration.variables);
+      } else if (declaration is FunctionDeclaration) {
+        _topLevelFunctions[declaration.name.lexeme] = declaration;
       }
     }
     super.visitCompilationUnit(node);
+  }
+
+  bool _isFunctionsRunnerInvocation(String methodName) =>
+      methodName == 'runFunctions' || methodName == 'fireUp';
+
+  void _visitRegistrationRunner(MethodInvocation node) {
+    _visitRegistrationRunnerArguments(node.methodName.name, node.argumentList);
+  }
+
+  void _visitRegistrationRunnerArguments(String runnerName, ArgumentList args) {
+    final arguments = args.arguments;
+    final runnerArgIndex = runnerName == 'fireUp' ? 1 : 0;
+    if (arguments.length <= runnerArgIndex) return;
+
+    _visitRegistrationExpression(arguments[runnerArgIndex]);
+  }
+
+  void _visitRegistrationExpression(Expression expression) {
+    switch (expression) {
+      case FunctionExpression(:final body):
+        _visitCollectingRegistrations(() => body.accept(this));
+      case SimpleIdentifier(:final name):
+        _visitRegistrationHelper(name);
+      case ParenthesizedExpression(:final expression):
+        _visitRegistrationExpression(expression);
+    }
+  }
+
+  void _visitRegistrationHelper(String name) {
+    if (!_visitedRegistrationHelpers.add(name)) return;
+
+    final declaration = _topLevelFunctions[name];
+    if (declaration == null) return;
+
+    _visitCollectingRegistrations(() {
+      declaration.functionExpression.body.accept(this);
+    });
+  }
+
+  void _visitCollectingRegistrations(void Function() visit) {
+    _registrationDepth++;
+    try {
+      visit();
+    } finally {
+      _registrationDepth--;
+    }
   }
 
   @override
