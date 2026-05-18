@@ -34,7 +34,7 @@ const { onConfigUpdated } = require("firebase-functions/v2/remoteConfig");
 const { onObjectFinalized, onObjectArchived, onObjectDeleted, onObjectMetadataUpdated } = require("firebase-functions/v2/storage");
 const { onCustomEventPublished } = require("firebase-functions/v2/eventarc");
 const { onTestMatrixCompleted } = require("firebase-functions/v2/testLab");
-const { defineString, defineInt, defineBoolean } = require("firebase-functions/params");
+const { defineString, defineInt, defineBoolean, defineSecret } = require("firebase-functions/params");
 
 // =============================================================================
 // Parameterized Configuration Examples
@@ -58,6 +58,10 @@ const isProduction = defineBoolean("IS_PRODUCTION", {
   default: false,
   description: "Whether this is a production deployment",
 });
+
+const apiKey = defineSecret("API_KEY");
+
+const apiConfig = defineSecret("API_CONFIG");
 
 // =============================================================================
 // HTTPS Callable Functions (onCall)
@@ -640,6 +644,14 @@ exports.httpsCustomInvoker = onRequest(
   },
   (request, response) => {
     response.send("Custom invoker");
+  }
+);
+
+// HTTPS onRequest with secrets
+exports.httpsWithSecrets = onRequest(
+  { secrets: [apiKey, apiConfig] },
+  (request, response) => {
+    response.send("HTTPS with secrets");
   }
 );
 

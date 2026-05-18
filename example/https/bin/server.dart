@@ -42,6 +42,8 @@ final isProduction = defineBoolean(
   ),
 );
 
+final apiKey = defineSecret('API_KEY');
+
 void main(List<String> args) async {
   await runFunctions((firebase) {
     // Basic callable function - untyped data
@@ -123,6 +125,20 @@ void main(List<String> args) async {
       options: HttpsOptions(minInstances: DeployOption.param(minInstances)),
       (request) async {
         return Response.ok(welcomeMessage.value());
+      },
+    );
+
+    // HTTPS function using a secret from Cloud Secret Manager
+    firebase.https.onRequest(
+      name: 'secretExample',
+      // ignore: non_const_argument_for_const_parameter
+      options: HttpsOptions(
+        secrets: [apiKey],
+        invoker: const Invoker.private(),
+      ),
+      (request) async {
+        final key = apiKey.value();
+        return Response.ok('API key starts with: ${key.substring(0, 4)}...');
       },
     );
 
