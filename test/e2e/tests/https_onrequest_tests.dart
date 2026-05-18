@@ -62,6 +62,16 @@ void runHttpsOnRequestTests(
       expect(response.statusCode, equals(200));
     });
 
+    test('hello-world accepts POST requests similar to a CloudEvent', () async {
+      print('POST ${client.baseUrl}/hello-world like CloudEvent');
+      final response = await client.post(
+        'hello-world',
+        body: {'type': 0, 'source': 1},
+      );
+
+      expect(response.statusCode, equals(200));
+    });
+
     test('calling non-existent function returns 404', () async {
       print('GET ${client.baseUrl}/non-existent-function');
       final response = await client.get('non-existent-function');

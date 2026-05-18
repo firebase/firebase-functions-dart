@@ -352,16 +352,24 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
       // Structured content mode - try to parse JSON body
       bodyString = await request.readAsString();
 
-      final body = jsonDecode(bodyString) as Map<String, dynamic>;
+      final Map<String, dynamic> body;
+      try {
+        body = jsonDecode(bodyString) as Map<String, dynamic>;
+      } catch (e) {
+        // Invalid JSON - not a CloudEvent request
+        return (request.change(body: bodyString), null);
+      }
 
+      final bodyType = body['type'];
+      final bodySource = body['source'];
       // Check if this is a valid CloudEvent - if not, return reconstructed request
-      if (!body.containsKey('source') || !body.containsKey('type')) {
+      if (bodyType is! String || bodySource is! String) {
         // Return the reconstructed request since we consumed the body
         return (request.change(body: bodyString), null);
       }
 
-      source = body['source'] as String;
-      type = body['type'] as String;
+      source = bodySource;
+      type = bodyType;
     }
 
     // Now we have source and type from either headers or body

@@ -15,6 +15,22 @@
 import 'expression.dart';
 import 'params.dart';
 
+GlobalOptions _globalOptions = const GlobalOptions();
+
+/// Sets default options applied to all subsequently declared functions.
+///
+/// Per-function options override these defaults. For callable functions,
+/// [GlobalOptions.enforceAppCheck] is also used at runtime unless overridden by
+/// the callable's own options.
+void setGlobalOptions(GlobalOptions options) {
+  _globalOptions = options;
+}
+
+/// Gets the current default options.
+///
+/// This is used internally by trigger registration.
+GlobalOptions getGlobalOptions() => _globalOptions;
+
 /// Global options that apply to all function types.
 ///
 /// Matches the GlobalOptions interface from the Node.js SDK.
@@ -22,6 +38,7 @@ class GlobalOptions {
   const GlobalOptions({
     this.concurrency,
     this.cpu,
+    this.enforceAppCheck,
     this.ingressSettings,
     this.invoker,
     this.labels,
@@ -43,6 +60,9 @@ class GlobalOptions {
 
   /// Amount of CPU to allocate to the function.
   final Cpu? cpu;
+
+  /// Whether to enforce Firebase App Check for callable functions.
+  final EnforceAppCheck? enforceAppCheck;
 
   /// Ingress settings controlling who can call the function.
   final Ingress? ingressSettings;

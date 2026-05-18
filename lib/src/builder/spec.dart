@@ -71,6 +71,7 @@ class EndpointSpec {
     this.eventarcEventType,
     this.eventarcChannel,
     this.eventarcFilters,
+    this.globalOptions,
     this.options,
     this.variableToParamName = const {},
   });
@@ -102,16 +103,34 @@ class EndpointSpec {
   final String? eventarcEventType; // For Eventarc: custom event type
   final String? eventarcChannel; // For Eventarc: channel ID
   final Map<String, String>? eventarcFilters; // For Eventarc: event filters
+  final InstanceCreationExpression? globalOptions;
   final InstanceCreationExpression? options;
   final Map<String, String> variableToParamName;
 
   /// Extracts options configuration from the AST.
   Map<String, dynamic> extractOptions() {
+    final result = _extractOptions(globalOptions);
+    final endpointOptions = _extractOptions(options);
+
+    for (final entry in endpointOptions.entries) {
+      if (identical(entry.value, _resetOption)) {
+        result.remove(entry.key);
+      } else {
+        result[entry.key] = entry.value;
+      }
+    }
+
+    return result..removeWhere((_, value) => identical(value, _resetOption));
+  }
+
+  static const Object _resetOption = Object();
+
+  Map<String, dynamic> _extractOptions(InstanceCreationExpression? options) {
     if (options == null) return {};
 
     final result = <String, dynamic>{};
 
-    for (final arg in options!.argumentList.arguments) {
+    for (final arg in options.argumentList.arguments) {
       if (arg is! NamedExpression) continue;
 
       final name = arg.name.label.name;
@@ -119,7 +138,7 @@ class EndpointSpec {
 
       // Helper to reduce boilerplate: only adds to map if value exists
       void add(String key, dynamic Function(Expression expr) func) {
-        final value = func(expr);
+        final value = _isResetOption(expr) ? _resetOption : func(expr);
         if (value != null) result[key] = value;
       }
 
@@ -128,6 +147,9 @@ class EndpointSpec {
           add('availableMemoryMb', _extractMemory);
         case 'cpu':
           add('cpu', _extractCpu);
+        case 'enforceAppCheck':
+          // Runtime-only option for callable functions.
+          break;
         case 'timeoutSeconds':
           add('timeoutSeconds', _extractTimeoutSeconds);
         case 'minInstances':
@@ -162,7 +184,6 @@ class EndpointSpec {
         // - heartBeatIntervalSeconds: Runtime streaming keepalive
         // - preserveExternalChanges: Deployment behavior, not function config
         case 'cors':
-        case 'enforceAppCheck':
         case 'preserveExternalChanges':
         case 'consumeAppCheckToken':
         case 'heartBeatIntervalSeconds':
@@ -174,30 +195,38 @@ class EndpointSpec {
     return result;
   }
 
+  bool _isResetOption(Expression expression) =>
+      expression is InstanceCreationExpression &&
+      // `name` is preferred, but resolved/synthetic ASTs can represent
+      // typedef-backed constructors without it.
+      (expression.constructorName.name?.name == 'reset' ||
+          expression.constructorName.toSource().endsWith('.reset'));
+
   /// Extracts Memory option value.
   Object? _extractMemory(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
     // Check if it's Memory.param() - generate CEL
-    if (expression.constructorName.name?.name == 'param') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'param') {
       return _extractParamReference(expression);
     }
 
     // Check if it's Memory.expression() - generate CEL from expression
-    if (expression.constructorName.name?.name == 'expression') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'expression') {
       return _extractCelExpression(
         expression.argumentList.arguments.firstOrNull,
       );
     }
 
     // Check if it's Memory.reset()
-    if (expression.constructorName.name?.name == 'reset') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'reset') {
       return null; // Reset means use default
     }
 
     // Extract literal value: Memory(MemoryOption.mb256) or Memory(.mb256)
-    final args = expression.argumentList.arguments;
-    final enumName = _extractEnumValueName(args.firstOrNull);
+    final args = _extractCallArguments(expression);
+    final enumName = _extractEnumValueName(args?.firstOrNull);
     if (enumName != null) return _memoryOptionToInt(enumName);
 
     return null;
@@ -219,26 +248,27 @@ class EndpointSpec {
 
   /// Extracts CPU option value.
   Object? _extractCpu(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
     // Check if it's Cpu.gcfGen1()
-    if (expression.constructorName.name?.name == 'gcfGen1') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'gcfGen1') {
       return 'gcf_gen1';
     }
 
     // Check if it's Cpu.param() - generate CEL
-    if (expression.constructorName.name?.name == 'param') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'param') {
       return _extractParamReference(expression);
     }
 
     // Check if it's Cpu.reset()
-    if (expression.constructorName.name?.name == 'reset') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'reset') {
       return null;
     }
 
     // Extract literal double value: Cpu(1.0)
-    final args = expression.argumentList.arguments;
-    return switch (args.firstOrNull) {
+    final args = _extractCallArguments(expression);
+    return switch (args?.firstOrNull) {
       final DoubleLiteral d => d.value,
       final IntegerLiteral i => i.value,
       _ => null,
@@ -247,16 +277,20 @@ class EndpointSpec {
 
   /// Extracts Region option value.
   Object? _extractRegion(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
     // Check if it's Region.param() - generate CEL
-    if (expression.constructorName.name?.name == 'param') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'param') {
       return _extractParamReference(expression);
     }
 
     // Extract literal value: Region(SupportedRegion.usCentral1) or Region(.usCentral1)
-    final args = expression.argumentList.arguments;
-    final enumName = _extractEnumValueName(args.firstOrNull);
+    final args = _extractCallArguments(expression);
+    return _extractRegionLiteral(args?.firstOrNull);
+  }
+
+  /// Extracts a literal region option from an enum expression.
+  Object? _extractRegionLiteral(Expression? expression) {
+    final enumName = _extractEnumValueName(expression);
     if (enumName != null) {
       final regionString = _regionEnumToString(enumName);
       return regionString != null ? [regionString] : null;
@@ -313,12 +347,12 @@ class EndpointSpec {
       if (expression.constructorName.name?.name == 'param') {
         return _extractParamReference(expression);
       }
+    }
 
-      // Extract literal: Option(123)
-      final args = expression.argumentList.arguments;
-      if (args.firstOrNull case final IntegerLiteral firstArg) {
-        return firstArg.value;
-      }
+    // Extract literal: Option(123)
+    final args = _extractCallArguments(expression);
+    if (args?.firstOrNull case final IntegerLiteral firstArg) {
+      return firstArg.value;
     }
 
     return null;
@@ -335,12 +369,12 @@ class EndpointSpec {
       if (expression.constructorName.name?.name == 'param') {
         return _extractParamReference(expression);
       }
+    }
 
-      // Extract literal: Option('value')
-      final args = expression.argumentList.arguments;
-      if (args.firstOrNull case final StringLiteral firstArg) {
-        return firstArg.stringValue;
-      }
+    // Extract literal: Option('value')
+    final args = _extractCallArguments(expression);
+    if (args?.firstOrNull case final StringLiteral firstArg) {
+      return firstArg.stringValue;
     }
 
     return null;
@@ -357,12 +391,12 @@ class EndpointSpec {
       if (expression.constructorName.name?.name == 'param') {
         return _extractParamReference(expression);
       }
+    }
 
-      // Extract literal: Option(true)
-      final args = expression.argumentList.arguments;
-      if (args.firstOrNull case final BooleanLiteral firstArg) {
-        return firstArg.value;
-      }
+    // Extract literal: Option(true)
+    final args = _extractCallArguments(expression);
+    if (args?.firstOrNull case final BooleanLiteral firstArg) {
+      return firstArg.value;
     }
 
     return null;
@@ -370,10 +404,8 @@ class EndpointSpec {
 
   /// Extracts VPC egress settings.
   Object? _extractVpcEgressSettings(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
-    final args = expression.argumentList.arguments;
-    final enumName = _extractEnumValueName(args.firstOrNull);
+    final args = _extractCallArguments(expression);
+    final enumName = _extractEnumValueName(args?.firstOrNull);
     if (enumName != null) {
       return switch (enumName) {
         'privateRangesOnly' => 'PRIVATE_RANGES_ONLY',
@@ -387,10 +419,8 @@ class EndpointSpec {
 
   /// Extracts ingress settings.
   Object? _extractIngressSettings(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
-    final args = expression.argumentList.arguments;
-    final enumName = _extractEnumValueName(args.firstOrNull);
+    final args = _extractCallArguments(expression);
+    final enumName = _extractEnumValueName(args?.firstOrNull);
     if (enumName != null) {
       return switch (enumName) {
         'allowAll' => 'ALLOW_ALL',
@@ -405,19 +435,19 @@ class EndpointSpec {
 
   /// Extracts invoker list.
   Object? _extractInvoker(Expression expression) {
-    if (expression is! InstanceCreationExpression) return null;
-
     // Check for special factories
-    if (expression.constructorName.name?.name == 'public') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'public') {
       return ['public'];
     }
-    if (expression.constructorName.name?.name == 'private') {
+    if (expression is InstanceCreationExpression &&
+        expression.constructorName.name?.name == 'private') {
       return ['private'];
     }
 
     // Extract literal list
-    final args = expression.argumentList.arguments;
-    if (args.firstOrNull case final ListLiteral firstArg) {
+    final args = _extractCallArguments(expression);
+    if (args?.firstOrNull case final ListLiteral firstArg) {
       return firstArg.elements
           .whereType<StringLiteral>()
           .map((e) => e.stringValue)
@@ -527,6 +557,19 @@ class EndpointSpec {
     _ => null,
   };
 
+  /// Extracts arguments from constructor-like calls. When code is unresolved,
+  /// wrappers such as `DeployOption(...)` can appear as invocations instead of
+  /// [InstanceCreationExpression] nodes.
+  NodeList<Expression>? _extractCallArguments(
+    Expression expression,
+  ) => switch (expression) {
+    InstanceCreationExpression(:final argumentList) => argumentList.arguments,
+    FunctionExpressionInvocation(:final argumentList) => argumentList.arguments,
+    MethodInvocation(target: null, :final argumentList) =>
+      argumentList.arguments,
+    _ => null,
+  };
+
   /// Extracts an enum value name from an expression, handling both
   /// fully-qualified (`SupportedRegion.europeWest3`) and shorthand
   /// (`.europeWest3`) syntax.
@@ -534,6 +577,7 @@ class EndpointSpec {
     PrefixedIdentifier() => expression.identifier.name,
     SimpleIdentifier() => expression.name,
     PropertyAccess() => expression.propertyName.name,
+    DotShorthandPropertyAccess() => expression.propertyName.name,
     _ => null,
   };
 }
