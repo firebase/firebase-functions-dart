@@ -22,7 +22,7 @@ import 'package:meta/meta.dart';
 class FirebaseEnv {
   FirebaseEnv() : environment = mockEnvironment ?? Platform.environment;
 
-  @visibleForTesting
+  @internal
   static Map<String, String>? mockEnvironment;
 
   final Map<String, String> environment;

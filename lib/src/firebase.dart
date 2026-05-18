@@ -261,6 +261,16 @@ Firebase createFirebaseInternal() {
   return Firebase._(adminApp: adminApp, env: env);
 }
 
+/// Creates a [Firebase] instance for use in `runFunctionsTest`.
+///
+/// Accepts an already-initialised [adminApp] (e.g. one whose `Auth` is wired
+/// to a mock HTTP client for cert fetching). No HTTP server is started —
+/// callers use `FunctionsTestClient` to invoke handlers directly.
+@internal
+Firebase createTestFirebaseInternal(FirebaseApp adminApp) {
+  return Firebase._(adminApp: adminApp, env: FirebaseEnv());
+}
+
 FirebaseApp _getOrInitializeAdminApp(FirebaseEnv env) {
   try {
     return FirebaseApp.getApp();

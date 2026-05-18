@@ -102,6 +102,13 @@ exports.countdown = onCall(
   }
 );
 
+// Callable function demonstrating createCustomToken via the Admin SDK Auth service.
+exports.signInWithCode = onCall(async (request) => {
+  // In the Node.js SDK, getAuth().createCustomToken() is used.
+  // This stub mirrors the manifest shape of the Dart implementation.
+  return { token: "stub-custom-token" };
+});
+
 // Callable function demonstrating auth data extraction
 exports.getAuthInfo = onCall((request) => {
   const auth = request.auth;

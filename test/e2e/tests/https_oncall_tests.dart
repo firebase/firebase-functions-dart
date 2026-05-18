@@ -101,6 +101,23 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       expect(error['message'], contains('divide by zero'));
     });
 
+    test(
+      'signInWithCode returns a custom token via Admin SDK createCustomToken',
+      () async {
+        final response = await client.call(
+          'sign-in-with-code',
+          data: <String, dynamic>{},
+        );
+
+        expect(response.statusCode, equals(200));
+
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = json['result'] as Map<String, dynamic>;
+        expect(result['token'], isA<String>());
+        expect(result['token'], isNotEmpty);
+      },
+    );
+
     test('getAuthInfo returns unauthenticated when no auth token', () async {
       final response = await client.call(
         'get-auth-info',

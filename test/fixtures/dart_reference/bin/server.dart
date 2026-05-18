@@ -14,6 +14,7 @@
 
 // ignore_for_file: experimental_member_use
 
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_functions/firebase_functions.dart';
 import 'shared_options.dart';
 
@@ -50,6 +51,8 @@ final isProduction = defineBoolean(
 );
 
 void main(List<String> args) async {
+  FirebaseApp.initializeApp();
+
   await runFunctions((firebase) {
     // ==========================================================================
     // HTTPS Callable Functions (onCall / onCallWithData)
@@ -86,6 +89,12 @@ void main(List<String> args) async {
       }
 
       return CallableResult({'result': a / b});
+    });
+
+    firebase.https.onCall(name: 'signInWithCode', (request, response) async {
+      final auth = firebase.adminApp.auth();
+      final customToken = await auth.createCustomToken('test-uid');
+      return CallableResult({'token': customToken});
     });
 
     // Callable function demonstrating auth data extraction
