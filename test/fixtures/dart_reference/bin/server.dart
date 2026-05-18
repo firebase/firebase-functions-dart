@@ -50,6 +50,10 @@ final isProduction = defineBoolean(
   ),
 );
 
+final apiKey = defineSecret('API_KEY');
+
+final apiConfig = defineJsonSecret<Map<String, dynamic>>('API_CONFIG');
+
 void main(List<String> args) async {
   FirebaseApp.initializeApp();
 
@@ -728,6 +732,14 @@ void main(List<String> args) async {
         invoker: Invoker(['user1@example.com', 'user2@example.com']),
       ),
       (request) async => Response.ok('Custom invoker'),
+    );
+
+    // HTTPS onRequest with secrets — tests variableToParamName resolution
+    firebase.https.onRequest(
+      name: 'httpsWithSecrets',
+      // ignore: non_const_argument_for_const_parameter
+      options: HttpsOptions(secrets: [apiKey, apiConfig]),
+      (request) async => Response.ok('HTTPS with secrets'),
     );
 
     // Pub/Sub with options

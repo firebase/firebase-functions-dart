@@ -54,6 +54,7 @@ function extractParams() {
       BooleanParam: "boolean",
       FloatParam: "float",
       ListParam: "list",
+      SecretParam: "secret",
     };
 
     const result = { name: p.name };
@@ -140,6 +141,14 @@ function normalizeEndpoint(name, endpoint) {
     if (Object.keys(vpc).length > 0) {
       result.vpc = vpc;
     }
+  }
+
+  // Secrets — normalize to {key, secret} pairs to match Dart manifest format
+  if (Array.isArray(endpoint.secretEnvironmentVariables) && endpoint.secretEnvironmentVariables.length > 0) {
+    result.secretEnvironmentVariables = endpoint.secretEnvironmentVariables.map((s) => ({
+      key: s.key,
+      secret: s.secret ?? s.key,
+    }));
   }
 
   // Trigger types
