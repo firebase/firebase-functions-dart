@@ -150,7 +150,7 @@ class HttpsNamespace extends FunctionsNamespace {
         (result) => result.data,
         (result) => result.toResponse(),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue());
+    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
   }
 
   /// Creates an HTTPS callable function with typed data.
@@ -237,7 +237,7 @@ class HttpsNamespace extends FunctionsNamespace {
           headers: {'Content-Type': 'application/json'},
         ),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue());
+    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
   }
 
   /// Internal handler for callable functions.
