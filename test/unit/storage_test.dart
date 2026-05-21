@@ -66,7 +66,7 @@ Request _createStorageRequest({
 
   return Request(
     'POST',
-    Uri.parse('http://localhost/on-object-finalized-mybucket'),
+    Uri.parse('http://localhost/onobjectfinalized-mybucket'),
     body: jsonEncode(cloudEvent),
     headers: {'content-type': 'application/json'},
   );
@@ -91,7 +91,7 @@ void main() {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
         expect(
-          _findFunction(firebase, 'on-object-finalized-mybucket'),
+          _findFunction(firebase, 'onobjectfinalized-mybucket'),
           isNotNull,
         );
       });
@@ -99,7 +99,7 @@ void main() {
       test('registered function is not external', () {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         expect(func.external, isFalse);
       });
 
@@ -110,7 +110,7 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final request = _createStorageRequest(
           objectName: 'uploads/image.png',
           contentType: 'image/png',
@@ -134,7 +134,7 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final response = await func.handler(_createStorageRequest());
 
         expect(response.statusCode, 200);
@@ -156,7 +156,7 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         await func.handler(_createStorageRequest());
 
         expect(receivedEvent!.bucket, 'my-bucket');
@@ -168,7 +168,7 @@ void main() {
         storage.onObjectArchived(bucket: 'my-bucket', (event) async {});
 
         expect(
-          _findFunction(firebase, 'on-object-archived-mybucket'),
+          _findFunction(firebase, 'onobjectarchived-mybucket'),
           isNotNull,
         );
       });
@@ -180,7 +180,7 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-object-archived-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectarchived-mybucket')!;
         final request = _createStorageRequest(
           eventType: 'google.cloud.storage.object.v1.archived',
         );
@@ -197,7 +197,7 @@ void main() {
         storage.onObjectDeleted(bucket: 'my-bucket', (event) async {});
 
         expect(
-          _findFunction(firebase, 'on-object-deleted-mybucket'),
+          _findFunction(firebase, 'onobjectdeleted-mybucket'),
           isNotNull,
         );
       });
@@ -209,7 +209,7 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-object-deleted-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectdeleted-mybucket')!;
         final request = _createStorageRequest(
           eventType: 'google.cloud.storage.object.v1.deleted',
         );
@@ -226,7 +226,7 @@ void main() {
         storage.onObjectMetadataUpdated(bucket: 'my-bucket', (event) async {});
 
         expect(
-          _findFunction(firebase, 'on-object-metadata-updated-mybucket'),
+          _findFunction(firebase, 'onobjectmetadataupdated-mybucket'),
           isNotNull,
         );
       });
@@ -240,7 +240,7 @@ void main() {
 
         final func = _findFunction(
           firebase,
-          'on-object-metadata-updated-mybucket',
+          'onobjectmetadataupdated-mybucket',
         )!;
         final request = _createStorageRequest(
           eventType: 'google.cloud.storage.object.v1.metadataUpdated',
@@ -262,7 +262,7 @@ void main() {
         storage.onObjectFinalized(bucket: 'my-test-bucket', (event) async {});
 
         expect(
-          _findFunction(firebase, 'on-object-finalized-mytestbucket'),
+          _findFunction(firebase, 'onobjectfinalized-mytestbucket'),
           isNotNull,
         );
       });
@@ -276,7 +276,7 @@ void main() {
         expect(
           _findFunction(
             firebase,
-            'on-object-finalized-demotestfirebasestorageapp',
+            'onobjectfinalized-demotestfirebasestorageapp',
           ),
           isNotNull,
         );
@@ -287,7 +287,7 @@ void main() {
       test('returns 200 on success', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final response = await func.handler(_createStorageRequest());
 
         expect(response.statusCode, 200);
@@ -298,7 +298,7 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final response = await func.handler(_createStorageRequest());
 
         expect(response.statusCode, 500);
@@ -309,10 +309,10 @@ void main() {
       test('returns 400 for invalid CloudEvent', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-object-finalized-mybucket'),
+          Uri.parse('http://localhost/onobjectfinalized-mybucket'),
           body: 'not json',
           headers: {'content-type': 'application/json'},
         );
@@ -324,10 +324,10 @@ void main() {
       test('returns 400 for wrong event type', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'on-object-finalized-mybucket')!;
+        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-object-finalized-mybucket'),
+          Uri.parse('http://localhost/onobjectfinalized-mybucket'),
           body: jsonEncode({
             'specversion': '1.0',
             'id': 'test',
