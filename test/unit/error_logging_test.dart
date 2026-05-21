@@ -113,7 +113,7 @@ void main() {
         );
         final request = Request(
           'GET',
-          Uri.parse('http://localhost/crash-endpoint'),
+          Uri.parse('http://localhost/crashendpoint'),
         );
         final response = await func.handler(request);
 
@@ -136,10 +136,8 @@ void main() {
         throw NotFoundError('User 42 not found');
       });
 
-      final func = firebase.functions.firstWhere(
-        (f) => f.name == 'knownerror',
-      );
-      final request = Request('GET', Uri.parse('http://localhost/known-error'));
+      final func = firebase.functions.firstWhere((f) => f.name == 'knownerror');
+      final request = Request('GET', Uri.parse('http://localhost/knownerror'));
       final response = await func.handler(request);
 
       expect(response.statusCode, 404);

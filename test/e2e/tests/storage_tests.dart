@@ -436,8 +436,8 @@ void runStorageTests(
         '$examplePath/functions.yaml',
       ).readAsStringSync();
       functionName =
-          _findFunctionName(manifestContent, 'on-object-metadata-updated') ??
-          'on-object-metadata-updated-demotestfirebasestorageapp';
+          _findFunctionName(manifestContent, 'onobjectmetadataupdated') ??
+          'onobjectmetadataupdated-demotestfirebasestorageapp';
       print('Using function name: $functionName');
     });
 

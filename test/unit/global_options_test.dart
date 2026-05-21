@@ -74,8 +74,7 @@ final globalOptions = new GlobalOptions(
       });
       final manifest = loadYaml(yaml) as YamlMap;
       final endpoint =
-          (manifest['endpoints'] as YamlMap)['globalresetendpoint']
-              as YamlMap;
+          (manifest['endpoints'] as YamlMap)['globalresetendpoint'] as YamlMap;
 
       expect(endpoint['timeoutSeconds'], isNull);
     });
