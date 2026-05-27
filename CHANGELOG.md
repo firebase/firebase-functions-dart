@@ -1,3 +1,8 @@
+## Unreleased
+
+- Document and test `ServiceAccount('service-account@')` project-relative
+  shorthand parity with the Node.js SDK.
+
 ## 0.6.0
 
 - Add `runFunctions` as the primary API.
