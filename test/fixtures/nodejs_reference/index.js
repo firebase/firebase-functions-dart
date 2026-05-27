@@ -603,6 +603,16 @@ exports.callableFull = onCall(
   }
 );
 
+// Callable with integer memory equivalent.
+exports.callableMemoryFromInt = onCall(
+  {
+    memory: "1GiB"
+  },
+  (request) => {
+    return { message: "Callable with integer memory" };
+  }
+);
+
 // HTTPS onRequest that crashes with sensitive data in the exception.
 // Used by E2E tests to verify errors are logged but NOT leaked to clients.
 exports.crashWithSecret = onRequest(
