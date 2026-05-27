@@ -80,6 +80,27 @@ void main() {
       expect(extractedOptions, containsPair('invoker', ['user@example.com']));
       expect(extractedOptions, containsPair('omit', false));
     });
+
+    test('preserves service account project-relative shorthand', () {
+      final options = _parseHttpsOptions('''
+void main() {
+  const options = const HttpsOptions(
+    serviceAccount: ServiceAccount('super-account@'),
+  );
+}
+''');
+
+      final endpoint = EndpointSpec(
+        name: 'helloWorld',
+        type: 'https',
+        options: options,
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('serviceAccount', 'super-account@'),
+      );
+    });
   });
 }
 

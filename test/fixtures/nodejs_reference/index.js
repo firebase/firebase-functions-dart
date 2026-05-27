@@ -578,6 +578,16 @@ exports.httpsFull = onRequest(
   }
 );
 
+// HTTPS onRequest with project-relative service account shorthand.
+exports.serviceAccountShorthand = onRequest(
+  {
+    serviceAccount: "super-account@"
+  },
+  (request, response) => {
+    response.send("HTTPS with service account shorthand");
+  }
+);
+
 // Callable with ALL CallableOptions
 exports.callableFull = onCall(
   {

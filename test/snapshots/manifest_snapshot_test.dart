@@ -327,14 +327,14 @@ void main() {
 
       expect(
         dartEndpoints.keys.length,
-        equals(52),
+        equals(53),
         reason:
-            'Should discover 52 functions (6 Callable + 4 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
+            'Should discover 53 functions (6 Callable + 5 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
       );
       expect(
         nodejsEndpoints.keys.length,
-        equals(52),
-        reason: 'Node.js reference should also have 52 endpoints',
+        equals(53),
+        reason: 'Node.js reference should also have 53 endpoints',
       );
 
       // Verify both manifests have the same endpoints (normalized via
@@ -1829,6 +1829,17 @@ void main() {
 
       expect(dartFunc['preserveExternalChanges'], isNull);
       expect(nodejsFunc['preserveExternalChanges'], isNull);
+    });
+
+    test('serviceAccountShorthand should preserve trailing @', () {
+      final dartFunc = _getEndpoint(dartManifest, 'serviceAccountShorthand')!;
+      final nodejsFunc = _getEndpoint(
+        nodejsManifest,
+        'serviceAccountShorthand',
+      )!;
+
+      expect(dartFunc['serviceAccountEmail'], equals('super-account@'));
+      expect(nodejsFunc['serviceAccountEmail'], equals('super-account@'));
     });
 
     test('callableFull should NOT have runtime-only options', () {

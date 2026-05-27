@@ -675,6 +675,15 @@ void main(List<String> args) async {
       (request) async => Response.ok('HTTPS with all options'),
     );
 
+    // HTTPS onRequest with project-relative service account shorthand.
+    firebase.https.onRequest(
+      name: 'serviceAccountShorthand',
+      options: const HttpsOptions(
+        serviceAccount: ServiceAccount('super-account@'),
+      ),
+      (request) async => Response.ok('HTTPS with service account shorthand'),
+    );
+
     // Callable with ALL CallableOptions
     firebase.https.onCall(
       name: 'callableFull',
