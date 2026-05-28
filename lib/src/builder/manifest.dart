@@ -162,6 +162,9 @@ Map<String, dynamic> _buildEndpointMap(EndpointSpec endpoint) {
   if (options['cpu'] case final Object v) {
     map['cpu'] = v;
   }
+  if (options['executionEnvironment'] case final Object v) {
+    map['executionEnvironment'] = v;
+  }
   if (options['timeoutSeconds'] case final Object v) {
     map['timeoutSeconds'] = v;
   }

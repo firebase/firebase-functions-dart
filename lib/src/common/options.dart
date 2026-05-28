@@ -39,6 +39,7 @@ class GlobalOptions {
     this.concurrency,
     this.cpu,
     this.enforceAppCheck,
+    this.executionEnvironment,
     this.ingressSettings,
     this.invoker,
     this.labels,
@@ -63,6 +64,12 @@ class GlobalOptions {
 
   /// Whether to enforce Firebase App Check for callable functions.
   final EnforceAppCheck? enforceAppCheck;
+
+  /// Cloud Run execution environment to use for the function.
+  ///
+  /// If omitted, Cloud Run chooses the execution environment automatically.
+  /// The second-generation environment requires at least 512 MiB of memory.
+  final ExecutionEnvironment? executionEnvironment;
 
   /// Ingress settings controlling who can call the function.
   final Ingress? ingressSettings;
@@ -199,6 +206,7 @@ final class OptionParam<T extends Object> extends DeployOption<T> {
 
 typedef Concurrency = DeployOption<int>;
 typedef EnforceAppCheck = Option<bool>;
+typedef ExecutionEnvironment = DeployOption<ExecutionEnvironmentOption>;
 typedef Ingress = DeployOption<IngressSetting>;
 typedef Instances = DeployOption<int>;
 typedef Omit = Option<bool>;
@@ -369,6 +377,18 @@ enum IngressSetting {
   allowInternalAndGclb('ALLOW_INTERNAL_AND_GCLB');
 
   const IngressSetting(this.value);
+  final String value;
+}
+
+/// Cloud Run execution environments.
+enum ExecutionEnvironmentOption {
+  /// First generation gVisor-based execution environment.
+  gen1('gen1'),
+
+  /// Second generation microVM-based execution environment.
+  gen2('gen2');
+
+  const ExecutionEnvironmentOption(this.value);
   final String value;
 }
 

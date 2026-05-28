@@ -44,6 +44,7 @@ void main() {
   const options = const HttpsOptions(
     memory: Memory(.mb512),
     cpu: Cpu(2),
+    executionEnvironment: ExecutionEnvironment(.gen2),
     timeoutSeconds: TimeoutSeconds(60),
     maxInstances: Instances(10),
     serviceAccount: ServiceAccount('test@example.com'),
@@ -66,6 +67,7 @@ void main() {
 
       expect(extractedOptions, containsPair('availableMemoryMb', 512));
       expect(extractedOptions, containsPair('cpu', 2));
+      expect(extractedOptions, containsPair('executionEnvironment', 'gen2'));
       expect(extractedOptions, containsPair('timeoutSeconds', 60));
       expect(extractedOptions, containsPair('maxInstances', 10));
       expect(
