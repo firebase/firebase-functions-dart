@@ -89,6 +89,28 @@ void main() {
       );
     });
 
+    test('extracts invoker from Invoker.param', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new HttpsOptions(
+    invoker: Invoker.param(invokerParam),
+  );
+}
+''', 'HttpsOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'invokerParamFunction',
+        type: 'https',
+        options: options,
+        variableToParamName: {'invokerParam': 'INVOKER'},
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('invoker', ['{{ params.INVOKER }}']),
+      );
+    });
+
     test('extracts region from DeployOption dot shorthand', () {
       final options = _parseHttpsOptions('''
 void main() {

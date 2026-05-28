@@ -432,6 +432,9 @@ class EndpointSpec {
     if (_constructorName(expression) == 'private') {
       return ['private'];
     }
+    if (_constructorName(expression) == 'param') {
+      return [_extractParamReference(expression)];
+    }
 
     // Extract literal list
     final args = _extractCallArguments(expression);
