@@ -1770,6 +1770,9 @@ void main() {
       expect(dartFunc['cpu'], equals(1));
       expect(nodejsFunc['cpu'], equals(1));
 
+      expect(dartFunc['executionEnvironment'], isNull);
+      expect(nodejsFunc['executionEnvironment'], isNull);
+
       expect(dartFunc['timeoutSeconds'], equals(60));
       expect(nodejsFunc['timeoutSeconds'], equals(60));
 
@@ -1844,6 +1847,12 @@ void main() {
 
       expect(dartFunc['heartbeatSeconds'], isNull);
       expect(nodejsFunc['heartbeatSeconds'], isNull);
+    });
+
+    test('callableFull should support execution environment', () {
+      final dartFunc = _getEndpoint(dartManifest, 'callableFull')!;
+
+      expect(dartFunc['executionEnvironment'], equals('gen2'));
     });
 
     test('httpsGen1 should have gcf_gen1 CPU', () {

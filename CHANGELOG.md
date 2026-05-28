@@ -1,3 +1,8 @@
+## Unreleased
+
+- Add support for setting the Cloud Run execution environment from function
+  options.
+
 ## 0.6.0
 
 - Add `runFunctions` as the primary API.

@@ -681,6 +681,9 @@ void main(List<String> args) async {
       options: const CallableOptions(
         memory: Memory(MemoryOption.gb1),
         cpu: Cpu(2),
+        executionEnvironment: ExecutionEnvironment(
+          ExecutionEnvironmentOption.gen2,
+        ),
         region: Region(SupportedRegion.usEast1),
         timeoutSeconds: TimeoutSeconds(300),
         minInstances: Instances(1),

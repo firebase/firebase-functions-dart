@@ -62,6 +62,33 @@ firebase.https.onRequest(
 );
 ```
 
+## Cloud Run Execution Environment
+
+Use `executionEnvironment` to force the Cloud Run execution environment for a
+function. This can be useful when your workload needs the second-generation
+microVM environment, for example to work around compatibility issues with
+services such as Cloud SQL.
+
+```dart
+firebase.https.onCall(
+  name: 'queryDatabase',
+  options: const CallableOptions(
+    // Cloud Run requires at least 512 MiB of memory for gen2.
+    memory: Memory(MemoryOption.mb512),
+    executionEnvironment: ExecutionEnvironment(
+      ExecutionEnvironmentOption.gen2,
+    ),
+  ),
+  (request, response) async {
+    return CallableResult({'ok': true});
+  },
+);
+```
+
+If `executionEnvironment` is omitted, Cloud Run chooses the execution
+environment automatically. Valid values are `ExecutionEnvironmentOption.gen1`
+and `ExecutionEnvironmentOption.gen2`.
+
 ## Global Options
 
 Use `setGlobalOptions` to set defaults for every function. Per-function options

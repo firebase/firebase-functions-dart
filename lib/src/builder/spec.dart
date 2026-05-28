@@ -147,6 +147,8 @@ class EndpointSpec {
           add('availableMemoryMb', _extractMemory);
         case 'cpu':
           add('cpu', _extractCpu);
+        case 'executionEnvironment':
+          add('executionEnvironment', _extractExecutionEnvironment);
         case 'enforceAppCheck':
           // Runtime-only option for callable functions.
           break;
@@ -330,6 +332,28 @@ class EndpointSpec {
       'usWest4' => 'us-west4',
       _ => null,
     };
+  }
+
+  /// Extracts Cloud Run execution environment value.
+  Object? _extractExecutionEnvironment(Expression expression) {
+    final args = _extractCallArguments(expression);
+    final value = args?.firstOrNull;
+    final enumName = _extractEnumValueName(value);
+    if (enumName != null) {
+      return switch (enumName) {
+        'gen1' => 'gen1',
+        'gen2' => 'gen2',
+        _ => null,
+      };
+    }
+    if (value is StringLiteral) {
+      return switch (value.stringValue) {
+        'gen1' || 'gen2' => value.stringValue,
+        _ => null,
+      };
+    }
+
+    return null;
   }
 
   /// Extracts timeout seconds.
