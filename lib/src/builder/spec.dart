@@ -196,31 +196,28 @@ class EndpointSpec {
   }
 
   bool _isResetOption(Expression expression) =>
-      expression is InstanceCreationExpression &&
       // `name` is preferred, but resolved/synthetic ASTs can represent
       // typedef-backed constructors without it.
-      (expression.constructorName.name?.name == 'reset' ||
+      _constructorName(expression) == 'reset' ||
+      (expression is InstanceCreationExpression &&
           expression.constructorName.toSource().endsWith('.reset'));
 
   /// Extracts Memory option value.
   Object? _extractMemory(Expression expression) {
     // Check if it's Memory.param() - generate CEL
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'param') {
+    if (_constructorName(expression) == 'param') {
       return _extractParamReference(expression);
     }
 
     // Check if it's Memory.expression() - generate CEL from expression
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'expression') {
+    if (_constructorName(expression) == 'expression') {
       return _extractCelExpression(
-        expression.argumentList.arguments.firstOrNull,
+        _extractCallArguments(expression)?.firstOrNull,
       );
     }
 
     // Check if it's Memory.reset()
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'reset') {
+    if (_constructorName(expression) == 'reset') {
       return null; // Reset means use default
     }
 
@@ -229,7 +226,10 @@ class EndpointSpec {
     final enumName = _extractEnumValueName(args?.firstOrNull);
     if (enumName != null) return _memoryOptionToInt(enumName);
 
-    return null;
+    return switch (args?.firstOrNull) {
+      final IntegerLiteral i => i.value,
+      _ => null,
+    };
   }
 
   /// Converts MemoryOption enum to integer value.
@@ -249,20 +249,17 @@ class EndpointSpec {
   /// Extracts CPU option value.
   Object? _extractCpu(Expression expression) {
     // Check if it's Cpu.gcfGen1()
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'gcfGen1') {
+    if (_constructorName(expression) == 'gcfGen1') {
       return 'gcf_gen1';
     }
 
     // Check if it's Cpu.param() - generate CEL
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'param') {
+    if (_constructorName(expression) == 'param') {
       return _extractParamReference(expression);
     }
 
     // Check if it's Cpu.reset()
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'reset') {
+    if (_constructorName(expression) == 'reset') {
       return null;
     }
 
@@ -278,8 +275,7 @@ class EndpointSpec {
   /// Extracts Region option value.
   Object? _extractRegion(Expression expression) {
     // Check if it's Region.param() - generate CEL
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'param') {
+    if (_constructorName(expression) == 'param') {
       return _extractParamReference(expression);
     }
 
@@ -342,11 +338,9 @@ class EndpointSpec {
       return expression.value;
     }
 
-    if (expression is InstanceCreationExpression) {
-      // Check if it's Option.param() - generate CEL
-      if (expression.constructorName.name?.name == 'param') {
-        return _extractParamReference(expression);
-      }
+    // Check if it's Option.param() - generate CEL
+    if (_constructorName(expression) == 'param') {
+      return _extractParamReference(expression);
     }
 
     // Extract literal: Option(123)
@@ -364,11 +358,9 @@ class EndpointSpec {
       return expression.stringValue;
     }
 
-    if (expression is InstanceCreationExpression) {
-      // Check if it's Option.param() - generate CEL
-      if (expression.constructorName.name?.name == 'param') {
-        return _extractParamReference(expression);
-      }
+    // Check if it's Option.param() - generate CEL
+    if (_constructorName(expression) == 'param') {
+      return _extractParamReference(expression);
     }
 
     // Extract literal: Option('value')
@@ -386,11 +378,9 @@ class EndpointSpec {
       return expression.value;
     }
 
-    if (expression is InstanceCreationExpression) {
-      // Check if it's Option.param() - generate CEL
-      if (expression.constructorName.name?.name == 'param') {
-        return _extractParamReference(expression);
-      }
+    // Check if it's Option.param() - generate CEL
+    if (_constructorName(expression) == 'param') {
+      return _extractParamReference(expression);
     }
 
     // Extract literal: Option(true)
@@ -436,13 +426,14 @@ class EndpointSpec {
   /// Extracts invoker list.
   Object? _extractInvoker(Expression expression) {
     // Check for special factories
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'public') {
+    if (_constructorName(expression) == 'public') {
       return ['public'];
     }
-    if (expression is InstanceCreationExpression &&
-        expression.constructorName.name?.name == 'private') {
+    if (_constructorName(expression) == 'private') {
       return ['private'];
+    }
+    if (_constructorName(expression) == 'param') {
+      return [_extractParamReference(expression)];
     }
 
     // Extract literal list
@@ -503,9 +494,9 @@ class EndpointSpec {
   }
 
   /// Extracts parameter reference and generates CEL expression.
-  String _extractParamReference(InstanceCreationExpression expression) {
-    final args = expression.argumentList.arguments;
-    if (args.isEmpty) return '{{ params.UNKNOWN }}';
+  String _extractParamReference(Expression expression) {
+    final args = _extractCallArguments(expression);
+    if (args == null || args.isEmpty) return '{{ params.UNKNOWN }}';
 
     final firstArg = args.first;
     if (firstArg is SimpleIdentifier) {
@@ -565,8 +556,14 @@ class EndpointSpec {
   ) => switch (expression) {
     InstanceCreationExpression(:final argumentList) => argumentList.arguments,
     FunctionExpressionInvocation(:final argumentList) => argumentList.arguments,
-    MethodInvocation(target: null, :final argumentList) =>
-      argumentList.arguments,
+    MethodInvocation(:final argumentList) => argumentList.arguments,
+    _ => null,
+  };
+
+  String? _constructorName(Expression expression) => switch (expression) {
+    InstanceCreationExpression(:final constructorName) =>
+      constructorName.name?.name,
+    MethodInvocation(:final methodName) => methodName.name,
     _ => null,
   };
 

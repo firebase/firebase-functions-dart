@@ -1,3 +1,8 @@
+## Unreleased
+
+- Fix manifest generation for function options declared with named factories,
+  including `Memory.fromInt` in `CallableOptions`.
+
 ## 0.6.0
 
 - Add `runFunctions` as the primary API.
