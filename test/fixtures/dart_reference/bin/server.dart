@@ -787,8 +787,8 @@ void main(List<String> args) async {
   });
 }
 
-/// This helper is intentionally not called from [main]. The manifest builder
-/// should only discover registrations reached during `runFunctions` setup.
+/// Registrations made outside the `runFunctions`/`fireUp` callback are not
+/// discovered: functions must be registered directly inside the callback.
 // ignore: unreachable_from_main
 void unregisteredHelper(Firebase firebase) {
   firebase.https.onRequest(

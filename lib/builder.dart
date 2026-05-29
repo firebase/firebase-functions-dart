@@ -301,15 +301,10 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   ///   firebase.https.onRequest(name: 'fn', options: opts, ...);
   final Map<String, InstanceCreationExpression> _variableToOptionsExpr = {};
 
-  /// Top-level function declarations, used to follow helpers that are invoked
-  /// from the `runFunctions`/`fireUp` registration callback.
-  final Map<String, FunctionDeclaration> _topLevelFunctions = {};
-
-  final Set<String> _visitedRegistrationHelpers = {};
-
-  var _registrationDepth = 0;
-
-  bool get _isCollectingRegistrations => _registrationDepth > 0;
+  /// Whether the visitor is currently inside the `runFunctions`/`fireUp`
+  /// registration callback. Only registrations reached while this is true are
+  /// discovered, so functions must be registered directly in the callback.
+  var _isCollectingRegistrations = false;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
@@ -337,8 +332,6 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       // Check for parameter definitions (top-level function calls with no target)
       if (_isParamDefinition(methodName)) {
         _extractParameterFromMethod(node, methodName);
-      } else if (_isCollectingRegistrations) {
-        _visitRegistrationHelper(methodName);
       }
     }
 
@@ -372,8 +365,6 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     for (final declaration in node.declarations) {
       if (declaration is TopLevelVariableDeclaration) {
         _trackOptionsVariables(declaration.variables);
-      } else if (declaration is FunctionDeclaration) {
-        _topLevelFunctions[declaration.name.lexeme] = declaration;
       }
     }
     super.visitCompilationUnit(node);
@@ -398,30 +389,18 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     switch (expression) {
       case FunctionExpression(:final body):
         _visitCollectingRegistrations(() => body.accept(this));
-      case SimpleIdentifier(:final name):
-        _visitRegistrationHelper(name);
       case ParenthesizedExpression(:final expression):
         _visitRegistrationExpression(expression);
     }
   }
 
-  void _visitRegistrationHelper(String name) {
-    if (!_visitedRegistrationHelpers.add(name)) return;
-
-    final declaration = _topLevelFunctions[name];
-    if (declaration == null) return;
-
-    _visitCollectingRegistrations(() {
-      declaration.functionExpression.body.accept(this);
-    });
-  }
-
   void _visitCollectingRegistrations(void Function() visit) {
-    _registrationDepth++;
+    final previous = _isCollectingRegistrations;
+    _isCollectingRegistrations = true;
     try {
       visit();
     } finally {
-      _registrationDepth--;
+      _isCollectingRegistrations = previous;
     }
   }
 

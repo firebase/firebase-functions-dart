@@ -46,6 +46,12 @@ void main(List<String> args) {
 }
 ```
 
+> [!IMPORTANT]
+> Register your functions directly inside the `runFunctions` (or `fireUp`)
+> callback. The build-time manifest generator only discovers registrations made
+> within that callback, so functions registered from helper methods called by the
+> callback will run locally but won't be deployed.
+
 ## Status: Experimental
 
 This package provides a Dart implementation of Firebase Cloud Functions. Only HTTPS triggers are currently supported in production. Other trigger types are experimental and have [varying levels of support](doc/triggers.md).
