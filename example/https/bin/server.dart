@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import 'package:firebase_functions/firebase_functions.dart';
-import 'package:firebase_functions/logger.dart';
 
 // Define parameters - these are read from environment variables at runtime
 // and can be configured at deploy time via .env files or CLI prompts.
@@ -123,7 +122,6 @@ void main(List<String> args) async {
       // ignore: non_const_argument_for_const_parameter
       options: HttpsOptions(minInstances: DeployOption.param(minInstances)),
       (request) async {
-        error('This is a request', {'something': 'else'});
         return Response.ok(welcomeMessage.value());
       },
     );
