@@ -301,23 +301,34 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   ///   firebase.https.onRequest(name: 'fn', options: opts, ...);
   final Map<String, InstanceCreationExpression> _variableToOptionsExpr = {};
 
+  /// Whether the visitor is currently inside the `runFunctions`/`fireUp`
+  /// registration callback. Only registrations reached while this is true are
+  /// discovered, so functions must be registered directly in the callback.
+  var _isCollectingRegistrations = false;
+
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    super.visitMethodInvocation(node);
     final target = node.target;
     final methodName = node.methodName.name;
-    if (target != null) {
+
+    if (target == null && _isFunctionsRunnerInvocation(methodName)) {
+      _visitRegistrationRunner(node);
+      return;
+    }
+
+    if (_isCollectingRegistrations && target != null) {
       // Check against all namespaces
       for (final namespace in namespaces) {
         if (namespace.isNamespace(target)) {
           if (namespace.matches(methodName)) {
             namespace.extractor(node, methodName);
-            // Found a match, no need to check other namespaces for this node
+            // The function handler runs later, so don't scan its body as if it
+            // were part of initialization.
             return;
           }
         }
       }
-    } else {
+    } else if (target == null) {
       // Check for parameter definitions (top-level function calls with no target)
       if (_isParamDefinition(methodName)) {
         _extractParameterFromMethod(node, methodName);
@@ -331,6 +342,11 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
     if (node.function case final SimpleIdentifier function) {
       final functionName = function.name;
+
+      if (_isFunctionsRunnerInvocation(functionName)) {
+        _visitRegistrationRunnerArguments(functionName, node.argumentList);
+        return;
+      }
 
       // Check for parameter definitions
       if (_isParamDefinition(functionName)) {
@@ -352,6 +368,40 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       }
     }
     super.visitCompilationUnit(node);
+  }
+
+  bool _isFunctionsRunnerInvocation(String methodName) =>
+      methodName == 'runFunctions' || methodName == 'fireUp';
+
+  void _visitRegistrationRunner(MethodInvocation node) {
+    _visitRegistrationRunnerArguments(node.methodName.name, node.argumentList);
+  }
+
+  void _visitRegistrationRunnerArguments(String runnerName, ArgumentList args) {
+    final arguments = args.arguments;
+    final runnerArgIndex = runnerName == 'fireUp' ? 1 : 0;
+    if (arguments.length <= runnerArgIndex) return;
+
+    _visitRegistrationExpression(arguments[runnerArgIndex]);
+  }
+
+  void _visitRegistrationExpression(Expression expression) {
+    switch (expression) {
+      case FunctionExpression(:final body):
+        _visitCollectingRegistrations(() => body.accept(this));
+      case ParenthesizedExpression(:final expression):
+        _visitRegistrationExpression(expression);
+    }
+  }
+
+  void _visitCollectingRegistrations(void Function() visit) {
+    final previous = _isCollectingRegistrations;
+    _isCollectingRegistrations = true;
+    try {
+      visit();
+    } finally {
+      _isCollectingRegistrations = previous;
+    }
   }
 
   @override

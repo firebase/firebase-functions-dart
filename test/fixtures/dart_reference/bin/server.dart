@@ -787,6 +787,16 @@ void main(List<String> args) async {
   });
 }
 
+/// Registrations made outside the `runFunctions`/`fireUp` callback are not
+/// discovered: functions must be registered directly inside the callback.
+// ignore: unreachable_from_main
+void unregisteredHelper(Firebase firebase) {
+  firebase.https.onRequest(
+    name: 'unregisteredHelper',
+    (request) async => Response.ok('This function should not be discovered'),
+  );
+}
+
 /// Options assigned to a top-level const variable.
 const httpsVarOpts = HttpsOptions(
   region: Region(SupportedRegion.europeWest3),

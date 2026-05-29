@@ -351,6 +351,13 @@ void main() {
       }
     });
 
+    test('should ignore uncalled top-level registration helpers', () {
+      final dartEndpoints = dartManifest['endpoints'] as Map;
+
+      expect(dartEndpoints, isNot(contains('unregisteredHelper')));
+      expect(dartEndpoints, isNot(contains('unregistered-helper')));
+    });
+
     // =========================================================================
     // Callable Functions Tests
     // =========================================================================
