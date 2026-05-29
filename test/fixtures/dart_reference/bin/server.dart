@@ -14,6 +14,7 @@
 
 // ignore_for_file: experimental_member_use
 
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_functions/firebase_functions.dart';
 import 'shared_options.dart';
 
@@ -50,6 +51,8 @@ final isProduction = defineBoolean(
 );
 
 void main(List<String> args) async {
+  FirebaseApp.initializeApp();
+
   await runFunctions((firebase) {
     // ==========================================================================
     // HTTPS Callable Functions (onCall / onCallWithData)
@@ -86,6 +89,12 @@ void main(List<String> args) async {
       }
 
       return CallableResult({'result': a / b});
+    });
+
+    firebase.https.onCall(name: 'signInWithCode', (request, response) async {
+      final auth = firebase.adminApp.auth();
+      final customToken = await auth.createCustomToken('test-uid');
+      return CallableResult({'token': customToken});
     });
 
     // Callable function demonstrating auth data extraction
@@ -687,6 +696,16 @@ void main(List<String> args) async {
       ),
       (request, response) async {
         return CallableResult({'message': 'Callable with all options'});
+      },
+    );
+
+    // Callable with integer memory constructor.
+    firebase.https.onCall(
+      name: 'callableMemoryFromInt',
+      // ignore: non_const_argument_for_const_parameter
+      options: CallableOptions(memory: Memory.fromInt(1024)),
+      (request, response) async {
+        return CallableResult({'message': 'Callable with integer memory'});
       },
     );
 

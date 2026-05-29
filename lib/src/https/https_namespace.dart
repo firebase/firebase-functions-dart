@@ -18,6 +18,7 @@ import 'dart:convert';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
+import '../common/options.dart';
 import '../common/utilities.dart';
 import '../firebase.dart';
 import 'auth.dart';
@@ -119,7 +120,10 @@ class HttpsNamespace extends FunctionsNamespace {
       }
 
       // Check for invalid or missing app check token if enforced
-      final enforceAppCheck = options?.enforceAppCheck?.runtimeValue() ?? false;
+      final enforceAppCheck =
+          options?.enforceAppCheck?.runtimeValue() ??
+          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+          false;
       if (tokens.result.app == TokenStatus.invalid) {
         if (enforceAppCheck) {
           return UnauthenticatedError().toShelfResponse();
@@ -146,7 +150,7 @@ class HttpsNamespace extends FunctionsNamespace {
         (result) => result.data,
         (result) => result.toResponse(),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue());
+    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
   }
 
   /// Creates an HTTPS callable function with typed data.
@@ -200,7 +204,10 @@ class HttpsNamespace extends FunctionsNamespace {
       }
 
       // Check for invalid or missing app check token if enforced
-      final enforceAppCheck = options?.enforceAppCheck?.runtimeValue() ?? false;
+      final enforceAppCheck =
+          options?.enforceAppCheck?.runtimeValue() ??
+          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+          false;
       if (tokens.result.app == TokenStatus.invalid) {
         if (enforceAppCheck) {
           return UnauthenticatedError().toShelfResponse();
@@ -230,7 +237,7 @@ class HttpsNamespace extends FunctionsNamespace {
           headers: {'Content-Type': 'application/json'},
         ),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue());
+    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
   }
 
   /// Internal handler for callable functions.

@@ -81,6 +81,8 @@ class EmulatorHelper {
         'FIREBASE_EMULATOR_HUB': 'true',
         'FIREBASE_CLI_EXPERIMENTS': 'dartfunctions',
         ...Platform.environment,
+        'GOOGLE_APPLICATION_CREDENTIALS':
+            '${Directory(projectPath).parent.path}/dummy_service_account.json',
       },
     );
 

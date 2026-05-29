@@ -23,7 +23,7 @@ Here are some resources to get help:
 - [Go through the guides](https://firebase.google.com/docs/functions/)
 - [Read the full API reference](https://pub.dev/documentation/firebase_functions/latest/)
 - [Browse some examples](example/)
-- [Learn how to configure your application](./docs/config.md) <!-- Remove when integrated into Firebase docs -->
+- [Learn how to configure your application](doc/config.md) <!-- Remove when integrated into Firebase docs -->
 - [Codelabs](https://codelabs.developers.google.com/deploy-dart-on-firebase-functions)
 
 
@@ -48,5 +48,5 @@ void main(List<String> args) {
 
 ## Status: Experimental
 
-This package provides a Dart implementation of Firebase Cloud Functions. Only HTTPS triggers are currently supported in production. Other trigger types are experimental and have [varying levels of support](./docs/triggers.md).
+This package provides a Dart implementation of Firebase Cloud Functions. Only HTTPS triggers are currently supported in production. Other trigger types are experimental and have [varying levels of support](doc/triggers.md).
 

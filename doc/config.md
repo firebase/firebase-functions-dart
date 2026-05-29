@@ -62,6 +62,30 @@ firebase.https.onRequest(
 );
 ```
 
+## Global Options
+
+Use `setGlobalOptions` to set defaults for every function. Per-function options
+override these defaults.
+
+```dart
+setGlobalOptions(
+  const GlobalOptions(
+    region: Region(SupportedRegion.europeWest1),
+    enforceAppCheck: EnforceAppCheck(true),
+  ),
+);
+
+firebase.https.onCall(name: 'secureCallable', (request, response) async {
+  return CallableResult({'ok': true});
+});
+
+firebase.https.onRequest(
+  name: 'usEndpoint',
+  options: const HttpsOptions(region: Region(SupportedRegion.usCentral1)),
+  (request) async => Response.ok('Runs in us-central1'),
+);
+```
+
 ## Firebase Admin SDK
 
 The Functions runtime uses a Firebase Admin SDK app for features such as

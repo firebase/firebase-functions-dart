@@ -19,6 +19,7 @@ class HttpsOptions extends GlobalOptions {
   const HttpsOptions({
     super.concurrency,
     super.cpu,
+    super.enforceAppCheck,
     super.ingressSettings,
     super.invoker,
     super.labels,
@@ -45,6 +46,7 @@ class CallableOptions extends HttpsOptions {
   const CallableOptions({
     super.concurrency,
     super.cpu,
+    super.enforceAppCheck,
     super.ingressSettings,
     super.invoker,
     super.labels,
@@ -61,15 +63,11 @@ class CallableOptions extends HttpsOptions {
     super.vpcConnectorEgressSettings,
     super.cors,
     this.consumeAppCheckToken,
-    this.enforceAppCheck,
     this.heartBeatIntervalSeconds,
   });
 
   /// Whether to consume the App Check token.
   final ConsumeAppCheckToken? consumeAppCheckToken;
-
-  /// Whether to enforce App Check.
-  final EnforceAppCheck? enforceAppCheck;
 
   /// Heartbeat interval in seconds for streaming responses.
   final HeartBeatIntervalSeconds? heartBeatIntervalSeconds;

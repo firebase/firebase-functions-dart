@@ -51,6 +51,18 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       );
     });
 
+    test('greet returns default name for missing "data"', () async {
+      final response = await client.post('greet', body: {});
+
+      expect(response.statusCode, equals(200));
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(
+        json['result'],
+        equals(<String, dynamic>{'message': 'Hello, World!'}),
+      );
+    });
+
     test('greet returns correct content type', () async {
       final response = await client.call('greet', data: {'name': 'Test'});
 
@@ -88,6 +100,23 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       expect(error['status'], equals('FAILED_PRECONDITION'));
       expect(error['message'], contains('divide by zero'));
     });
+
+    test(
+      'signInWithCode returns a custom token via Admin SDK createCustomToken',
+      () async {
+        final response = await client.call(
+          'sign-in-with-code',
+          data: <String, dynamic>{},
+        );
+
+        expect(response.statusCode, equals(200));
+
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = json['result'] as Map<String, dynamic>;
+        expect(result['token'], isA<String>());
+        expect(result['token'], isNotEmpty);
+      },
+    );
 
     test('getAuthInfo returns unauthenticated when no auth token', () async {
       final response = await client.call(
@@ -164,6 +193,12 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
         json['result'],
         equals(<String, dynamic>{'message': 'Hello, World!'}),
       );
+    });
+
+    test('greetTyped fails when missing "data"', () async {
+      final response = await client.post('greetTyped', body: {});
+
+      expect(response.statusCode, isNot(equals(200)));
     });
 
     test('greetTyped returns correct content type', () async {
