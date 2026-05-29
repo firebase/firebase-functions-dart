@@ -324,7 +324,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     if (target != null) {
       // Check against all namespaces
       for (final namespace in namespaces) {
-        if (namespace.isNamespace(target) && namespace.matches(methodName)) {
+        if (namespace.matches(methodName) && namespace.isNamespace(target)) {
           namespace.extractor(node, methodName);
           // Found a match, no need to check other namespaces for this node.
           break;
