@@ -19,6 +19,7 @@ import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
 
+import '../../logger.dart' as logger;
 import '../logger/logger.dart';
 import 'error.dart';
 
@@ -266,7 +267,7 @@ class CallableResponse<T extends Object> {
       onError: (Object error) {
         logger.error(
           'Error in data stream',
-          payload: {'error': error.toString()},
+          {'error': error.toString()},
         );
         if (error is HttpsError) {
           writeSSE(error.toErrorResponse());

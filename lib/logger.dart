@@ -17,7 +17,7 @@
 /// ## Usage
 ///
 /// ```dart
-/// import 'package:firebase_functions/logger.dart';
+/// import 'package:firebase_functions/logger.dart' as logger;
 ///
 /// logger.info('Request received');
 /// logger.warning('Slow query', payload: {'durationMs': 1200, 'query': 'SELECT ...'});
@@ -35,11 +35,6 @@
 ///   'provider': 'google',
 /// });
 /// ```
-///
-/// ## Severity Routing
-///
-/// - **stdout**: DEBUG, INFO, NOTICE
-/// - **stderr**: WARNING, ERROR, CRITICAL, ALERT, EMERGENCY
 library;
 
 export 'src/logger/logger.dart';

@@ -114,8 +114,6 @@ export 'src/firestore/firestore.dart';
 export 'src/https/https.dart';
 // Experimental: Identity triggers (not yet supported in production or emulator)
 export 'src/identity/identity.dart';
-// Logger
-export 'src/logger/logger.dart' show LogEntry, LogSeverity, Logger, logger;
 // Experimental: Pub/Sub triggers (not yet supported in production or emulator)
 export 'src/pubsub/pubsub.dart';
 // Experimental: Remote Config triggers (not yet supported in production or emulator)

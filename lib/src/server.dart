@@ -21,6 +21,7 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 import 'package:stack_trace/stack_trace.dart' show Trace;
 
+import '../logger.dart' as logger;
 import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
 import 'common/on_init.dart';

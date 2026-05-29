@@ -1,7 +1,9 @@
 ## 0.7.0-wip
 
-- **BREAKING:** Replace logging implementation with
-  [`package:google_cloud_logging`](https://pub.dev/packages/google_cloud_logging).
+- **BREAKING:** Remove the `logger` field from `logger.dart` and made its
+  method functions.
+- **BREAKING:** Remove the `logger` exports from
+  `package:firebase_functions/firebase_functions.dart`.
 
 ## 0.6.0
 

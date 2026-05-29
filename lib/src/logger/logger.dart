@@ -13,7 +13,42 @@
 // limitations under the License.
 
 import 'package:google_cloud_logging/google_cloud_logging.dart';
-import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 
-/// The default instance used for logging in the current context.
-CloudLogger get logger => currentLogger;
+const _logger = StructuredLogger();
+
+void write(
+  LogSeverity severity,
+  String message, [
+  Map<dynamic, dynamic> payload = const {},
+  StackTrace? stackTrace,
+]) {
+  final copy = {...payload};
+  if (message.isNotEmpty) {
+    copy['message'] = message;
+  }
+  _logger.log(copy, severity, stackTrace: stackTrace);
+}
+
+void debug(
+  String message, [
+  Map<dynamic, dynamic> payload = const {},
+  StackTrace? stackTrace,
+]) => write(LogSeverity.debug, message, payload, stackTrace);
+
+void info(
+  String message, {
+  Map<dynamic, dynamic> payload = const {},
+  StackTrace? stackTrace,
+}) => write(LogSeverity.info, message, payload, stackTrace);
+
+void warning(
+  String message, [
+  Map<dynamic, dynamic> payload = const {},
+  StackTrace? stackTrace,
+]) => write(LogSeverity.warning, message, payload, stackTrace);
+
+void error(
+  String message, [
+  Map<dynamic, dynamic> payload = const {},
+  StackTrace? stackTrace,
+]) => write(LogSeverity.error, message, payload, stackTrace);
