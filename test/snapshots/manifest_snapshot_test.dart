@@ -327,14 +327,14 @@ void main() {
 
       expect(
         dartEndpoints.keys.length,
-        equals(53),
+        equals(55),
         reason:
-            'Should discover 53 functions (7 Callable + 4 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
+            'Should discover 55 functions (7 Callable + 6 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
       );
       expect(
         nodejsEndpoints.keys.length,
-        equals(53),
-        reason: 'Node.js reference should also have 53 endpoints',
+        equals(55),
+        reason: 'Node.js reference should also have 55 endpoints',
       );
 
       // Verify both manifests have the same endpoints (normalized via
@@ -448,6 +448,19 @@ void main() {
       expect(nodejsFunc['platform'], equals('gcfv2'));
       expect(dartFunc['httpsTrigger'], isNotNull);
       expect(nodejsFunc['httpsTrigger'], isNotNull);
+    });
+
+    test('should discover functions registered with cascade syntax', () {
+      // Regression test for issue #196: cascaded registrations such as
+      // `firebase.https..onRequest(...)..onRequest(...)` were silently dropped
+      // because each section's AST `target` is null.
+      final first = _getEndpoint(dartManifest, 'cascadeFirst');
+      final second = _getEndpoint(dartManifest, 'cascadeSecond');
+
+      expect(first, isNotNull, reason: 'First cascade section must be found');
+      expect(second, isNotNull, reason: 'Second cascade section must be found');
+      expect(first!['httpsTrigger'], isNotNull);
+      expect(second!['httpsTrigger'], isNotNull);
     });
 
     test('should have correct CEL expression for minInstances param', () {

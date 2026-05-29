@@ -91,6 +91,18 @@ class _SpecBuilder implements Builder {
       allEndpoints.addAll(visitor.endpoints);
     }
 
+    // Surface a clear warning instead of silently emitting an endpoint-less
+    // manifest, which the Firebase CLI only reports as a generic
+    // "Failed to parse build specification" error.
+    if (allEndpoints.isEmpty) {
+      log.warning(
+        'No Firebase Functions were discovered, so the generated '
+        'functions.yaml has no endpoints. Make sure your functions are '
+        'registered inside the runFunctions callback, for example:\n'
+        "  firebase.https.onRequest(name: 'myFn', handler);",
+      );
+    }
+
     // Generate YAML from collected data
     final yamlContent = generateManifestYaml(allParams, allEndpoints);
 
@@ -303,25 +315,25 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
-    super.visitMethodInvocation(node);
-    final target = node.target;
     final methodName = node.methodName.name;
+    // Use `realTarget` so cascaded invocations are resolved correctly. For a
+    // cascade such as `firebase.https..onCall(...)..onCall(...)`, each section's
+    // `target` is null while `realTarget` points at the cascade receiver
+    // (`firebase.https`). Regular invocations report the same value for both.
+    final target = node.realTarget;
     if (target != null) {
       // Check against all namespaces
       for (final namespace in namespaces) {
-        if (namespace.isNamespace(target)) {
-          if (namespace.matches(methodName)) {
-            namespace.extractor(node, methodName);
-            // Found a match, no need to check other namespaces for this node
-            return;
-          }
+        if (namespace.isNamespace(target) && namespace.matches(methodName)) {
+          namespace.extractor(node, methodName);
+          // Found a match, no need to check other namespaces for this node.
+          break;
         }
       }
-    } else {
-      // Check for parameter definitions (top-level function calls with no target)
-      if (_isParamDefinition(methodName)) {
-        _extractParameterFromMethod(node, methodName);
-      }
+    } else if (_isParamDefinition(methodName)) {
+      // Check for parameter definitions (top-level function calls with no
+      // target).
+      _extractParameterFromMethod(node, methodName);
     }
 
     super.visitMethodInvocation(node);

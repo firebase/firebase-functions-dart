@@ -2,6 +2,11 @@
 
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
+- Fix manifest discovery for functions registered with cascade syntax (e.g.
+  `firebase.https..onCall(...)..onCall(...)`), which were previously omitted
+  from `functions.yaml`.
+- Emit a build warning when no functions are discovered instead of silently
+  writing an endpoint-less `functions.yaml`.
 
 ## 0.6.0
 
