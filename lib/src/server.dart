@@ -26,7 +26,6 @@ import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
 import 'common/on_init.dart';
 import 'firebase.dart';
-import 'logger/logger.dart';
 
 /// Callback type for the user's function registration code.
 typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
