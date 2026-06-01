@@ -1,7 +1,8 @@
-## Unreleased
+## 0.7.0-wip
 
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
+- Fix normalize function names by lowercasing only, not camelCase-to-kebab
 
 ## 0.6.0
 
