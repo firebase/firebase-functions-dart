@@ -699,6 +699,16 @@ void main(List<String> args) async {
       },
     );
 
+    // Callable with integer memory constructor.
+    firebase.https.onCall(
+      name: 'callableMemoryFromInt',
+      // ignore: non_const_argument_for_const_parameter
+      options: CallableOptions(memory: Memory.fromInt(1024)),
+      (request, response) async {
+        return CallableResult({'message': 'Callable with integer memory'});
+      },
+    );
+
     // HTTPS onRequest that crashes with sensitive data in the exception.
     // Used by E2E tests to verify errors are logged but NOT leaked to clients.
     firebase.https.onRequest(name: 'crashWithSecret', (request) async {

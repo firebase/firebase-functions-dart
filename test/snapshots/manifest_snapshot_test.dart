@@ -327,14 +327,14 @@ void main() {
 
       expect(
         dartEndpoints.keys.length,
-        equals(52),
+        equals(53),
         reason:
-            'Should discover 52 functions (6 Callable + 4 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
+            'Should discover 53 functions (7 Callable + 4 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
       );
       expect(
         nodejsEndpoints.keys.length,
-        equals(52),
-        reason: 'Node.js reference should also have 52 endpoints',
+        equals(53),
+        reason: 'Node.js reference should also have 53 endpoints',
       );
 
       // Verify both manifests have the same endpoints (normalized via
@@ -1844,6 +1844,16 @@ void main() {
 
       expect(dartFunc['heartbeatSeconds'], isNull);
       expect(nodejsFunc['heartbeatSeconds'], isNull);
+    });
+
+    test('callableMemoryFromInt should match Node.js memory manifest', () {
+      final dartFunc = _getEndpoint(dartManifest, 'callableMemoryFromInt')!;
+      final nodejsFunc = _getEndpoint(nodejsManifest, 'callableMemoryFromInt')!;
+
+      expect(dartFunc['callableTrigger'], isNotNull);
+      expect(nodejsFunc['callableTrigger'], isNotNull);
+      expect(dartFunc['availableMemoryMb'], equals(1024));
+      expect(nodejsFunc['availableMemoryMb'], equals(1024));
     });
 
     test('httpsGen1 should have gcf_gen1 CPU', () {
