@@ -48,15 +48,15 @@ void main() {
       test('registers function with firebase', () {
         scheduler.onSchedule(schedule: '0 0 * * *', (event) async {});
 
-        // Function name: schedule '0 0 * * *' becomes 'on-schedule-0-0' (kebab-case Cloud Run ID)
-        expect(_findFunction(firebase, 'on-schedule-0-0'), isNotNull);
+        // Function name: schedule '0 0 * * *' becomes 'onschedule-0-0'
+        expect(_findFunction(firebase, 'onschedule-0-0'), isNotNull);
       });
 
       test('generates correct function name from schedule', () {
         scheduler.onSchedule(schedule: '*/5 * * * *', (event) async {});
 
-        // '*/5 * * * *' -> 'on-schedule-5' (removes *, /, converts to kebab-case)
-        expect(_findFunction(firebase, 'on-schedule-5'), isNotNull);
+        // '*/5 * * * *' -> 'onschedule-5' (removes *, /)
+        expect(_findFunction(firebase, 'onschedule-5'), isNotNull);
       });
 
       test('handler receives scheduled event', () async {
@@ -66,10 +66,10 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {
             'x-cloudscheduler-jobname':
                 'projects/test/locations/us-central1/jobs/myjob',
@@ -94,10 +94,10 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
         );
         final response = await func.handler(request);
@@ -115,10 +115,10 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {},
         );
         final response = await func.handler(request);
@@ -138,10 +138,10 @@ void main() {
           // Success - do nothing
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
         );
         final response = await func.handler(request);
@@ -154,10 +154,10 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
         );
         final response = await func.handler(request);
@@ -180,7 +180,7 @@ void main() {
           (event) async {},
         );
 
-        expect(_findFunction(firebase, 'on-schedule-0-0'), isNotNull);
+        expect(_findFunction(firebase, 'onschedule-0-0'), isNotNull);
       });
 
       test('handles case-insensitive headers', () async {
@@ -190,10 +190,10 @@ void main() {
           receivedEvent = event;
         });
 
-        final func = _findFunction(firebase, 'on-schedule-0-0')!;
+        final func = _findFunction(firebase, 'onschedule-0-0')!;
         final request = Request(
           'POST',
-          Uri.parse('http://localhost/on-schedule-0-0'),
+          Uri.parse('http://localhost/onschedule-0-0'),
           headers: {
             'X-CloudScheduler-JobName': 'test-job',
             'X-CloudScheduler-ScheduleTime': '2024-01-01T00:00:00Z',

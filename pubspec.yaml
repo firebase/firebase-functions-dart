@@ -16,7 +16,7 @@ name: firebase_functions
 description: >-
   Cloud Functions for Dart with support for the Firebase Admin SDK,
   Cloud Storage and Firestore
-version: 0.6.0
+version: 0.7.0-wip
 repository: https://github.com/firebase/firebase-functions-dart
 
 environment:

@@ -109,11 +109,11 @@ void main() {
         });
 
         final func = firebase.functions.firstWhere(
-          (f) => f.name == 'crash-endpoint',
+          (f) => f.name == 'crashendpoint',
         );
         final request = Request(
           'GET',
-          Uri.parse('http://localhost/crash-endpoint'),
+          Uri.parse('http://localhost/crashendpoint'),
         );
         final response = await func.handler(request);
 
@@ -136,10 +136,8 @@ void main() {
         throw NotFoundError('User 42 not found');
       });
 
-      final func = firebase.functions.firstWhere(
-        (f) => f.name == 'known-error',
-      );
-      final request = Request('GET', Uri.parse('http://localhost/known-error'));
+      final func = firebase.functions.firstWhere((f) => f.name == 'knownerror');
+      final request = Request('GET', Uri.parse('http://localhost/knownerror'));
       final response = await func.handler(request);
 
       expect(response.statusCode, 404);
@@ -166,7 +164,7 @@ void main() {
       });
 
       final func = firebase.functions.firstWhere(
-        (f) => f.name == 'on-message-published-testtopic',
+        (f) => f.name == 'onmessagepublished-testtopic',
       );
 
       // Send a valid Pub/Sub CloudEvent
@@ -190,7 +188,7 @@ void main() {
 
       final request = Request(
         'POST',
-        Uri.parse('http://localhost/on-message-published-testtopic'),
+        Uri.parse('http://localhost/onmessagepublished-testtopic'),
         body: jsonEncode(cloudEvent),
         headers: {'content-type': 'application/json'},
       );
@@ -211,12 +209,12 @@ void main() {
       });
 
       final func = firebase.functions.firstWhere(
-        (f) => f.name == 'on-schedule-0-0',
+        (f) => f.name == 'onschedule-0-0',
       );
 
       final request = Request(
         'POST',
-        Uri.parse('http://localhost/on-schedule-0-0'),
+        Uri.parse('http://localhost/onschedule-0-0'),
         headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
       );
       final response = await func.handler(request);
