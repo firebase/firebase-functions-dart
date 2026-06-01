@@ -49,7 +49,7 @@ final endpointOptions = new HttpsOptions(
       });
       final manifest = loadYaml(yaml) as YamlMap;
       final endpoint =
-          (manifest['endpoints'] as YamlMap)['global-endpoint'] as YamlMap;
+          (manifest['endpoints'] as YamlMap)['globalendpoint'] as YamlMap;
 
       expect(endpoint['region'], equals(['us-west1']));
       expect(endpoint['availableMemoryMb'], equals(1024));
@@ -74,8 +74,7 @@ final globalOptions = new GlobalOptions(
       });
       final manifest = loadYaml(yaml) as YamlMap;
       final endpoint =
-          (manifest['endpoints'] as YamlMap)['global-reset-endpoint']
-              as YamlMap;
+          (manifest['endpoints'] as YamlMap)['globalresetendpoint'] as YamlMap;
 
       expect(endpoint['timeoutSeconds'], isNull);
     });

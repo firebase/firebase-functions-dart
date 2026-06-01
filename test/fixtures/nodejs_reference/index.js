@@ -159,6 +159,16 @@ exports.configuredEndpoint = onRequest(
   }
 );
 
+// Counterparts to the Dart cascade-syntax registrations (issue #196). Node has
+// no cascade equivalent; these keep the reference endpoint set aligned.
+exports.cascadeFirst = onRequest((request, response) => {
+  response.send("cascade first");
+});
+
+exports.cascadeSecond = onRequest((request, response) => {
+  response.send("cascade second");
+});
+
 // Pub/Sub trigger example
 exports.onMessagePublished_mytopic = onMessagePublished(
   "my-topic",

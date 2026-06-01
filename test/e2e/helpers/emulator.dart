@@ -173,7 +173,7 @@ class EmulatorHelper {
         final request = await client
             .getUrl(
               Uri.parse(
-                'http://127.0.0.1:$functionsPort/demo-test/us-central1/hello-world',
+                'http://127.0.0.1:$functionsPort/demo-test/us-central1/helloworld',
               ),
             )
             .timeout(const Duration(seconds: 5));
@@ -183,7 +183,7 @@ class EmulatorHelper {
         await response.drain<void>();
         // Only consider ready if we get 200 (not 404 which means function not registered)
         if (response.statusCode == 200) {
-          print('Function hello-world responding on port $functionsPort');
+          print('Function helloworld responding on port $functionsPort');
           client.close();
           if (!_readyCompleter!.isCompleted) {
             _readyCompleter!.complete();
