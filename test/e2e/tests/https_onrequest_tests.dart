@@ -32,40 +32,40 @@ void runHttpsOnRequestTests(
       client = getClient();
       emulator = getEmulator();
     });
-    test('hello-world returns expected response', () async {
-      print('GET ${client.baseUrl}/hello-world');
-      final response = await client.get('hello-world');
+    test('helloworld returns expected response', () async {
+      print('GET ${client.baseUrl}/helloworld');
+      final response = await client.get('helloworld');
 
       expect(response.statusCode, equals(200));
       expect(response.body, contains('Hello from Dart Functions!'));
     });
 
-    test('hello-world has correct content type', () async {
-      print('GET ${client.baseUrl}/hello-world');
-      final response = await client.get('hello-world');
+    test('helloworld has correct content type', () async {
+      print('GET ${client.baseUrl}/helloworld');
+      final response = await client.get('helloworld');
 
       expect(response.statusCode, equals(200));
       expect(response.headers['content-type'], contains('text/plain'));
     });
 
-    test('hello-world accepts GET requests', () async {
-      print('GET ${client.baseUrl}/hello-world');
-      final response = await client.get('hello-world');
+    test('helloworld accepts GET requests', () async {
+      print('GET ${client.baseUrl}/helloworld');
+      final response = await client.get('helloworld');
 
       expect(response.statusCode, equals(200));
     });
 
-    test('hello-world accepts POST requests', () async {
-      print('POST ${client.baseUrl}/hello-world');
-      final response = await client.post('hello-world');
+    test('helloworld accepts POST requests', () async {
+      print('POST ${client.baseUrl}/helloworld');
+      final response = await client.post('helloworld');
 
       expect(response.statusCode, equals(200));
     });
 
-    test('hello-world accepts POST requests similar to a CloudEvent', () async {
-      print('POST ${client.baseUrl}/hello-world like CloudEvent');
+    test('helloworld accepts POST requests similar to a CloudEvent', () async {
+      print('POST ${client.baseUrl}/helloworld like CloudEvent');
       final response = await client.post(
-        'hello-world',
+        'helloworld',
         body: {'type': 0, 'source': 1},
       );
 
@@ -89,7 +89,7 @@ void runHttpsOnRequestTests(
 
         for (var i = 0; i < 5; i++) {
           futures.add(() async {
-            final response = await client.get('hello-world');
+            final response = await client.get('helloworld');
             expect(response.statusCode, equals(200));
             expect(response.body, contains('Hello from Dart Functions!'));
           }());
@@ -101,21 +101,21 @@ void runHttpsOnRequestTests(
     );
 
     test('function is discoverable via emulator', () async {
-      print('GET ${client.baseUrl}/hello-world');
-      final response = await client.get('hello-world');
+      print('GET ${client.baseUrl}/helloworld');
+      final response = await client.get('helloworld');
 
       expect(
         response.statusCode,
         equals(200),
-        reason: 'Function hello-world should be deployed',
+        reason: 'Function helloworld should be deployed',
       );
     });
 
     test(
       'unexpected error returns INTERNAL without leaking sensitive details',
       () async {
-        print('GET ${client.baseUrl}/crash-with-secret');
-        final response = await client.get('crash-with-secret');
+        print('GET ${client.baseUrl}/crashwithsecret');
+        final response = await client.get('crashwithsecret');
 
         // Should return 500
         expect(response.statusCode, equals(500));
@@ -155,8 +155,8 @@ void runHttpsOnRequestTests(
     test(
       'unexpected runtime error returns INTERNAL without leaking internals',
       () async {
-        print('GET ${client.baseUrl}/crash-unexpected');
-        final response = await client.get('crash-unexpected');
+        print('GET ${client.baseUrl}/crashunexpected');
+        final response = await client.get('crashunexpected');
 
         // Should return 500
         expect(response.statusCode, equals(500));
@@ -187,8 +187,8 @@ void runHttpsOnRequestTests(
       emulator.clearOutputBuffer();
 
       // Make a request
-      print('GET ${client.baseUrl}/hello-world (verifying execution logs)');
-      final response = await client.get('hello-world');
+      print('GET ${client.baseUrl}/helloworld (verifying execution logs)');
+      final response = await client.get('helloworld');
 
       // Wait a bit for logs to be captured
       await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -198,7 +198,7 @@ void runHttpsOnRequestTests(
 
       // Verify Firebase emulator logged the execution
       final executionLogged = emulator.verifyFunctionExecution(
-        'us-central1-hello-world',
+        'us-central1-helloworld',
       );
       expect(
         executionLogged,
