@@ -1,4 +1,4 @@
-## Unreleased
+## 0.7.0-wip
 
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
@@ -7,6 +7,7 @@
   from `functions.yaml`.
 - Emit a build warning when no functions are discovered instead of silently
   writing an endpoint-less `functions.yaml`.
+- Fix normalize function names by lowercasing only, not camelCase-to-kebab
 
 ## 0.6.0
 
