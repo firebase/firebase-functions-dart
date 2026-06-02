@@ -348,14 +348,17 @@ FutureOr<Response> _routeByPath(
     final wrappedHandler = withInit(function.handler);
     final response = await wrappedHandler(handlerRequest);
     if (function.allowedOrigins != null) {
-      return _applyCorsHeaders(handlerRequest, response, function.allowedOrigins!);
+      return _applyCorsHeaders(
+        handlerRequest,
+        response,
+        function.allowedOrigins!,
+      );
     }
     return response;
   }
 
   // No matching function found.
-  final notFoundName = xFirebaseFunction ??
-      (parts.isNotEmpty ? parts[0] : '');
+  final notFoundName = xFirebaseFunction ?? (parts.isNotEmpty ? parts[0] : '');
   return Response.notFound(
     'Function not found: $notFoundName\n'
     'Available functions: ${functions.map((f) => f.name).join(", ")}',
@@ -609,7 +612,6 @@ Request _withOriginalPath(Request request, String originalPath) {
     context: request.context,
   );
 }
-
 
 /// Handles the /__/quitquitquit graceful shutdown endpoint.
 ///

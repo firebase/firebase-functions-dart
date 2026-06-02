@@ -83,7 +83,10 @@ void main() {
       // Hosting rewrite with sub-path: emulator sends /{function}/{rest}
       // Bug: was routing to a function named 'other' instead of 'echo'
       test('/{fn}/{rest} → handler sees /{rest}', () async {
-        final request = Request('GET', Uri.parse('http://localhost/echo/other'));
+        final request = Request(
+          'GET',
+          Uri.parse('http://localhost/echo/other'),
+        );
         final response = await handler(request);
         expect(await response.readAsString(), '/other');
       });
@@ -109,21 +112,21 @@ void main() {
       });
 
       // X-Firebase-Function header: emulator uses /{fn}/{rest} even for deep paths
-      test('X-Firebase-Function header routes correctly for deep path', () async {
-        final request = Request(
-          'GET',
-          Uri.parse('http://localhost/echo/deep/path'),
-          headers: {'x-firebase-function': 'echo'},
-        );
-        final response = await handler(request);
-        expect(await response.readAsString(), '/deep/path');
-      });
+      test(
+        'X-Firebase-Function header routes correctly for deep path',
+        () async {
+          final request = Request(
+            'GET',
+            Uri.parse('http://localhost/echo/deep/path'),
+            headers: {'x-firebase-function': 'echo'},
+          );
+          final response = await handler(request);
+          expect(await response.readAsString(), '/deep/path');
+        },
+      );
 
       test('unknown function returns 404', () async {
-        final request = Request(
-          'GET',
-          Uri.parse('http://localhost/unknown'),
-        );
+        final request = Request('GET', Uri.parse('http://localhost/unknown'));
         final response = await handler(request);
         expect(response.statusCode, 404);
       });
