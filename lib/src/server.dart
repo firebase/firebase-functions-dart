@@ -203,7 +203,7 @@ FutureOr<Response> _routeRequest(
   }
 
   // Shared process mode (development): Route by path
-  return _routeByPath(request, functions, requestPath);
+  return routeByPath(request, functions, requestPath);
 }
 
 /// Routes request to the function specified by FUNCTION_TARGET.
@@ -257,8 +257,8 @@ FutureOr<Response> _routeToTargetFunction(
   return response;
 }
 
-/// Routes request by path matching (development/shared process mode).
-FutureOr<Response> _routeByPath(
+@visibleForTesting
+FutureOr<Response> routeByPath(
   Request request,
   List<FirebaseFunctionDeclaration> functions,
   String requestPath,
@@ -281,15 +281,16 @@ FutureOr<Response> _routeByPath(
     currentRequest = reconstructedRequest;
   }
 
-  // Not a CloudEvent, try path-based routing for HTTPS functions
-  // Extract the function name from the path (/{functionName})
-  // The firebase-tools emulator sets X-Firebase-Function header for Dart runtimes
-  var functionName = _extractFunctionName(requestPath);
+  // Not a CloudEvent, try path-based routing for HTTPS functions.
+  // Prioritize the X-Firebase-Function header set by firebase-tools for hosting
+  // rewrites, then fall back to extracting the function name from the path.
+  final isHostingRewrite =
+      currentRequest.headers.containsKey('x-firebase-function');
+  var functionName =
+      currentRequest.headers['x-firebase-function'] ??
+      extractFunctionName(requestPath);
 
-  // Fallback: Check for X-Firebase-Function header set by firebase-tools
-  if (functionName.isEmpty) {
-    functionName = currentRequest.headers['x-firebase-function'] ?? '';
-  }
+  if (functionName.isEmpty) functionName = extractFunctionName(requestPath);
 
   // Try to find a matching function by name
   for (final function in functions) {
@@ -306,11 +307,19 @@ FutureOr<Response> _routeByPath(
         continue;
       }
 
+      // Strip the routing prefix so handlers see the original request path,
+      // matching production Cloud Run behaviour.
+      final handlerRequest = _withOriginalPath(
+        currentRequest,
+        requestPath,
+        isHostingRewrite: isHostingRewrite,
+      );
+
       final wrappedHandler = withInit(function.handler);
-      final response = await wrappedHandler(currentRequest);
+      final response = await wrappedHandler(handlerRequest);
       if (function.allowedOrigins != null) {
         return _applyCorsHeaders(
-          currentRequest,
+          handlerRequest,
           response,
           function.allowedOrigins!,
         );
@@ -560,6 +569,52 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
   }
 }
 
+/// Returns the original request path by stripping the routing prefix added by
+/// the emulator. For hosting rewrites the prefix is `/{functionName}`; for
+/// direct emulator calls it is `/{project}/{region}/{functionName}`.
+String _originalRequestPath(
+  String requestPath, {
+  required bool isHostingRewrite,
+}) {
+  var path = requestPath;
+  if (path.startsWith('/')) path = path.substring(1);
+  if (path.endsWith('/')) path = path.substring(0, path.length - 1);
+  if (path.isEmpty) return '/';
+
+  final parts = path.split('/');
+
+  // Direct emulator call: /{project}/{region}/{functionName}[/{rest}]
+  if (!isHostingRewrite && parts.length >= 3) {
+    final rest = parts.sublist(3).join('/');
+    return rest.isEmpty ? '/' : '/$rest';
+  }
+
+  // Hosting rewrite: /{functionName}[/{rest}]
+  final rest = parts.sublist(1).join('/');
+  return rest.isEmpty ? '/' : '/$rest';
+}
+
+/// Creates a copy of [request] with the original path set on its `requestedUri`.
+/// Returns [request] unchanged when the path is already correct.
+Request _withOriginalPath(
+  Request request,
+  String requestPath, {
+  required bool isHostingRewrite,
+}) {
+  final original = _originalRequestPath(
+    requestPath,
+    isHostingRewrite: isHostingRewrite,
+  );
+  if (request.requestedUri.path == original) return request;
+  return Request(
+    request.method,
+    request.requestedUri.replace(path: original),
+    headers: request.headers,
+    body: request.read(),
+    context: request.context,
+  );
+}
+
 /// Extracts the function name from a request path.
 ///
 /// Handles different path formats:
@@ -569,7 +624,8 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
 ///
 /// For event triggers, the triggerId may include region prefix like "us-central1-functionName"
 /// We need to extract just the function name part.
-String _extractFunctionName(String requestPath) {
+@visibleForTesting
+String extractFunctionName(String requestPath) {
   // Remove leading and trailing slashes
   var path = requestPath;
   if (path.startsWith('/')) {
@@ -600,21 +656,17 @@ String _extractFunctionName(String requestPath) {
     }
   }
 
-  // HTTPS path: {project}/{region}/{functionName} or just {functionName}
+  // HTTPS path: {project}/{region}/{functionName}[/{rest}] or {functionName}[/{rest}]
   final parts = path.split('/');
 
-  // If path has 3 parts, assume {project}/{region}/{functionName}
-  if (parts.length == 3) {
+  // 3+ parts: /{project}/{region}/{functionName}[/{rest}] — function name is always at index 2.
+  if (parts.length >= 3) {
     return parts[2];
   }
 
-  // If path has 1 part, it's just {functionName}
-  if (parts.length == 1) {
-    return parts[0];
-  }
-
-  // Return the last part as function name
-  return parts.isNotEmpty ? parts.last : path;
+  // 1–2 parts: /{functionName}[/{rest}] — hosting rewrites prepend the function
+  // name to the original path, so the function name is always the first segment.
+  return parts.isNotEmpty ? parts[0] : '';
 }
 
 /// Handles the /__/quitquitquit graceful shutdown endpoint.
