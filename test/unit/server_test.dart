@@ -111,6 +111,17 @@ void main() {
         expect(await response.readAsString(), '/other');
       });
 
+      // Emulator sends /{fn}/{a}/{b} for a client request to /{a}/{b} — 3 segments,
+      // no header. Must not be confused with /{project}/{region}/{fn} direct format.
+      test('/{fn}/{a}/{b} → handler sees /{a}/{b} (no header)', () async {
+        final request = Request(
+          'GET',
+          Uri.parse('http://localhost/echo/deep/path'),
+        );
+        final response = await handler(request);
+        expect(await response.readAsString(), '/deep/path');
+      });
+
       // X-Firebase-Function header: emulator uses /{fn}/{rest} even for deep paths
       test(
         'X-Firebase-Function header routes correctly for deep path',
