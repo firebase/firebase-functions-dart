@@ -6,9 +6,24 @@
       "runtime": "dart3"
     }
   ],
+  "hosting": {
+    "public": "public",
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "echopath",
+          "region": "us-central1"
+        }
+      }
+    ]
+  },
   "emulators": {
     "functions": {
       "port": 5001
+    },
+    "hosting": {
+      "port": 5003
     },
     "auth": {
       "port": 9099

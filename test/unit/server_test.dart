@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/server.dart';
 import 'package:shelf/shelf.dart';
@@ -41,13 +42,8 @@ void main() {
       });
 
       test('rejects malformed traces', () {
-        // Too short
         expect(extractTraceId('1234/567;o=1'), isNull);
-
-        // Too long
         expect(extractTraceId('1234567890abcdef1234567890abcdef0/5'), isNull);
-
-        // Invalid hex
         expect(extractTraceId('1234567890xyzdef1234567890abcdef/5'), isNull);
       });
     });
@@ -64,119 +60,71 @@ void main() {
       });
     });
 
-    group('extractFunctionName', () {
-      // Direct emulator call: /{function}
-      test('single segment returns function name', () {
-        expect(extractFunctionName('/echo'), 'echo');
-      });
-
-      // Hosting rewrite with sub-path: /{function}/{rest}
-      // Bug: was returning the last segment ('other') instead of the first ('echo')
-      test('two segments returns first segment as function name', () {
-        expect(extractFunctionName('/echo/other'), 'echo');
-      });
-
-      // Direct emulator call with project/region: /{project}/{region}/{function}
-      test('three segments returns third segment as function name', () {
-        expect(extractFunctionName('/my-project/us-central1/echo'), 'echo');
-      });
-
-      // Hosting rewrite via full path with sub-path: /{project}/{region}/{function}/{rest}
-      // Bug: was returning the last segment ('other') instead of the third ('echo')
-      test('four segments returns third segment as function name', () {
-        expect(
-          extractFunctionName('/my-project/us-central1/echo/other'),
-          'echo',
-        );
-      });
-
-      test('root path returns empty string', () {
-        expect(extractFunctionName('/'), '');
-      });
-
-      test('empty path returns empty string', () {
-        expect(extractFunctionName(''), '');
-      });
-    });
-
-    group('routeByPath - hosting rewrites', () {
-      late String? capturedPath;
-      late List<FirebaseFunctionDeclaration> functions;
+    group('hosting rewrite path handling', () {
+      late Handler handler;
 
       setUp(() {
-        capturedPath = null;
-        functions = [
-          FirebaseFunctionDeclaration(
-            name: 'echo',
-            handler: (request) async {
-              capturedPath = request.requestedUri.path;
-              return Response.ok(capturedPath);
-            },
-            external: true,
-          ),
-        ];
+        FirebaseEnv.mockEnvironment = {'FIREBASE_PROJECT': 'demo-test'};
+        final firebase = createFirebaseInternal();
+        firebase.https.onRequest(
+          name: 'echo',
+          (request) async => Response.ok(request.requestedUri.path),
+        );
+        handler = createTestHandler(firebase);
       });
 
       // Hosting rewrite of root path: emulator sends /{function}
-      test('strips function name from root rewrite path', () async {
-        final request = Request(
-          'GET',
-          Uri.parse('http://localhost:5001/echo'),
-        );
-        await routeByPath(request, functions, request.url.path);
-        expect(capturedPath, '/');
+      test('/{fn} → handler sees /', () async {
+        final request = Request('GET', Uri.parse('http://localhost/echo'));
+        final response = await handler(request);
+        expect(await response.readAsString(), '/');
       });
 
-      // Hosting rewrite of sub-path: emulator sends /{function}/{rest}
-      test('strips function name prefix and preserves sub-path', () async {
-        final request = Request(
-          'GET',
-          Uri.parse('http://localhost:5001/echo/other'),
-        );
-        await routeByPath(request, functions, request.url.path);
-        expect(capturedPath, '/other');
+      // Hosting rewrite with sub-path: emulator sends /{function}/{rest}
+      // Bug: was routing to a function named 'other' instead of 'echo'
+      test('/{fn}/{rest} → handler sees /{rest}', () async {
+        final request = Request('GET', Uri.parse('http://localhost/echo/other'));
+        final response = await handler(request);
+        expect(await response.readAsString(), '/other');
       });
 
       // Direct emulator call: /{project}/{region}/{function}
-      test('strips project/region prefix from direct emulator call', () async {
+      test('/{project}/{region}/{fn} → handler sees /', () async {
         final request = Request(
           'GET',
-          Uri.parse('http://localhost:5001/my-project/us-central1/echo'),
+          Uri.parse('http://localhost/my-project/us-central1/echo'),
         );
-        await routeByPath(request, functions, request.url.path);
-        expect(capturedPath, '/');
+        final response = await handler(request);
+        expect(await response.readAsString(), '/');
       });
 
       // Direct emulator call with sub-path: /{project}/{region}/{function}/{rest}
-      test('strips project/region prefix and preserves sub-path', () async {
+      test('/{project}/{region}/{fn}/{rest} → handler sees /{rest}', () async {
         final request = Request(
           'GET',
-          Uri.parse(
-            'http://localhost:5001/my-project/us-central1/echo/other',
-          ),
+          Uri.parse('http://localhost/my-project/us-central1/echo/other'),
         );
-        await routeByPath(request, functions, request.url.path);
-        expect(capturedPath, '/other');
+        final response = await handler(request);
+        expect(await response.readAsString(), '/other');
       });
 
-      // Hosting rewrite with X-Firebase-Function header (set by firebase-tools)
-      test('uses X-Firebase-Function header to route and strips prefix',
-          () async {
+      // X-Firebase-Function header: emulator uses /{fn}/{rest} even for deep paths
+      test('X-Firebase-Function header routes correctly for deep path', () async {
         final request = Request(
           'GET',
-          Uri.parse('http://localhost:5001/echo/deep/path'),
+          Uri.parse('http://localhost/echo/deep/path'),
           headers: {'x-firebase-function': 'echo'},
         );
-        await routeByPath(request, functions, request.url.path);
-        expect(capturedPath, '/deep/path');
+        final response = await handler(request);
+        expect(await response.readAsString(), '/deep/path');
       });
 
-      test('returns 404 for unknown function', () async {
+      test('unknown function returns 404', () async {
         final request = Request(
           'GET',
-          Uri.parse('http://localhost:5001/unknown'),
+          Uri.parse('http://localhost/unknown'),
         );
-        final response = await routeByPath(request, functions, request.url.path);
+        final response = await handler(request);
         expect(response.statusCode, 404);
       });
     });
