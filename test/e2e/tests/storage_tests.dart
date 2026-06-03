@@ -73,7 +73,7 @@ const _cloudEventContentType = 'application/cloudevents+json; charset=UTF-8';
 ///
 /// Needed because long names get truncated with a hash suffix by `toCloudRunId`.
 String? _findFunctionName(String manifestContent, String prefix) {
-  // Match a line like "  on-object-archived-demotestfirebasestorageapp:"
+  // Match a line like "  onobjectarchived-demotestfirebasestorageapp:"
   final pattern = RegExp('^\\s+($prefix[a-z0-9-]*):', multiLine: true);
   final match = pattern.firstMatch(manifestContent);
   return match?.group(1);
@@ -109,12 +109,12 @@ void runStorageTests(
       final manifestContent = manifestFile.readAsStringSync();
       expect(
         manifestContent,
-        contains('on-object-finalized-demotestfirebasestorageapp'),
+        contains('onobjectfinalized-demotestfirebasestorageapp'),
         reason: 'Manifest should contain Storage finalized function',
       );
       expect(
         manifestContent,
-        contains('on-object-deleted-demotestfirebasestorageapp'),
+        contains('onobjectdeleted-demotestfirebasestorageapp'),
         reason: 'Manifest should contain Storage deleted function',
       );
     });
@@ -293,7 +293,7 @@ void runStorageTests(
       final manifestContent = manifestFile.readAsStringSync();
       expect(
         manifestContent,
-        contains('on-object-archived-demotestfirebasestorageapp'),
+        contains('onobjectarchived-demotestfirebasestorageapp'),
         reason: 'Manifest should contain Storage archived function',
       );
     });
@@ -436,8 +436,8 @@ void runStorageTests(
         '$examplePath/functions.yaml',
       ).readAsStringSync();
       functionName =
-          _findFunctionName(manifestContent, 'on-object-metadata-updated') ??
-          'on-object-metadata-updated-demotestfirebasestorageapp';
+          _findFunctionName(manifestContent, 'onobjectmetadataupdated') ??
+          'onobjectmetadataupdated-demotestfirebasestorageapp';
       print('Using function name: $functionName');
     });
 

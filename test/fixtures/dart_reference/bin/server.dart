@@ -174,6 +174,18 @@ void main(List<String> args) async {
       },
     );
 
+    // Cascade-style registration (issue #196): both endpoints must be
+    // discovered even though each section's `target` is null in the AST.
+    firebase.https
+      ..onRequest(
+        name: 'cascadeFirst',
+        (request) async => Response.ok('cascade first'),
+      )
+      ..onRequest(
+        name: 'cascadeSecond',
+        (request) async => Response.ok('cascade second'),
+      );
+
     // Pub/Sub trigger example
     firebase.pubsub.onMessagePublished(topic: 'my-topic', (event) async {
       final message = event.data;
@@ -705,6 +717,16 @@ void main(List<String> args) async {
       ),
       (request, response) async {
         return CallableResult({'message': 'Callable with all options'});
+      },
+    );
+
+    // Callable with integer memory constructor.
+    firebase.https.onCall(
+      name: 'callableMemoryFromInt',
+      // ignore: non_const_argument_for_const_parameter
+      options: CallableOptions(memory: Memory.fromInt(1024)),
+      (request, response) async {
+        return CallableResult({'message': 'Callable with integer memory'});
       },
     );
 

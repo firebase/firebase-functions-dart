@@ -1,5 +1,13 @@
-## Unreleased
+## 0.7.0-wip
 
+- Fix manifest generation for function options declared with named factories,
+  including `Memory.fromInt` in `CallableOptions`.
+- Fix manifest discovery for functions registered with cascade syntax (e.g.
+  `firebase.https..onCall(...)..onCall(...)`), which were previously omitted
+  from `functions.yaml`.
+- Emit a build warning when no functions are discovered instead of silently
+  writing an endpoint-less `functions.yaml`.
+- Fix normalize function names by lowercasing only, not camelCase-to-kebab
 - Document and test `ServiceAccount('service-account@')` project-relative
   shorthand parity with the Node.js SDK.
 
