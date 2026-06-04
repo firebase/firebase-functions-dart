@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'package:firebase_functions/firebase_functions.dart'
+    show RunFunctionsOptions;
 import 'package:firebase_functions/src/server.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
@@ -48,6 +50,23 @@ void main() {
 
         // Invalid hex
         expect(extractTraceId('1234567890xyzdef1234567890abcdef/5'), isNull);
+      });
+    });
+
+    group('RunFunctionsOptions', () {
+      test('defaults to shelf powered-by header', () {
+        const opts = RunFunctionsOptions();
+        expect(opts.poweredByHeader, 'Dart with package:shelf');
+      });
+
+      test('accepts null to remove the header', () {
+        const opts = RunFunctionsOptions(poweredByHeader: null);
+        expect(opts.poweredByHeader, isNull);
+      });
+
+      test('accepts a custom header value', () {
+        const opts = RunFunctionsOptions(poweredByHeader: 'MyApp/1.0');
+        expect(opts.poweredByHeader, 'MyApp/1.0');
       });
     });
 
