@@ -8,6 +8,8 @@
 - Emit a build warning when no functions are discovered instead of silently
   writing an endpoint-less `functions.yaml`.
 - Fix normalize function names by lowercasing only, not camelCase-to-kebab
+- Document and test `ServiceAccount('service-account@')` project-relative
+  shorthand parity with the Node.js SDK.
 
 ## 0.6.0
 

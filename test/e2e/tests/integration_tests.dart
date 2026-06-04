@@ -41,5 +41,33 @@ void runIntegrationTests(String Function() getExamplePath) {
         reason: 'Manifest should contain helloworld function',
       );
     });
+
+    test('service account shorthand is preserved in manifest', () {
+      final manifestPath = '$examplePath/functions.yaml';
+      final manifestFile = File(manifestPath);
+
+      expect(
+        manifestFile.existsSync(),
+        isTrue,
+        reason: 'functions.yaml should exist',
+      );
+
+      final manifestContent = manifestFile.readAsStringSync();
+      expect(
+        manifestContent,
+        contains('serviceaccountshorthand'),
+        reason: 'Manifest should contain serviceAccountShorthand function',
+      );
+      expect(
+        manifestContent,
+        contains('serviceAccountEmail: super-account@'),
+        reason: 'Manifest should preserve project-relative service account',
+      );
+      expect(
+        manifestContent,
+        isNot(contains('serviceAccountEmail: super-account\n')),
+        reason: 'Manifest should not strip the trailing @ shorthand marker',
+      );
+    });
   });
 }
