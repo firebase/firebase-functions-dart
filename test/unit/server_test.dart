@@ -58,7 +58,7 @@ void main() {
       });
 
       test('accepts null to remove the header', () {
-        const opts = RunFunctionsOptions(poweredByHeader: null);
+        const opts = RunFunctionsOptions();
         expect(opts.poweredByHeader, isNull);
       });
 
