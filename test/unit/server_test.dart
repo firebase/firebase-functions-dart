@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'package:firebase_functions/firebase_functions.dart'
-    show RunFunctionsOptions;
 import 'package:firebase_functions/src/server.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';

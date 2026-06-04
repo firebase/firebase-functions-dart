@@ -32,9 +32,7 @@ typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
 
 /// Runtime configuration options for [runFunctions].
 class RunFunctionsOptions {
-  const RunFunctionsOptions({
-    this.poweredByHeader = 'Dart with package:shelf',
-  });
+  const RunFunctionsOptions({this.poweredByHeader = 'Dart with package:shelf'});
 
   /// Value for the `x-powered-by` response header.
   ///

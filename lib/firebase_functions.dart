@@ -123,7 +123,7 @@ export 'src/remote_config/remote_config.dart';
 // Experimental: Scheduler triggers (not yet supported in production or emulator)
 export 'src/scheduler/scheduler.dart';
 // Core runtime
-export 'src/server.dart' show fireUp, runFunctions, RunFunctionsOptions;
+export 'src/server.dart' show RunFunctionsOptions, fireUp, runFunctions;
 // Experimental: Storage triggers (emulator only)
 export 'src/storage/storage.dart';
 // Experimental: Task queue triggers (not yet supported in production or emulator)
