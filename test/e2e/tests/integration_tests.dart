@@ -55,7 +55,7 @@ void runIntegrationTests(String Function() getExamplePath) {
       final manifestContent = manifestFile.readAsStringSync();
       expect(
         manifestContent,
-        contains('service-account-shorthand'),
+        contains('serviceaccountshorthand'),
         reason: 'Manifest should contain serviceAccountShorthand function',
       );
       expect(
