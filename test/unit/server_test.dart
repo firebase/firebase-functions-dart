@@ -52,9 +52,9 @@ void main() {
     });
 
     group('RunFunctionsOptions', () {
-      test('defaults to shelf powered-by header', () {
+      test('defaults to null (no header)', () {
         const opts = RunFunctionsOptions();
-        expect(opts.poweredByHeader, 'Dart with package:shelf');
+        expect(opts.poweredByHeader, isNull);
       });
 
       test('accepts null to remove the header', () {

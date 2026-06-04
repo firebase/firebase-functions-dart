@@ -32,13 +32,13 @@ typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
 
 /// Runtime configuration options for [runFunctions].
 class RunFunctionsOptions {
-  const RunFunctionsOptions({this.poweredByHeader = 'Dart with package:shelf'});
+  const RunFunctionsOptions({this.poweredByHeader});
 
   /// Value for the `x-powered-by` response header.
   ///
-  /// Defaults to `'Dart with package:shelf'`. Pass `null` to omit the header
-  /// entirely. This applies to all responses, including internally-generated
-  /// shelf error responses.
+  /// Defaults to `null`, which omits the header entirely. Pass a string to set
+  /// a custom value. This applies to all responses, including
+  /// internally-generated shelf error responses.
   final String? poweredByHeader;
 }
 
