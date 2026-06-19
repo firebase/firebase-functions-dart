@@ -584,8 +584,8 @@ class EndpointSpec {
 
 /// Converts a camelCase or PascalCase string to UPPER_SNAKE_CASE.
 String toUpperSnakeCase(String input) {
-  return input
+  final result = input
       .replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)}')
-      .toUpperCase()
-      .replaceFirst('_', '');
+      .toUpperCase();
+  return result.startsWith('_') ? result.substring(1) : result;
 }

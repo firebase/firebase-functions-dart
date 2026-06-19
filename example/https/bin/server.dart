@@ -138,7 +138,8 @@ void main(List<String> args) async {
       ),
       (request) async {
         final key = apiKey.value();
-        return Response.ok('API key starts with: ${key.substring(0, 4)}...');
+        final preview = key.length >= 4 ? '${key.substring(0, 4)}...' : key;
+        return Response.ok('API key starts with: $preview');
       },
     );
 
