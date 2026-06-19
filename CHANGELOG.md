@@ -1,5 +1,6 @@
 ## 0.7.0-wip
 
+- Added `RunFunctionsOptions` with `poweredByHeader` to override the shelf's default.
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
 - Fix manifest discovery for functions registered with cascade syntax (e.g.
