@@ -57,11 +57,6 @@ void main() {
         expect(opts.poweredByHeader, isNull);
       });
 
-      test('accepts null to remove the header', () {
-        const opts = RunFunctionsOptions();
-        expect(opts.poweredByHeader, isNull);
-      });
-
       test('accepts a custom header value', () {
         const opts = RunFunctionsOptions(poweredByHeader: 'MyApp/1.0');
         expect(opts.poweredByHeader, 'MyApp/1.0');
