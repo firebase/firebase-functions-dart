@@ -466,11 +466,14 @@ class EndpointSpec {
 
   /// Extracts secret name from SecretParam instance.
   String? _extractSecretName(Expression expression) {
-    if (expression is! SimpleIdentifier) return null;
-
-    // The identifier references a SecretParam variable
-    // We need to find its definition, but for now just use the variable name
-    return expression.name;
+    final name = switch (expression) {
+      SimpleIdentifier() => expression.name,
+      PrefixedIdentifier() => expression.identifier.name,
+      PropertyAccess() => expression.propertyName.name,
+      _ => null,
+    };
+    if (name == null) return null;
+    return variableToParamName[name] ?? toUpperSnakeCase(name);
   }
 
   /// Extracts labels map.
@@ -581,8 +584,8 @@ class EndpointSpec {
 
 /// Converts a camelCase or PascalCase string to UPPER_SNAKE_CASE.
 String toUpperSnakeCase(String input) {
-  return input
+  final result = input
       .replaceAllMapped(RegExp(r'[A-Z]'), (match) => '_${match.group(0)}')
-      .toUpperCase()
-      .replaceFirst('_', '');
+      .toUpperCase();
+  return result.startsWith('_') ? result.substring(1) : result;
 }
