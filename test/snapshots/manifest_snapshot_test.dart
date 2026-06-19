@@ -179,8 +179,8 @@ void main() {
       expect(nodejsParam!['type'], equals('secret'));
 
       // format: json is Dart-specific (defineJsonSecret has no Node.js equivalent)
-      expect(dartParam!['format'], equals('json'));
-      expect(nodejsParam!.containsKey('format'), isFalse);
+      expect(dartParam['format'], equals('json'));
+      expect(nodejsParam.containsKey('format'), isFalse);
     });
 
     // =========================================================================
