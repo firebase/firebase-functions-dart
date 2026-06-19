@@ -1,5 +1,7 @@
 ## 0.7.0-wip
 
+- Fix secret name resolution in `defineSecret`: the secret name is now taken
+  from the argument passed to `defineSecret` rather than the Dart variable name.
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
 - Fix manifest discovery for functions registered with cascade syntax (e.g.
