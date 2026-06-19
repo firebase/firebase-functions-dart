@@ -30,6 +30,18 @@ import 'logger/logger.dart';
 /// Callback type for the user's function registration code.
 typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
 
+/// Runtime configuration options for [runFunctions].
+class RunFunctionsOptions {
+  const RunFunctionsOptions({this.poweredByHeader});
+
+  /// Value for the `x-powered-by` response header.
+  ///
+  /// Defaults to `null`, which omits the header entirely. Pass a string to set
+  /// a custom value. This applies to all responses, including
+  /// internally-generated shelf error responses.
+  final String? poweredByHeader;
+}
+
 /// Starts the Firebase Functions runtime.
 ///
 /// This is the main entry point for a Firebase Functions application.
@@ -64,7 +76,10 @@ Future<void> fireUp(List<String> args, FunctionsRunner runner) =>
 ///   });
 /// }
 /// ```
-Future<void> runFunctions(FunctionsRunner runner) async {
+Future<void> runFunctions(
+  FunctionsRunner runner, {
+  RunFunctionsOptions options = const RunFunctionsOptions(),
+}) async {
   final firebase = createFirebaseInternal();
   final env = firebase.$env;
   final projectId = env.projectId;
@@ -95,7 +110,12 @@ Future<void> runFunctions(FunctionsRunner runner) async {
     });
 
     // Start HTTP server
-    await shelf_io.serve(handler, InternetAddress.anyIPv4, env.port);
+    await shelf_io.serve(
+      handler,
+      InternetAddress.anyIPv4,
+      env.port,
+      poweredByHeader: options.poweredByHeader,
+    );
   });
 }
 
