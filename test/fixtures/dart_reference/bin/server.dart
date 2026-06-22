@@ -816,6 +816,13 @@ void main(List<String> args) async {
       (request) async => Response.ok('Cross-file options'),
     );
 
+    // Used by E2E hosting rewrite tests to verify the correct request path
+    // is passed to the handler after the hosting emulator strips the routing prefix.
+    firebase.https.onRequest(
+      name: 'echoPath',
+      (request) async => Response.ok(request.requestedUri.path),
+    );
+
     print('Functions registered successfully!');
   });
 }

@@ -685,6 +685,14 @@ exports.httpsWithSecrets = onRequest(
   }
 );
 
+// Used by E2E hosting rewrite tests to verify the correct request path
+// is passed to the handler after the hosting emulator strips the routing prefix.
+exports.echoPath = onRequest(
+  (request, response) => {
+    response.send(request.path);
+  }
+);
+
 // Pub/Sub with options
 exports.onMessagePublished_optionstopic = onMessagePublished(
   {
