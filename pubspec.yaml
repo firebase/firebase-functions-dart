@@ -23,6 +23,7 @@ environment:
   sdk: ^3.9.0
 
 workspace:
+  - example/hosting
   - example/https
   - example/firestore
   - example/pubsub
