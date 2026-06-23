@@ -4,7 +4,7 @@
   "description": "Reference Node.js implementation for snapshot testing",
   "main": "index.js",
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "dependencies": {
     "firebase-functions": "^7.2.5"
