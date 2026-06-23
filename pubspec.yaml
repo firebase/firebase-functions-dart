@@ -65,6 +65,10 @@ dev_dependencies:
 
 dependency_overrides:
   google_cloud_logging:
-    path: /Users/bquinlan/dart/google-cloud-dart/pkgs/google_cloud_logging/
+    git:
+      url: https://github.com/googleapis/google-cloud-dart.git
+      path: pkgs/google_cloud_logging
   google_cloud_shelf:
-    path: /Users/bquinlan/dart/google-cloud-dart/pkgs/google_cloud_shelf/
+    git:
+      url: https://github.com/googleapis/google-cloud-dart.git
+      path: pkgs/google_cloud_shelf
