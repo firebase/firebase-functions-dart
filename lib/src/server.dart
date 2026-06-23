@@ -760,4 +760,3 @@ bool _matchesRefPattern(String refPath, String pattern) {
 
   return true;
 }
-

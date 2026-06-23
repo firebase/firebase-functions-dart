@@ -67,7 +67,8 @@ void main() {
       test('/{project}/{region}/{fn} → handler sees /', () async {
         final request = Request(
           'GET',
-          Uri.parse('http://localhost/my-project/us-central1/echo'));
+          Uri.parse('http://localhost/my-project/us-central1/echo'),
+        );
         final response = await handler(request);
         expect(await response.readAsString(), '/');
       });
