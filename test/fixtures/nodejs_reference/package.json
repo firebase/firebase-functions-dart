@@ -7,10 +7,7 @@
     "node": "18"
   },
   "dependencies": {
-    "firebase-functions": "^5.1.1"
+    "firebase-functions": "^7.2.5"
   },
-  "private": true,
-  "devDependencies": {
-    "js-yaml": "^4.1.1"
-  }
+  "private": true
 }
