@@ -105,17 +105,12 @@ Future<void> runFunctions(
   });
 
   // Start HTTP server
-  final server = await shelf_io.serve(
+  await shelf_io.serve(
     handler,
     InternetAddress.anyIPv4,
     env.port,
     poweredByHeader: options.poweredByHeader,
   );
-  print('Serving at http://${server.address.host}:${server.port}');
-
-  await waitForTerminate();
-
-  await server.close();
 }
 
 /// Creates a shelf [Handler] for [firebase] without starting an HTTP server.
