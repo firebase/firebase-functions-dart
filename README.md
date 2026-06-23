@@ -50,3 +50,5 @@ void main(List<String> args) {
 
 This package provides a Dart implementation of Firebase Cloud Functions. Only HTTPS triggers are currently supported in production. Other trigger types are experimental and have [varying levels of support](doc/triggers.md).
 
+To follow ongoing development of Firestore and other background triggers in production, see the [Firebase UserVoice request](https://firebase.uservoice.com/forums/948424-general/suggestions/51256099-support-background-triggers-like-firestore-in-cl).
+

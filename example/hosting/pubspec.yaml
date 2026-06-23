@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: https_example
-description: HTTPS trigger examples for Firebase Functions for Dart
+name: hosting_example
+description: Firebase Hosting rewrites example for Firebase Functions for Dart
 publish_to: none
 
 resolution: workspace

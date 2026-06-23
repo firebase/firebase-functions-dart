@@ -57,7 +57,7 @@ void runPubSubTests(
       final manifestContent = manifestFile.readAsStringSync();
       expect(
         manifestContent,
-        contains('on-message-published-mytopic'),
+        contains('onmessagepublished-mytopic'),
         reason: 'Manifest should contain Pub/Sub function',
       );
     });

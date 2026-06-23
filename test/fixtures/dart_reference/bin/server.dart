@@ -14,6 +14,7 @@
 
 // ignore_for_file: experimental_member_use
 
+import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_functions/firebase_functions.dart';
 import 'shared_options.dart';
 
@@ -49,7 +50,13 @@ final isProduction = defineBoolean(
   ),
 );
 
+final apiKey = defineSecret('API_KEY');
+
+final apiConfig = defineJsonSecret<Map<String, dynamic>>('API_CONFIG');
+
 void main(List<String> args) async {
+  FirebaseApp.initializeApp();
+
   await runFunctions((firebase) {
     // ==========================================================================
     // HTTPS Callable Functions (onCall / onCallWithData)
@@ -86,6 +93,12 @@ void main(List<String> args) async {
       }
 
       return CallableResult({'result': a / b});
+    });
+
+    firebase.https.onCall(name: 'signInWithCode', (request, response) async {
+      final auth = firebase.adminApp.auth();
+      final customToken = await auth.createCustomToken('test-uid');
+      return CallableResult({'token': customToken});
     });
 
     // Callable function demonstrating auth data extraction
@@ -164,6 +177,18 @@ void main(List<String> args) async {
         return Response.ok('Running in $env mode');
       },
     );
+
+    // Cascade-style registration (issue #196): both endpoints must be
+    // discovered even though each section's `target` is null in the AST.
+    firebase.https
+      ..onRequest(
+        name: 'cascadeFirst',
+        (request) async => Response.ok('cascade first'),
+      )
+      ..onRequest(
+        name: 'cascadeSecond',
+        (request) async => Response.ok('cascade second'),
+      );
 
     // Pub/Sub trigger example
     firebase.pubsub.onMessagePublished(topic: 'my-topic', (event) async {
@@ -666,6 +691,15 @@ void main(List<String> args) async {
       (request) async => Response.ok('HTTPS with all options'),
     );
 
+    // HTTPS onRequest with project-relative service account shorthand.
+    firebase.https.onRequest(
+      name: 'serviceAccountShorthand',
+      options: const HttpsOptions(
+        serviceAccount: ServiceAccount('super-account@'),
+      ),
+      (request) async => Response.ok('HTTPS with service account shorthand'),
+    );
+
     // Callable with ALL CallableOptions
     firebase.https.onCall(
       name: 'callableFull',
@@ -687,6 +721,16 @@ void main(List<String> args) async {
       ),
       (request, response) async {
         return CallableResult({'message': 'Callable with all options'});
+      },
+    );
+
+    // Callable with integer memory constructor.
+    firebase.https.onCall(
+      name: 'callableMemoryFromInt',
+      // ignore: non_const_argument_for_const_parameter
+      options: CallableOptions(memory: Memory.fromInt(1024)),
+      (request, response) async {
+        return CallableResult({'message': 'Callable with integer memory'});
       },
     );
 
@@ -719,6 +763,14 @@ void main(List<String> args) async {
         invoker: Invoker(['user1@example.com', 'user2@example.com']),
       ),
       (request) async => Response.ok('Custom invoker'),
+    );
+
+    // HTTPS onRequest with secrets — tests variableToParamName resolution
+    firebase.https.onRequest(
+      name: 'httpsWithSecrets',
+      // ignore: non_const_argument_for_const_parameter
+      options: HttpsOptions(secrets: [apiKey, apiConfig]),
+      (request) async => Response.ok('HTTPS with secrets'),
     );
 
     // Pub/Sub with options
@@ -762,6 +814,13 @@ void main(List<String> args) async {
       name: 'httpsCrossFileOptions',
       options: crossFileOpts,
       (request) async => Response.ok('Cross-file options'),
+    );
+
+    // Used by E2E hosting rewrite tests to verify the correct request path
+    // is passed to the handler after the hosting emulator strips the routing prefix.
+    firebase.https.onRequest(
+      name: 'echoPath',
+      (request) async => Response.ok(request.requestedUri.path),
     );
 
     print('Functions registered successfully!');

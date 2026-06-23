@@ -51,6 +51,18 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       );
     });
 
+    test('greet returns default name for missing "data"', () async {
+      final response = await client.post('greet', body: {});
+
+      expect(response.statusCode, equals(200));
+
+      final json = jsonDecode(response.body) as Map<String, dynamic>;
+      expect(
+        json['result'],
+        equals(<String, dynamic>{'message': 'Hello, World!'}),
+      );
+    });
+
     test('greet returns correct content type', () async {
       final response = await client.call('greet', data: {'name': 'Test'});
 
@@ -89,9 +101,26 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       expect(error['message'], contains('divide by zero'));
     });
 
+    test(
+      'signInWithCode returns a custom token via Admin SDK createCustomToken',
+      () async {
+        final response = await client.call(
+          'signinwithcode',
+          data: <String, dynamic>{},
+        );
+
+        expect(response.statusCode, equals(200));
+
+        final json = jsonDecode(response.body) as Map<String, dynamic>;
+        final result = json['result'] as Map<String, dynamic>;
+        expect(result['token'], isA<String>());
+        expect(result['token'], isNotEmpty);
+      },
+    );
+
     test('getAuthInfo returns unauthenticated when no auth token', () async {
       final response = await client.call(
-        'get-auth-info',
+        'getauthinfo',
         data: <String, dynamic>{},
       );
 
@@ -140,7 +169,7 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
     });
 
     test('greetTyped returns expected response with name', () async {
-      final response = await client.call('greet-typed', data: {'name': 'Dart'});
+      final response = await client.call('greettyped', data: {'name': 'Dart'});
 
       expect(response.statusCode, equals(200));
 
@@ -153,7 +182,7 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
 
     test('greetTyped uses default name when not provided', () async {
       final response = await client.call(
-        'greet-typed',
+        'greettyped',
         data: <String, dynamic>{},
       );
 
@@ -166,15 +195,21 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       );
     });
 
+    test('greetTyped fails when missing "data"', () async {
+      final response = await client.post('greetTyped', body: {});
+
+      expect(response.statusCode, isNot(equals(200)));
+    });
+
     test('greetTyped returns correct content type', () async {
-      final response = await client.call('greet-typed', data: {'name': 'Test'});
+      final response = await client.call('greettyped', data: {'name': 'Test'});
 
       expect(response.statusCode, equals(200));
       expect(response.headers['content-type'], contains('application/json'));
     });
 
     test('greetTyped rejects GET requests', () async {
-      final response = await client.get('greet-typed');
+      final response = await client.get('greettyped');
 
       expect(response.statusCode, isNot(equals(200)));
     });

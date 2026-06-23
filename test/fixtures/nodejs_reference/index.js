@@ -34,7 +34,7 @@ const { onConfigUpdated } = require("firebase-functions/v2/remoteConfig");
 const { onObjectFinalized, onObjectArchived, onObjectDeleted, onObjectMetadataUpdated } = require("firebase-functions/v2/storage");
 const { onCustomEventPublished } = require("firebase-functions/v2/eventarc");
 const { onTestMatrixCompleted } = require("firebase-functions/v2/testLab");
-const { defineString, defineInt, defineBoolean } = require("firebase-functions/params");
+const { defineString, defineInt, defineBoolean, defineSecret } = require("firebase-functions/params");
 
 // =============================================================================
 // Parameterized Configuration Examples
@@ -58,6 +58,10 @@ const isProduction = defineBoolean("IS_PRODUCTION", {
   default: false,
   description: "Whether this is a production deployment",
 });
+
+const apiKey = defineSecret("API_KEY");
+
+const apiConfig = defineSecret("API_CONFIG");
 
 // =============================================================================
 // HTTPS Callable Functions (onCall)
@@ -101,6 +105,13 @@ exports.countdown = onCall(
     return { message: "Countdown complete!" };
   }
 );
+
+// Callable function demonstrating createCustomToken via the Admin SDK Auth service.
+exports.signInWithCode = onCall(async (request) => {
+  // In the Node.js SDK, getAuth().createCustomToken() is used.
+  // This stub mirrors the manifest shape of the Dart implementation.
+  return { token: "stub-custom-token" };
+});
 
 // Callable function demonstrating auth data extraction
 exports.getAuthInfo = onCall((request) => {
@@ -151,6 +162,16 @@ exports.configuredEndpoint = onRequest(
     response.send(`Running in ${env} mode`);
   }
 );
+
+// Counterparts to the Dart cascade-syntax registrations (issue #196). Node has
+// no cascade equivalent; these keep the reference endpoint set aligned.
+exports.cascadeFirst = onRequest((request, response) => {
+  response.send("cascade first");
+});
+
+exports.cascadeSecond = onRequest((request, response) => {
+  response.send("cascade second");
+});
 
 // Pub/Sub trigger example
 exports.onMessagePublished_mytopic = onMessagePublished(
@@ -571,6 +592,16 @@ exports.httpsFull = onRequest(
   }
 );
 
+// HTTPS onRequest with project-relative service account shorthand.
+exports.serviceAccountShorthand = onRequest(
+  {
+    serviceAccount: "super-account@"
+  },
+  (request, response) => {
+    response.send("HTTPS with service account shorthand");
+  }
+);
+
 // Callable with ALL CallableOptions
 exports.callableFull = onCall(
   {
@@ -593,6 +624,16 @@ exports.callableFull = onCall(
   },
   (request) => {
     return { message: "Callable with all options" };
+  }
+);
+
+// Callable with integer memory equivalent.
+exports.callableMemoryFromInt = onCall(
+  {
+    memory: "1GiB"
+  },
+  (request) => {
+    return { message: "Callable with integer memory" };
   }
 );
 
@@ -633,6 +674,22 @@ exports.httpsCustomInvoker = onRequest(
   },
   (request, response) => {
     response.send("Custom invoker");
+  }
+);
+
+// HTTPS onRequest with secrets
+exports.httpsWithSecrets = onRequest(
+  { secrets: [apiKey, apiConfig] },
+  (request, response) => {
+    response.send("HTTPS with secrets");
+  }
+);
+
+// Used by E2E hosting rewrite tests to verify the correct request path
+// is passed to the handler after the hosting emulator strips the routing prefix.
+exports.echoPath = onRequest(
+  (request, response) => {
+    response.send(request.path);
   }
 );
 

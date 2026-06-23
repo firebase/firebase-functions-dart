@@ -19,6 +19,7 @@ import 'dart:io';
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:stack_trace/stack_trace.dart' show Trace;
 
 import '../logger.dart' as logger;
@@ -29,6 +30,18 @@ import 'firebase.dart';
 
 /// Callback type for the user's function registration code.
 typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
+
+/// Runtime configuration options for [runFunctions].
+class RunFunctionsOptions {
+  const RunFunctionsOptions({this.poweredByHeader});
+
+  /// Value for the `x-powered-by` response header.
+  ///
+  /// Defaults to `null`, which omits the header entirely. Pass a string to set
+  /// a custom value. This applies to all responses, including
+  /// internally-generated shelf error responses.
+  final String? poweredByHeader;
+}
 
 /// Starts the Firebase Functions runtime.
 ///
@@ -64,7 +77,10 @@ Future<void> fireUp(List<String> args, FunctionsRunner runner) =>
 ///   });
 /// }
 /// ```
-Future<void> runFunctions(FunctionsRunner runner) async {
+Future<void> runFunctions(
+  FunctionsRunner runner, {
+  RunFunctionsOptions options = const RunFunctionsOptions(),
+}) async {
   final firebase = createFirebaseInternal();
   final env = firebase.$env;
   final projectId = env.projectId;
@@ -89,11 +105,25 @@ Future<void> runFunctions(FunctionsRunner runner) async {
   });
 
   // Start HTTP server
-  // XXX respect `env.port`!
-  // What about the signal handling stuff? I think that should be fine
-  // locally.
-  await serveHandler(handler);
+  final server = await shelf_io.serve(
+    handler,
+    InternetAddress.anyIPv4,
+    env.port,
+    poweredByHeader: options.poweredByHeader,
+  );
+  print('Serving at http://${server.address.host}:${server.port}');
+
+  await waitForTerminate();
+
+  await server.close();
 }
+
+/// Creates a shelf [Handler] for [firebase] without starting an HTTP server.
+///
+/// Use in tests to exercise the full routing pipeline without binding a port.
+@visibleForTesting
+Handler createTestHandler(Firebase firebase) =>
+    (request) => _routeRequest(request, firebase, firebase.$env);
 
 /// CORS middleware for emulator mode.
 Handler _corsMiddleware(Handler innerHandler) => (request) {
@@ -233,7 +263,6 @@ FutureOr<Response> _routeToTargetFunction(
   return response;
 }
 
-/// Routes request by path matching (development/shared process mode).
 FutureOr<Response> _routeByPath(
   Request request,
   List<FirebaseFunctionDeclaration> functions,
@@ -257,47 +286,80 @@ FutureOr<Response> _routeByPath(
     currentRequest = reconstructedRequest;
   }
 
-  // Not a CloudEvent, try path-based routing for HTTPS functions
-  // Extract the function name from the path (/{functionName})
-  // The firebase-tools emulator sets X-Firebase-Function header for Dart runtimes
-  var functionName = _extractFunctionName(requestPath);
-
-  // Fallback: Check for X-Firebase-Function header set by firebase-tools
-  if (functionName.isEmpty) {
-    functionName = currentRequest.headers['x-firebase-function'] ?? '';
+  // Not a CloudEvent — route to a registered HTTPS function.
+  //
+  // The functions emulator always forwards to the Dart process with the path
+  // stripped to /{functionName}[/{rest}], so parts[0] is the function name.
+  // For direct calls that bypass the emulator, the format is
+  // /{project}/{region}/{functionName}[/{rest}], so parts[2] is the function
+  // name. We resolve the ambiguity by checking each registered function name
+  // against the path segments rather than guessing from segment count.
+  var normalPath = requestPath;
+  if (normalPath.startsWith('/')) normalPath = normalPath.substring(1);
+  if (normalPath.endsWith('/')) {
+    normalPath = normalPath.substring(0, normalPath.length - 1);
   }
+  final parts = normalPath.isEmpty ? <String>[] : normalPath.split('/');
 
-  // Try to find a matching function by name
+  // X-Firebase-Function header is set by firebase-tools for hosting rewrites.
+  final xFirebaseFunction = currentRequest.headers['x-firebase-function'];
+
   for (final function in functions) {
-    if (functionName == function.name) {
-      if (currentRequest.method.toUpperCase() == 'OPTIONS' &&
-          function.allowedOrigins != null) {
-        return _buildOptionsCorsResponse(
-          currentRequest,
-          function.allowedOrigins!,
-        );
-      }
+    String? originalPath;
 
-      if (!function.external && currentRequest.method.toUpperCase() != 'POST') {
-        continue;
+    if (xFirebaseFunction != null) {
+      // Header explicitly identifies the function; use it.
+      if (function.name != xFirebaseFunction) continue;
+      if (parts.isNotEmpty && parts[0] == function.name) {
+        final rest = parts.sublist(1).join('/');
+        originalPath = rest.isEmpty ? '/' : '/$rest';
+      } else {
+        originalPath = '/';
       }
-
-      final wrappedHandler = withInit(function.handler);
-      final response = await wrappedHandler(currentRequest);
-      if (function.allowedOrigins != null) {
-        return _applyCorsHeaders(
-          currentRequest,
-          response,
-          function.allowedOrigins!,
-        );
-      }
-      return response;
+    } else if (parts.isNotEmpty && parts[0] == function.name) {
+      // /{functionName}[/{rest}] — emulator routing
+      final rest = parts.sublist(1).join('/');
+      originalPath = rest.isEmpty ? '/' : '/$rest';
+    } else if (parts.length >= 3 && parts[2] == function.name) {
+      // /{project}/{region}/{functionName}[/{rest}] — direct call
+      final rest = parts.length > 3 ? parts.sublist(3).join('/') : '';
+      originalPath = rest.isEmpty ? '/' : '/$rest';
+    } else {
+      continue;
     }
+
+    if (currentRequest.method.toUpperCase() == 'OPTIONS' &&
+        function.allowedOrigins != null) {
+      return _buildOptionsCorsResponse(
+        currentRequest,
+        function.allowedOrigins!,
+      );
+    }
+
+    if (!function.external && currentRequest.method.toUpperCase() != 'POST') {
+      continue;
+    }
+
+    // Reconstruct the request with the original path so handlers see the same
+    // path they would in production Cloud Run.
+    final handlerRequest = _withOriginalPath(currentRequest, originalPath);
+
+    final wrappedHandler = withInit(function.handler);
+    final response = await wrappedHandler(handlerRequest);
+    if (function.allowedOrigins != null) {
+      return _applyCorsHeaders(
+        handlerRequest,
+        response,
+        function.allowedOrigins!,
+      );
+    }
+    return response;
   }
 
-  // No matching function found
+  // No matching function found.
+  final notFoundName = xFirebaseFunction ?? (parts.isNotEmpty ? parts[0] : '');
   return Response.notFound(
-    'Function not found: $functionName\n'
+    'Function not found: $notFoundName\n'
     'Available functions: ${functions.map((f) => f.name).join(", ")}',
   );
 }
@@ -348,16 +410,24 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
       // Structured content mode - try to parse JSON body
       bodyString = await request.readAsString();
 
-      final body = jsonDecode(bodyString) as Map<String, dynamic>;
+      final Map<String, dynamic> body;
+      try {
+        body = jsonDecode(bodyString) as Map<String, dynamic>;
+      } catch (e) {
+        // Invalid JSON - not a CloudEvent request
+        return (request.change(body: bodyString), null);
+      }
 
+      final bodyType = body['type'];
+      final bodySource = body['source'];
       // Check if this is a valid CloudEvent - if not, return reconstructed request
-      if (!body.containsKey('source') || !body.containsKey('type')) {
+      if (bodyType is! String || bodySource is! String) {
         // Return the reconstructed request since we consumed the body
         return (request.change(body: bodyString), null);
       }
 
-      source = body['source'] as String;
-      type = body['type'] as String;
+      source = bodySource;
+      type = bodyType;
     }
 
     // Now we have source and type from either headers or body
@@ -528,61 +598,18 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
   }
 }
 
-/// Extracts the function name from a request path.
-///
-/// Handles different path formats:
-/// - Event triggers: /functions/projects/{project}/triggers/{triggerId} -> {entryPoint}
-/// - HTTPS functions: /{functionName} -> {functionName}
-/// - HTTPS with project/region: /{project}/{region}/{functionName} -> {functionName}
-///
-/// For event triggers, the triggerId may include region prefix like "us-central1-functionName"
-/// We need to extract just the function name part.
-String _extractFunctionName(String requestPath) {
-  // Remove leading and trailing slashes
-  var path = requestPath;
-  if (path.startsWith('/')) {
-    path = path.substring(1);
-  }
-  if (path.endsWith('/')) {
-    path = path.substring(0, path.length - 1);
-  }
-
-  // Event trigger path: functions/projects/{project}/triggers/{triggerId}
-  if (path.startsWith('functions/projects/')) {
-    final parts = path.split('/');
-    if (parts.length >= 5 && parts[3] == 'triggers') {
-      // Extract trigger ID from: functions/projects/{project}/triggers/{triggerId}
-      var triggerId = parts[4];
-
-      // Firebase-tools prefixes trigger IDs with region (e.g., "us-central1-functionName")
-      // and may add suffixes (e.g., "us-central1-functionName-0")
-      // We need to strip these to get the actual function entry point name.
-
-      // Remove region prefix (e.g., "us-central1-", "europe-west1-")
-      triggerId = triggerId.replaceFirst(RegExp(r'^[a-z]+-[a-z]+\d+-'), '');
-
-      // Remove numeric suffix (e.g., "-0", "-1")
-      triggerId = triggerId.replaceFirst(RegExp(r'-\d+$'), '');
-
-      return triggerId;
-    }
-  }
-
-  // HTTPS path: {project}/{region}/{functionName} or just {functionName}
-  final parts = path.split('/');
-
-  // If path has 3 parts, assume {project}/{region}/{functionName}
-  if (parts.length == 3) {
-    return parts[2];
-  }
-
-  // If path has 1 part, it's just {functionName}
-  if (parts.length == 1) {
-    return parts[0];
-  }
-
-  // Return the last part as function name
-  return parts.isNotEmpty ? parts.last : path;
+/// Creates a copy of [request] with [originalPath] set on its `requestedUri`
+/// so that handlers see the original client path rather than the routing prefix
+/// added by the emulator. Returns [request] unchanged if the path already matches.
+Request _withOriginalPath(Request request, String originalPath) {
+  if (request.requestedUri.path == originalPath) return request;
+  return Request(
+    request.method,
+    request.requestedUri.replace(path: originalPath),
+    headers: request.headers,
+    body: request.read(),
+    context: request.context,
+  );
 }
 
 /// Handles the /__/quitquitquit graceful shutdown endpoint.

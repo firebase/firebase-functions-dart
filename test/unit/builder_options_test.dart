@@ -20,6 +20,97 @@ import 'package:test/test.dart';
 
 void main() {
   group('EndpointSpec.extractOptions', () {
+    test('extracts callable memory from Memory.fromInt', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new CallableOptions(
+    memory: Memory.fromInt(1024),
+  );
+}
+''', 'CallableOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'callableFunction',
+        type: 'callable',
+        options: options,
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('availableMemoryMb', 1024),
+      );
+    });
+
+    test('extracts memory from Memory.fromOption factory', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new HttpsOptions(
+    memory: Memory.fromOption(MemoryOption.gb2),
+  );
+}
+''', 'HttpsOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'memoryFromOption',
+        type: 'https',
+        options: options,
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('availableMemoryMb', 2048),
+      );
+    });
+
+    test('extracts named factory options from method-style AST calls', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new HttpsOptions(
+    cpu: Cpu.gcfGen1(),
+    invoker: Invoker.private(),
+    minInstances: DeployOption.param(minInstancesParam),
+  );
+}
+''', 'HttpsOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'methodStyleFactories',
+        type: 'https',
+        options: options,
+        variableToParamName: {'minInstancesParam': 'MIN_INSTANCES'},
+      );
+      final extractedOptions = endpoint.extractOptions();
+
+      expect(extractedOptions, containsPair('cpu', 'gcf_gen1'));
+      expect(extractedOptions, containsPair('invoker', ['private']));
+      expect(
+        extractedOptions,
+        containsPair('minInstances', '{{ params.MIN_INSTANCES }}'),
+      );
+    });
+
+    test('extracts invoker from Invoker.param', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new HttpsOptions(
+    invoker: Invoker.param(invokerParam),
+  );
+}
+''', 'HttpsOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'invokerParamFunction',
+        type: 'https',
+        options: options,
+        variableToParamName: {'invokerParam': 'INVOKER'},
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('invoker', ['{{ params.INVOKER }}']),
+      );
+    });
+
     test('extracts region from DeployOption dot shorthand', () {
       final options = _parseHttpsOptions('''
 void main() {
@@ -80,12 +171,37 @@ void main() {
       expect(extractedOptions, containsPair('invoker', ['user@example.com']));
       expect(extractedOptions, containsPair('omit', false));
     });
+
+    test('preserves service account project-relative shorthand', () {
+      final options = _parseHttpsOptions('''
+void main() {
+  const options = const HttpsOptions(
+    serviceAccount: ServiceAccount('super-account@'),
+  );
+}
+''');
+
+      final endpoint = EndpointSpec(
+        name: 'helloWorld',
+        type: 'https',
+        options: options,
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('serviceAccount', 'super-account@'),
+      );
+    });
   });
 }
 
 InstanceCreationExpression _parseHttpsOptions(String content) {
+  return _parseOptions(content, 'HttpsOptions');
+}
+
+InstanceCreationExpression _parseOptions(String content, String typeName) {
   final result = parseString(content: content);
-  final visitor = _InstanceCreationVisitor('HttpsOptions');
+  final visitor = _InstanceCreationVisitor(typeName);
 
   result.unit.accept(visitor);
 
