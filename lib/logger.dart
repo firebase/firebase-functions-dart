@@ -20,20 +20,8 @@
 /// import 'package:firebase_functions/logger.dart' as logger;
 ///
 /// logger.info('Request received');
-/// logger.warning('Slow query', payload: {'durationMs': 1200, 'query': 'SELECT ...'});
+/// logger.warning('Slow query', {'durationMs': 1200, 'query': 'SELECT ...'});
 /// logger.error('Failed to process request');
-/// ```
-///
-/// ## Structured Logging
-///
-/// Pass a [Map<String, Object?>] using the named `payload:` argument to include
-/// structured data in the Cloud Logging `jsonPayload`:
-///
-/// ```dart
-/// logger.info('User signed in', payload: {
-///   'userId': user.id,
-///   'provider': 'google',
-/// });
 /// ```
 library;
 
