@@ -2,8 +2,23 @@
 
 - **BREAKING:** Remove the `logger` field from `logger.dart` and made its
   method functions.
+
+  You can fix this with:
+
+  ```diff
+  -  import '../logger/logger.dart';
+  +  import '../../logger.dart' as logger;
+  ```
+
 - **BREAKING:** Remove the `logger` exports from
   `package:firebase_functions/firebase_functions.dart`.
+
+  You can fix this by explicitly importanting the logging library:
+
+  ```dart
+  import '../../logger.dart' as logger;
+  ```
+
 - Fix secret name resolution in `defineSecret`: the secret name is now taken
   from the argument passed to `defineSecret` rather than the Dart variable name.
 - Fix manifest generation for function options declared with named factories,
