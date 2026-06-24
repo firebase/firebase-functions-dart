@@ -20,7 +20,6 @@ import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:stack_trace/stack_trace.dart' show Trace;
 
 import '../logger.dart' as logger;
 import 'common/cloud_run_id.dart';
