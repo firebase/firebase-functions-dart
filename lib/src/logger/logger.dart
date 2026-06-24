@@ -29,8 +29,7 @@ void _write(
   _logger.log(copy, severity, stackTrace: stackTrace);
 }
 
-/// Logs [message] with optional [payload] and [stackTrace] at
-/// [LogSeverity.debug] severity.
+/// Logs [message] with [LogSeverity.debug] severity.
 ///
 /// Example:
 /// ```dart
@@ -45,14 +44,13 @@ void debug(
   StackTrace? stackTrace,
 ]) => _write(LogSeverity.debug, message, payload, stackTrace);
 
-/// Logs [message] with optional [payload] and [stackTrace] at
-/// [LogSeverity.info] severity.
+/// Logs [message] with [LogSeverity.info] severity.
 ///
 /// Example:
 /// ```dart
 /// logger.info(
 ///   'User signed in successfully',
-///   {'userId': 'user-123', 'provider': 'google.com'},
+///   {'provider': 'google.com'},
 /// );
 /// ```
 void info(
@@ -61,8 +59,7 @@ void info(
   StackTrace? stackTrace,
 ]) => _write(LogSeverity.info, message, payload, stackTrace);
 
-/// Logs [message] with optional [payload] and [stackTrace] at
-/// [LogSeverity.info] severity.
+/// Logs [message] with [LogSeverity.info] severity.
 ///
 /// Example:
 /// ```dart
@@ -74,8 +71,7 @@ void log(
   StackTrace? stackTrace,
 ]) => _write(LogSeverity.info, message, payload, stackTrace);
 
-/// Logs [message] with optional [payload] and [stackTrace] at
-/// [LogSeverity.warning] severity.
+/// Logs [message] with [LogSeverity.warning] severity.
 ///
 /// Example:
 /// ```dart
@@ -90,8 +86,7 @@ void warning(
   StackTrace? stackTrace,
 ]) => _write(LogSeverity.warning, message, payload, stackTrace);
 
-/// Logs [message] with optional [payload] and [stackTrace] at
-/// [LogSeverity.error] severity.
+/// Logs [message] with [LogSeverity.error] severity.
 ///
 /// Example:
 /// ```dart
