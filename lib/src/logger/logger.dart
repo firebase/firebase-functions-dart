@@ -16,7 +16,8 @@ import 'package:google_cloud_logging/google_cloud_logging.dart';
 
 const _logger = StructuredLogger();
 
-void _write(
+/// Logs messages with the given severity.
+void write(
   LogSeverity severity,
   String message, [
   Map<String, dynamic> payload = const {},
@@ -42,7 +43,7 @@ void debug(
   String message, [
   Map<String, dynamic> payload = const {},
   StackTrace? stackTrace,
-]) => _write(LogSeverity.debug, message, payload, stackTrace);
+]) => write(LogSeverity.debug, message, payload, stackTrace);
 
 /// Logs [message] with [LogSeverity.info] severity.
 ///
@@ -57,7 +58,7 @@ void info(
   String message, [
   Map<String, dynamic> payload = const {},
   StackTrace? stackTrace,
-]) => _write(LogSeverity.info, message, payload, stackTrace);
+]) => write(LogSeverity.info, message, payload, stackTrace);
 
 /// Logs [message] with [LogSeverity.info] severity.
 ///
@@ -69,7 +70,7 @@ void log(
   String message, [
   Map<String, dynamic> payload = const {},
   StackTrace? stackTrace,
-]) => _write(LogSeverity.info, message, payload, stackTrace);
+]) => write(LogSeverity.info, message, payload, stackTrace);
 
 /// Logs [message] with [LogSeverity.warning] severity.
 ///
@@ -84,7 +85,7 @@ void warning(
   String message, [
   Map<String, dynamic> payload = const {},
   StackTrace? stackTrace,
-]) => _write(LogSeverity.warning, message, payload, stackTrace);
+]) => write(LogSeverity.warning, message, payload, stackTrace);
 
 /// Logs [message] with [LogSeverity.error] severity.
 ///
@@ -104,4 +105,4 @@ void error(
   String message, [
   Map<String, dynamic> payload = const {},
   StackTrace? stackTrace,
-]) => _write(LogSeverity.error, message, payload, stackTrace);
+]) => write(LogSeverity.error, message, payload, stackTrace);
