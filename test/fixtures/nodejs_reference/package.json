@@ -4,13 +4,10 @@
   "description": "Reference Node.js implementation for snapshot testing",
   "main": "index.js",
   "engines": {
-    "node": "18"
+    "node": ">=22.0.0"
   },
   "dependencies": {
-    "firebase-functions": "^5.1.1"
+    "firebase-functions": "^7.2.5"
   },
-  "private": true,
-  "devDependencies": {
-    "js-yaml": "^4.1.1"
-  }
+  "private": true
 }
