@@ -16,16 +16,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
-import 'package:stack_trace/stack_trace.dart' show Trace;
 
+import '../logger.dart' as logger;
 import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
 import 'common/on_init.dart';
 import 'firebase.dart';
-import 'logger/logger.dart';
 
 /// Callback type for the user's function registration code.
 typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
@@ -84,39 +84,32 @@ Future<void> runFunctions(
   final env = firebase.$env;
   final projectId = env.projectId;
 
-  await runZoned(zoneValues: {projectIdZoneKey: projectId}, () async {
-    // Run user's function registration code
-    await runner(firebase);
+  // Run user's function registration code
+  await runner(firebase);
 
-    // Build request handler with middleware pipeline
-    var middleware = const Pipeline().middleware;
+  // Build request handler with middleware pipeline
+  var middleware = const Pipeline().middleware;
 
-    final env = firebase.$env;
-    if (env.enableCors) {
-      middleware = middleware.addMiddleware(_corsMiddleware);
-    }
+  if (env.enableCors) {
+    middleware = middleware.addMiddleware(_corsMiddleware);
+  }
 
-    // Build request handler with middleware pipeline
-    final handler = middleware.addHandler((request) {
-      final traceId = extractTraceId(request.headers[cloudTraceContextHeader]);
+  middleware = middleware.addMiddleware(
+    createLoggingMiddleware(projectId: projectId),
+  );
 
-      if (traceId == null) {
-        return _routeRequest(request, firebase, env);
-      }
-
-      return runZoned(zoneValues: {traceIdZoneKey: traceId}, () {
-        return _routeRequest(request, firebase, env);
-      });
-    });
-
-    // Start HTTP server
-    await shelf_io.serve(
-      handler,
-      InternetAddress.anyIPv4,
-      env.port,
-      poweredByHeader: options.poweredByHeader,
-    );
+  // Build request handler with middleware pipeline
+  final handler = middleware.addHandler((request) {
+    return _routeRequest(request, firebase, env);
   });
+
+  // Start HTTP server
+  await shelf_io.serve(
+    handler,
+    InternetAddress.anyIPv4,
+    env.port,
+    poweredByHeader: options.poweredByHeader,
+  );
 }
 
 /// Creates a shelf [Handler] for [firebase] without starting an HTTP server.
@@ -592,9 +585,7 @@ Future<(Request, FirebaseFunctionDeclaration?)> _tryMatchCloudEventFunction(
     return (finalRequest, null);
   } catch (e, stackTrace) {
     // CloudEvent parsing failed - not a CloudEvent request
-    logger.warn(
-      'CloudEvent parsing failed: $e\n${Trace.from(stackTrace).terse}',
-    );
+    logger.warning('CloudEvent parsing failed: $e', const {}, stackTrace);
     return (request, null);
   }
 }
@@ -760,22 +751,4 @@ bool _matchesRefPattern(String refPath, String pattern) {
   }
 
   return true;
-}
-
-final _traceIdRegExp = RegExp(r'^[a-f0-9]{32}$', caseSensitive: false);
-
-/// Extracts the 32-character hexadecimal trace ID from an [x-cloud-trace-context] header.
-///
-/// Expected format: `TRACE_ID/SPAN_ID;o=TRACE_TRUE`
-@visibleForTesting
-String? extractTraceId(String? header) {
-  if (header == null || header.isEmpty) return null;
-  final parts = header.split('/');
-  if (parts.isNotEmpty) {
-    final traceId = parts[0];
-    if (_traceIdRegExp.hasMatch(traceId)) {
-      return traceId;
-    }
-  }
-  return null;
 }

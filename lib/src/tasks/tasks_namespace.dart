@@ -21,8 +21,8 @@ import 'package:shelf/shelf.dart';
 
 import 'package:stack_trace/stack_trace.dart' show Trace;
 
+import '../../logger.dart' as logger;
 import '../firebase.dart';
-import '../logger/logger.dart';
 import 'options.dart';
 import 'task_request.dart';
 

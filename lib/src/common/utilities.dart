@@ -17,8 +17,8 @@ import 'dart:convert';
 import 'package:shelf/shelf.dart' show Request, Response;
 import 'package:stack_trace/stack_trace.dart' show Trace;
 
+import '../../logger.dart' as logger;
 import '../https/error.dart';
-import '../logger/logger.dart';
 
 Future<Map<String, dynamic>> readAsJsonMap(Request request) async {
   final decoded = await _converter.bind(request.read()).first;

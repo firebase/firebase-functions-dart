@@ -19,7 +19,7 @@ import 'dart:typed_data';
 
 import 'package:shelf/shelf.dart';
 
-import '../logger/logger.dart';
+import '../../logger.dart' as logger;
 import 'error.dart';
 
 /// JSON decoder function type.
