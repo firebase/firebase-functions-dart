@@ -141,10 +141,7 @@ void runHttpsOnRequestTests(
           reason: 'The actual error should be logged server-side for debugging',
         );
 
-        print(
-          '✓ Verified: 500 INTERNAL returned, no password leaked to client, '
-          'error logged server-side',
-        );
+        print('✓ Verified: 500 INTERNAL returned, error logged');
       },
     );
 
@@ -171,10 +168,7 @@ void runHttpsOnRequestTests(
         expect(response.body, isNot(contains('.dart')));
         expect(response.body, isNot(contains('type ')));
 
-        print(
-          '✓ Verified: unexpected runtime crash returns generic 500, '
-          'no internals leaked',
-        );
+        print('✓ Verified: unexpected crash returns generic 500');
       },
     );
 
