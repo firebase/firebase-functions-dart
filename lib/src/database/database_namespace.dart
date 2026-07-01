@@ -354,11 +354,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           await handler(event);
           return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
     }, refPattern: _normalizeRefPattern(ref));
   }
@@ -500,11 +497,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           await handler(event);
           return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
     }, refPattern: _normalizeRefPattern(ref));
   }
@@ -682,11 +676,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           await handler(event);
           return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
     }, refPattern: _normalizeRefPattern(ref));
   }
