@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:firebase_functions/firebase_functions.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 
 // Define parameters - these are read from environment variables at runtime
 // and can be configured at deploy time via .env files or CLI prompts.
@@ -69,11 +70,15 @@ void main(List<String> args) async {
       final b = (data?['b'] as num?)?.toDouble();
 
       if (a == null || b == null) {
-        throw InvalidArgumentError('Both "a" and "b" are required');
+        throw HttpResponseException.badRequest(
+          message: 'Both "a" and "b" are required',
+        );
       }
 
       if (b == 0) {
-        throw FailedPreconditionError('Cannot divide by zero');
+        throw HttpResponseException.badRequest(
+          message: 'Cannot divide by zero',
+        );
       }
 
       return CallableResult({'result': a / b});

@@ -15,15 +15,14 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/options.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'auth.dart';
 import 'callable.dart';
-import 'error.dart';
 import 'options.dart';
 
 /// HTTPS triggers namespace.
@@ -54,13 +53,7 @@ class HttpsNamespace extends FunctionsNamespace {
   }) {
     firebase.registerFunction(
       name,
-      (request) async {
-        try {
-          return await handler(request);
-        } on HttpsError catch (e) {
-          return e.toShelfResponse();
-        }
-      },
+      (request) async => handler(request),
       external: true,
       allowedOrigins: options?.cors?.runtimeValue(),
     );
@@ -114,7 +107,7 @@ class HttpsNamespace extends FunctionsNamespace {
 
       // Check for invalid auth token
       if (tokens.result.auth == TokenStatus.invalid) {
-        return UnauthenticatedError().toShelfResponse();
+        throw HttpResponseException.unauthorized();
       }
 
       // Check for invalid or missing app check token if enforced
@@ -124,11 +117,11 @@ class HttpsNamespace extends FunctionsNamespace {
           false;
       if (tokens.result.app == TokenStatus.invalid) {
         if (enforceAppCheck) {
-          return UnauthenticatedError().toShelfResponse();
+          throw HttpResponseException.unauthorized();
         }
       }
       if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        return UnauthenticatedError().toShelfResponse();
+        throw HttpResponseException.unauthorized();
       }
 
       final callableRequest = CallableRequest(
@@ -198,7 +191,7 @@ class HttpsNamespace extends FunctionsNamespace {
 
       // Check for invalid auth token
       if (tokens.result.auth == TokenStatus.invalid) {
-        return UnauthenticatedError().toShelfResponse();
+        throw HttpResponseException.unauthorized();
       }
 
       // Check for invalid or missing app check token if enforced
@@ -208,11 +201,11 @@ class HttpsNamespace extends FunctionsNamespace {
           false;
       if (tokens.result.app == TokenStatus.invalid) {
         if (enforceAppCheck) {
-          return UnauthenticatedError().toShelfResponse();
+          throw HttpResponseException.unauthorized();
         }
       }
       if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        return UnauthenticatedError().toShelfResponse();
+        throw HttpResponseException.unauthorized();
       }
 
       final callableRequest = CallableRequest<Input>(
@@ -261,7 +254,9 @@ class HttpsNamespace extends FunctionsNamespace {
   ) async {
     // Validate request - pass empty map if body is null to avoid double-read
     if (!await request.isValidRequest(body ?? {})) {
-      return InvalidArgumentError('Invalid callable request').toShelfResponse();
+      throw HttpResponseException.badRequest(
+        message: 'Invalid callable request',
+      );
     }
 
     final heartbeatSeconds = options?.heartBeatIntervalSeconds?.runtimeValue();
@@ -291,26 +286,16 @@ class HttpsNamespace extends FunctionsNamespace {
 
       // Non-streaming response
       return createNonStreamingResponse(result);
-    } on HttpsError catch (e) {
-      // Handle HttpsError - use SSE format if streaming
-      if (callableRequest.acceptsStreaming && !callableResponse.aborted) {
-        callableResponse.writeSSE(e.toErrorResponse());
-        unawaited(callableResponse.closeStream());
-        return callableResponse.streamingResponse!;
-      }
-
-      return e.toShelfResponse();
     } catch (e) {
-      // Unexpected error - don't expose details to client
-      final error = InternalError();
-
       if (callableRequest.acceptsStreaming && !callableResponse.aborted) {
-        callableResponse.writeSSE(error.toErrorResponse());
+        final errorJson = e is HttpResponseException
+            ? e.toJson()
+            : HttpResponseException.internalServerError().toJson();
+        callableResponse.writeSSE(errorJson);
         unawaited(callableResponse.closeStream());
         return callableResponse.streamingResponse!;
       }
-
-      return error.toShelfResponse();
+      rethrow;
     }
   }
 }

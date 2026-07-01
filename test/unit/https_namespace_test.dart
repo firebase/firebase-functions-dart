@@ -20,22 +20,17 @@ import 'dart:convert';
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/callable.dart';
-import 'package:firebase_functions/src/https/error.dart';
 import 'package:firebase_functions/src/https/https_namespace.dart';
 import 'package:firebase_functions/src/https/options.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 import 'shared_utils.dart';
 
 // Helper to find function by name (uses kebab-case Cloud Run ID)
-FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
-  try {
-    return firebase.functions.firstWhere((f) => f.name == name);
-  } catch (e) {
-    return null;
-  }
-}
+FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) =>
+    firebase.functions.where((f) => f.name == name).singleOrNull;
 
 void main() {
   setUpAll(() {
@@ -78,25 +73,32 @@ void main() {
         expect(await response.readAsString(), 'Hello, World!');
       });
 
-      test('catches HttpsError and returns proper error response', () async {
-        https.onRequest(name: 'errorFunction', (request) async {
-          throw NotFoundError('Resource not found');
-        });
+      test(
+        'catches HttpResponseException and returns proper error response',
+        () async {
+          https.onRequest(name: 'errorFunction', (request) async {
+            throw HttpResponseException.notFound(message: 'Resource not found');
+          });
 
-        final func = _findFunction(firebase, 'errorfunction')!;
-        final request = Request(
-          'GET',
-          Uri.parse('http://localhost/errorfunction'),
-        );
-        final response = await func.handler(request);
+          final handler = findHandler(firebase, 'errorfunction');
+          final request = Request(
+            'GET',
+            Uri.parse('http://localhost/errorfunction'),
+            headers: {'accept': 'application/json'},
+          );
+          final response = await handler(request);
 
-        expect(response.statusCode, 404);
-        expect(response.headers['Content-Type'], 'application/json');
+          expect(response.statusCode, 404);
+          expect(
+            response.headers['content-type'],
+            contains('application/json'),
+          );
 
-        final body = jsonDecode(await response.readAsString());
-        expect(body['error']['status'], 'NOT_FOUND');
-        expect(body['error']['message'], 'Resource not found');
-      });
+          final body = jsonDecode(await response.readAsString());
+          expect(body['error']['status'], 'NOT_FOUND');
+          expect(body['error']['message'], 'Resource not found');
+        },
+      );
 
       test('catches unexpected errors and returns internal error', () async {
         https.onRequest(name: 'crashFunction', (request) async {
@@ -131,12 +133,15 @@ void main() {
 
       test('uses correct HTTP status codes for different errors', () async {
         https.onRequest(name: 'unauthorizedFunction', (request) async {
-          throw UnauthenticatedError('Not logged in');
+          throw HttpResponseException.unauthorized(message: 'Not logged in');
         });
 
-        final func = _findFunction(firebase, 'unauthorizedfunction')!;
-        final request = Request('GET', Uri.parse('http://localhost/test'));
-        final response = await func.handler(request);
+        final handler = findHandler(firebase, 'unauthorizedfunction');
+        final request = Request(
+          'GET',
+          Uri.parse('http://localhost/unauthorizedfunction'),
+        );
+        final response = await handler(request);
 
         expect(response.statusCode, 401);
       });
@@ -195,7 +200,7 @@ void main() {
           Uri.parse('http://localhost/postonlyfunction'),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await _callWithLogging(func.handler, request);
 
         expect(response.statusCode, 400);
         final body = jsonDecode(await response.readAsString());
@@ -215,19 +220,21 @@ void main() {
           headers: {'content-type': 'text/plain'},
           body: '{"data": "test"}',
         );
-        final response = await func.handler(request);
+        final response = await _callWithLogging(func.handler, request);
 
         expect(response.statusCode, 400);
       });
 
-      test('catches HttpsError and returns proper status', () async {
+      test('catches HttpResponseException and returns proper status', () async {
         https.onCall(name: 'errorFunction', (request, response) async {
-          throw PermissionDeniedError('Not authorized');
+          throw HttpResponseException.forbidden(message: 'Not authorized');
         });
 
-        final func = _findFunction(firebase, 'errorfunction')!;
-        final request = createCallableRequest();
-        final response = await func.handler(request);
+        final handler = findHandler(firebase, 'errorfunction');
+        final request = createCallableRequest(
+          headers: {'accept': 'application/json'},
+        );
+        final response = await handler(request);
 
         expect(response.statusCode, 403);
         final body = jsonDecode(await response.readAsString());
@@ -240,9 +247,9 @@ void main() {
           throw StateError('Something broke');
         });
 
-        final func = _findFunction(firebase, 'crashfunction')!;
+        final handler = findHandler(firebase, 'crashfunction');
         final request = createCallableRequest();
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 500);
         final body = jsonDecode(await response.readAsString());
@@ -279,9 +286,9 @@ void main() {
       });
 
       group('streaming handling', () {
-        test('catches HttpsError and returns SSE error', () async {
+        test('catches HttpResponseException and returns SSE error', () async {
           https.onCall(name: 'streamErrorFunction', (request, response) async {
-            throw InvalidArgumentError('Invalid data');
+            throw HttpResponseException.badRequest(message: 'Invalid data');
           });
 
           final func = _findFunction(firebase, 'streamerrorfunction')!;
@@ -296,7 +303,11 @@ void main() {
           final body = await response.readAsString();
           final jsonStr = body.substring('data: '.length).trim();
           expect(jsonDecode(jsonStr), {
-            'error': {'status': 'INVALID_ARGUMENT', 'message': 'Invalid data'},
+            'error': {
+              'code': 400,
+              'message': 'Invalid data',
+              'status': 'INVALID_ARGUMENT',
+            },
           });
         });
 
@@ -323,8 +334,9 @@ void main() {
             final jsonStr = body.substring('data: '.length).trim();
             expect(jsonDecode(jsonStr), {
               'error': {
+                'code': 500,
+                'message': 'Internal Server Error',
                 'status': 'INTERNAL',
-                'message': 'An unexpected error occurred.',
               },
             });
           },
@@ -361,7 +373,9 @@ void main() {
             response.stream(controller.stream);
 
             controller.add(CallableResult('part 1'));
-            controller.addError(InvalidArgumentError('Invalid part 2'));
+            controller.addError(
+              HttpResponseException.badRequest(message: 'Invalid part 2'),
+            );
             unawaited(controller.close());
 
             await Future<void>.delayed(const Duration(milliseconds: 100));
@@ -390,6 +404,7 @@ void main() {
             contains(
               equals({
                 'error': {
+                  'code': 400,
                   'status': 'INVALID_ARGUMENT',
                   'message': 'Invalid part 2',
                 },
@@ -514,23 +529,28 @@ void main() {
           Uri.parse('http://localhost/postonlytypedfunction'),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await _callWithLogging(func.handler, request);
 
         expect(response.statusCode, 400);
       });
 
-      test('catches HttpsError and returns proper status', () async {
+      test('catches HttpResponseException and returns proper status', () async {
         https.onCallWithData<_GreetRequest, String>(
           name: 'errorTypedFunction',
           fromJson: _GreetRequest.fromJson,
           (request, response) async {
-            throw InvalidArgumentError('Name cannot be empty');
+            throw HttpResponseException.badRequest(
+              message: 'Name cannot be empty',
+            );
           },
         );
 
-        final func = _findFunction(firebase, 'errortypedfunction')!;
-        final request = createCallableRequest(data: {'name': ''});
-        final response = await func.handler(request);
+        final handler = findHandler(firebase, 'errortypedfunction');
+        final request = createCallableRequest(
+          data: {'name': ''},
+          headers: {'accept': 'application/json'},
+        );
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
         final body = jsonDecode(await response.readAsString());
@@ -628,3 +648,6 @@ class _GreetResponse {
   @override
   String toString() => message;
 }
+
+Future<Response> _callWithLogging(Handler handler, Request request) async =>
+    createLoggingMiddleware()(handler)(request);

@@ -24,9 +24,9 @@ import 'package:shelf/shelf.dart';
 
 import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
-import 'common/on_init.dart';
 import 'firebase.dart';
-import 'server.dart' show FunctionsRunner;
+// ignore: invalid_use_of_visible_for_testing_member
+import 'server.dart' show FunctionsRunner, createTestHandler;
 
 export 'firebase.dart' show Firebase;
 
@@ -144,15 +144,8 @@ class FunctionsTestClient {
   void dispose() => _firebase.functions.clear();
 
   Future<Response> _invoke(String functionName, Request request) async {
-    final fn = _firebase.functions
-        .where((f) => f.name == functionName)
-        .firstOrNull;
-    if (fn == null) {
-      throw ArgumentError(
-        'No function registered with name "$functionName". '
-        'Available: ${_firebase.functions.map((f) => f.name).join(', ')}',
-      );
-    }
-    return withInit(fn.handler)(request);
+    // ignore: invalid_use_of_visible_for_testing_member
+    final testHandler = createTestHandler(_firebase);
+    return testHandler(request);
   }
 }

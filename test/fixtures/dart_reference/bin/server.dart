@@ -16,6 +16,7 @@
 
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_functions/firebase_functions.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'shared_options.dart';
 
 // =============================================================================
@@ -85,11 +86,15 @@ void main(List<String> args) async {
       final b = (data?['b'] as num?)?.toDouble();
 
       if (a == null || b == null) {
-        throw InvalidArgumentError('Both "a" and "b" are required');
+        throw HttpResponseException.badRequest(
+          message: 'Both "a" and "b" are required',
+        );
       }
 
       if (b == 0) {
-        throw FailedPreconditionError('Cannot divide by zero');
+        throw HttpResponseException.badRequest(
+          message: 'Cannot divide by zero',
+        );
       }
 
       return CallableResult({'result': a / b});
@@ -412,7 +417,9 @@ void main(List<String> args) async {
         // Example: Block users with certain email domains
         final email = user?.email;
         if (email != null && email.endsWith('@blocked.com')) {
-          throw PermissionDeniedError('Email domain not allowed');
+          throw HttpResponseException.forbidden(
+            message: 'Email domain not allowed',
+          );
         }
 
         // Example: Set custom claims based on email domain
