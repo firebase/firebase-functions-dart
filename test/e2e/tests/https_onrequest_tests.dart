@@ -86,11 +86,13 @@ void runHttpsOnRequestTests(
       final futures = <Future<void>>[];
 
       for (var i = 0; i < 5; i++) {
-        futures.add(() async {
-          final response = await client.get('helloworld');
-          expect(response.statusCode, equals(200));
-          expect(response.body, contains('Hello from Dart Functions!'));
-        }());
+        futures.add(
+          () async {
+            final response = await client.get('helloworld');
+            expect(response.statusCode, equals(200));
+            expect(response.body, contains('Hello from Dart Functions!'));
+          }(),
+        );
       }
 
       await Future.wait(futures);
