@@ -27,6 +27,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Check license headers on all source files
   check-license-header:
@@ -35,7 +38,9 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout repository
-        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Download addlicense
         run: |
@@ -72,7 +77,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -108,7 +115,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -154,7 +163,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -213,7 +224,9 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@900f2210b1d28bbbd0bd22d17926b9e224e8f231
+        uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -278,9 +291,10 @@ jobs:
 
     steps:
       - name: Check test results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
         run: |
-          results='${{ toJSON(needs) }}'
-          failed_jobs=$(echo "$results" | jq -r 'to_entries[] | select(.value.result != "success") | .key')
+          failed_jobs=$(echo "$NEEDS_JSON" | jq -r 'to_entries[] | select(.value.result != "success") | .key')
 
           if [ -n "$failed_jobs" ]; then
             echo "❌ The following jobs did not succeed:"
