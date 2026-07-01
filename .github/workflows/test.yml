@@ -82,7 +82,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
+        uses: dart-lang/setup-dart@43c102f4dc9b9829c862401f0b64c7c9184eab4e
         with:
           sdk: ${{ matrix.sdk }}
 
@@ -120,7 +120,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
+        uses: dart-lang/setup-dart@43c102f4dc9b9829c862401f0b64c7c9184eab4e
         with:
           sdk: stable
 
@@ -168,7 +168,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
+        uses: dart-lang/setup-dart@43c102f4dc9b9829c862401f0b64c7c9184eab4e
         with:
           sdk: stable
 
@@ -229,7 +229,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup Dart SDK
-        uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
+        uses: dart-lang/setup-dart@43c102f4dc9b9829c862401f0b64c7c9184eab4e
         with:
           sdk: stable
 
