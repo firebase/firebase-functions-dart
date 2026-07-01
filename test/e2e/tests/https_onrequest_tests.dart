@@ -79,22 +79,26 @@ void runHttpsOnRequestTests(
       expect(response.statusCode, equals(404));
     });
 
-    test('handles multiple concurrent requests', () async {
-      // Reduced from 10 to 5 requests to avoid CI timeout issues
-      // The emulator spawns separate workers which can be slow in CI
-      print('Making 5 concurrent requests...');
-      final futures = <Future<void>>[];
+    test(
+      'handles multiple concurrent requests',
+      () async {
+        // Reduced from 10 to 5 requests to avoid CI timeout issues
+        // The emulator spawns separate workers which can be slow in CI
+        print('Making 5 concurrent requests...');
+        final futures = <Future<void>>[];
 
-      for (var i = 0; i < 5; i++) {
-        futures.add(() async {
-          final response = await client.get('helloworld');
-          expect(response.statusCode, equals(200));
-          expect(response.body, contains('Hello from Dart Functions!'));
-        }());
-      }
+        for (var i = 0; i < 5; i++) {
+          futures.add(() async {
+            final response = await client.get('helloworld');
+            expect(response.statusCode, equals(200));
+            expect(response.body, contains('Hello from Dart Functions!'));
+          }());
+        }
 
-      await Future.wait(futures);
-    }, timeout: const Timeout(Duration(seconds: 60)));
+        await Future.wait(futures);
+      },
+      timeout: const Timeout(Duration(seconds: 60)),
+    );
 
     test('function is discoverable via emulator', () async {
       print('GET ${client.baseUrl}/helloworld');
