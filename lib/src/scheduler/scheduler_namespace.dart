@@ -17,7 +17,6 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'scheduled_event.dart';
@@ -95,20 +94,15 @@ class SchedulerNamespace extends FunctionsNamespace {
     final functionName = _scheduleToFunctionName(schedule);
 
     firebase.registerFunction(functionName, (request) async {
-      try {
-        // Extract event data from request headers
-        final headers = _lowercaseHeaders(request.headers);
-        final event = ScheduledEvent.fromHeaders(headers);
+      // Extract event data from request headers
+      final headers = _lowercaseHeaders(request.headers);
+      final event = ScheduledEvent.fromHeaders(headers);
 
-        // Execute handler
-        await handler(event);
+      // Execute handler
+      await handler(event);
 
-        // Return success (Cloud Scheduler expects 2xx response)
-        return Response.ok('');
-      } catch (e, stackTrace) {
-        // Cloud Scheduler will retry based on retry config
-        return logEventHandlerError(e, stackTrace);
-      }
+      // Return success (Cloud Scheduler expects 2xx response)
+      return Response.ok('');
     });
   }
 

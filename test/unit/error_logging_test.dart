@@ -17,79 +17,18 @@
 import 'dart:convert';
 
 import 'package:firebase_functions/src/common/environment.dart';
-import 'package:firebase_functions/src/common/utilities.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/error.dart';
 import 'package:firebase_functions/src/https/https_namespace.dart';
 import 'package:firebase_functions/src/pubsub/pubsub_namespace.dart';
 import 'package:firebase_functions/src/scheduler/scheduler_namespace.dart';
+import 'package:firebase_functions/src/server.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
 void main() {
   setUpAll(() {
     FirebaseEnv.mockEnvironment = {'FIREBASE_PROJECT': 'demo-test'};
-  });
-
-  group('Error logging utilities', () {
-    group('logInternalError', () {
-      test('returns InternalError', () {
-        final result = logInternalError(
-          Exception('secret db password: abc123'),
-          StackTrace.current,
-        );
-        expect(result, isA<InternalError>());
-        expect(result.code, FunctionsErrorCode.internal);
-      });
-
-      test('does not include error details in the HTTP response', () {
-        final error = logInternalError(
-          Exception('secret db password: abc123'),
-          StackTrace.current,
-        );
-        final response = error.toShelfResponse();
-        // Synchronously read the body from the response
-        // The response wraps the body as a shelf body
-        expect(response.statusCode, 500);
-
-        // Verify the JSON body contains generic message, not the secret
-        return response.readAsString().then((body) {
-          final json = jsonDecode(body) as Map<String, dynamic>;
-          expect(json['error']['status'], 'INTERNAL');
-          expect(json['error']['message'], 'An unexpected error occurred.');
-          expect(body, isNot(contains('secret db password')));
-          expect(body, isNot(contains('abc123')));
-        });
-      });
-    });
-
-    group('logEventHandlerError', () {
-      test('returns 500 response', () {
-        final response = logEventHandlerError(
-          Exception('secret api key: xyz789'),
-          StackTrace.current,
-        );
-        expect(response.statusCode, 500);
-      });
-
-      test('does not include error details in the response body', () async {
-        final response = logEventHandlerError(
-          Exception('secret api key: xyz789'),
-          StackTrace.current,
-        );
-        final body = await response.readAsString();
-        expect(body, isNot(contains('secret api key')));
-        expect(body, isNot(contains('xyz789')));
-      });
-    });
-
-    group('_logError (via logInternalError)', () {
-      test('logs error and terse stack trace to stderr', () {
-        // We can't directly test the global logger, but we can test
-        // Trace.terse formatting indirectly by verifying our utility logic.
-        // The actual logging is tested via integration below.
-      });
-    });
   });
 
   group('HTTPS handler error logging integration', () {
@@ -102,28 +41,21 @@ void main() {
     });
 
     test(
-      'onRequest: unexpected error returns INTERNAL without details',
+      'onRequest: unexpected error returns 500 without sensitive details',
       () async {
         https.onRequest(name: 'crashEndpoint', (request) async {
           throw StateError('sensitive: connection string is postgres://...');
         });
 
-        final func = firebase.functions.firstWhere(
-          (f) => f.name == 'crashendpoint',
-        );
+        final handler = createTestHandler(firebase);
         final request = Request(
           'GET',
           Uri.parse('http://localhost/crashendpoint'),
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 500);
         final body = await response.readAsString();
-        final json = jsonDecode(body) as Map<String, dynamic>;
-
-        // Error response is generic
-        expect(json['error']['status'], 'INTERNAL');
-        expect(json['error']['message'], 'An unexpected error occurred.');
 
         // Sensitive details are NOT in the response
         expect(body, isNot(contains('postgres://')));
@@ -136,9 +68,9 @@ void main() {
         throw NotFoundError('User 42 not found');
       });
 
-      final func = firebase.functions.firstWhere((f) => f.name == 'knownerror');
+      final handler = createTestHandler(firebase);
       final request = Request('GET', Uri.parse('http://localhost/knownerror'));
-      final response = await func.handler(request);
+      final response = await handler(request);
 
       expect(response.statusCode, 404);
       final body = await response.readAsString();
@@ -163,11 +95,6 @@ void main() {
         throw Exception('sensitive: api key is sk-12345');
       });
 
-      final func = firebase.functions.firstWhere(
-        (f) => f.name == 'onmessagepublished-testtopic',
-      );
-
-      // Send a valid Pub/Sub CloudEvent
       final cloudEvent = {
         'specversion': '1.0',
         'id': 'test-id',
@@ -186,13 +113,14 @@ void main() {
         },
       };
 
+      final handler = createTestHandler(firebase);
       final request = Request(
         'POST',
         Uri.parse('http://localhost/onmessagepublished-testtopic'),
         body: jsonEncode(cloudEvent),
         headers: {'content-type': 'application/json'},
       );
-      final response = await func.handler(request);
+      final response = await handler(request);
 
       expect(response.statusCode, 500);
       final body = await response.readAsString();
@@ -208,16 +136,13 @@ void main() {
         throw Exception('sensitive: db password is hunter2');
       });
 
-      final func = firebase.functions.firstWhere(
-        (f) => f.name == 'onschedule-0-0',
-      );
-
+      final handler = createTestHandler(firebase);
       final request = Request(
         'POST',
         Uri.parse('http://localhost/onschedule-0-0'),
         headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
       );
-      final response = await func.handler(request);
+      final response = await handler(request);
 
       expect(response.statusCode, 500);
       final body = await response.readAsString();

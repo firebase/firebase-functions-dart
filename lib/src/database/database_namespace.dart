@@ -19,7 +19,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'data_snapshot.dart';
 import 'event.dart';
@@ -80,6 +79,7 @@ class DatabaseNamespace extends FunctionsNamespace {
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<DataSnapshot?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -123,28 +123,20 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? createdEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? createdEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
@@ -171,7 +163,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<DataSnapshot?>(
+          event = DatabaseEvent<DataSnapshot?>(
             data: snapshot,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -185,15 +177,13 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -232,6 +222,7 @@ class DatabaseNamespace extends FunctionsNamespace {
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<Change<DataSnapshot>?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -288,28 +279,20 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? updatedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? updatedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
@@ -347,7 +330,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<Change<DataSnapshot>?>(
+          event = DatabaseEvent<Change<DataSnapshot>?>(
             data: change,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -361,16 +344,13 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -406,6 +386,7 @@ class DatabaseNamespace extends FunctionsNamespace {
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<DataSnapshot?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -449,28 +430,20 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? deletedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? deletedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
@@ -497,7 +470,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<DataSnapshot?>(
+          event = DatabaseEvent<DataSnapshot?>(
             data: snapshot,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -511,16 +484,13 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -567,6 +537,7 @@ class DatabaseNamespace extends FunctionsNamespace {
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<Change<DataSnapshot>?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -624,28 +595,20 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? writtenEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? writtenEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
@@ -683,7 +646,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<Change<DataSnapshot>?>(
+          event = DatabaseEvent<Change<DataSnapshot>?>(
             data: change,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -697,16 +660,13 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
-        );
+      } on FormatException catch (e) {
+        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 

@@ -21,6 +21,8 @@ import 'package:firebase_functions/src/scheduler/scheduler_namespace.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
+import 'shared_utils.dart';
+
 // Helper to find function by name
 FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
   try {
@@ -154,13 +156,13 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'onschedule-0-0')!;
+        final handler = findHandler(firebase, 'onschedule-0-0');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onschedule-0-0'),
           headers: {'x-cloudscheduler-scheduletime': '2024-01-01T00:00:00Z'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 500);
         final body = await response.readAsString();

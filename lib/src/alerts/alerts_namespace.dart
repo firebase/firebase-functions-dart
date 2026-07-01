@@ -18,7 +18,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'alert_event.dart';
 import 'alert_type.dart';
@@ -87,6 +86,7 @@ class AlertsNamespace extends FunctionsNamespace {
     final functionName = _alertTypeToFunctionName(alertType.value);
 
     firebase.registerFunction(functionName, (request) async {
+      final AlertEvent<T> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
@@ -97,14 +97,13 @@ class AlertsNamespace extends FunctionsNamespace {
           );
         }
 
-        final event = AlertEvent<T>.fromJson(json, fromJson);
-        await handler(event);
-        return Response.ok('');
+        event = AlertEvent<T>.fromJson(json, fromJson);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      await handler(event);
+      return Response.ok('');
     });
   }
 

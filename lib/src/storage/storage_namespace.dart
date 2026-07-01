@@ -18,7 +18,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'storage_event.dart';
@@ -140,6 +139,7 @@ class StorageNamespace extends FunctionsNamespace {
     final functionName = _bucketToFunctionName(methodName, bucket);
 
     firebase.registerFunction(functionName, (request) async {
+      final StorageEvent event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
@@ -154,18 +154,16 @@ class StorageNamespace extends FunctionsNamespace {
         }
 
         // Parse CloudEvent with StorageObjectData
-        final event = StorageEvent.fromJson(json);
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
+        event = StorageEvent.fromJson(json);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

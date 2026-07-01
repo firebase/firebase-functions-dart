@@ -18,7 +18,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'message.dart';
 import 'options.dart';
@@ -55,6 +54,7 @@ class PubSubNamespace extends FunctionsNamespace {
     final functionName = _topicToFunctionName(topic);
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<PubsubMessage> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
@@ -68,21 +68,19 @@ class PubSubNamespace extends FunctionsNamespace {
         }
 
         // Parse CloudEvent with PubsubMessage data
-        final event = CloudEvent<PubsubMessage>.fromJson(
+        event = CloudEvent<PubsubMessage>.fromJson(
           json,
           PubsubMessage.fromJson,
         );
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

@@ -59,8 +59,6 @@ class HttpsNamespace extends FunctionsNamespace {
           return await handler(request);
         } on HttpsError catch (e) {
           return e.toShelfResponse();
-        } catch (e, stackTrace) {
-          return logInternalError(e, stackTrace).toShelfResponse();
         }
       },
       external: true,
@@ -302,9 +300,9 @@ class HttpsNamespace extends FunctionsNamespace {
       }
 
       return e.toShelfResponse();
-    } catch (e, stackTrace) {
+    } catch (e) {
       // Unexpected error - don't expose details to client
-      final error = logInternalError(e, stackTrace);
+      final error = InternalError();
 
       if (callableRequest.acceptsStreaming && !callableResponse.aborted) {
         callableResponse.writeSSE(error.toErrorResponse());

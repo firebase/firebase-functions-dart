@@ -18,7 +18,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 
@@ -58,23 +57,22 @@ class EventarcNamespace extends FunctionsNamespace {
     final functionName = _eventTypeToFunctionName(eventType);
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<Object> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
 
         // Parse CloudEvent with generic data
-        final event = CloudEvent<Object>.fromJson(json, (data) => data);
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
+        event = CloudEvent<Object>.fromJson(json, (data) => data);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

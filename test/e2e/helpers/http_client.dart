@@ -22,10 +22,16 @@ final class FunctionsHttpClient extends TestClientBase {
   FunctionsHttpClient(super.baseUrl);
 
   /// Calls an onRequest function with GET method.
-  Future<http.Response> get(String functionName) async {
+  Future<http.Response> get(
+    String functionName, {
+    Map<String, String>? headers,
+  }) async {
     final url = Uri.parse('$baseUrl/$functionName');
     print('GET $url');
-    return await client.get(url);
+    return await client.get(
+      url,
+      headers: {'Accept': 'application/json', ...?headers},
+    );
   }
 
   /// Calls an onRequest function with POST method.

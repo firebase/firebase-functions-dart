@@ -18,7 +18,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'test_matrix_completed_data.dart';
@@ -50,6 +49,7 @@ class TestLabNamespace extends FunctionsNamespace {
     @mustBeConst TestLabOptions? options = const TestLabOptions(),
   }) {
     firebase.registerFunction(_functionName, (request) async {
+      final CloudEvent<TestMatrixCompletedData> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
@@ -61,19 +61,17 @@ class TestLabNamespace extends FunctionsNamespace {
           );
         }
 
-        final event = CloudEvent<TestMatrixCompletedData>.fromJson(
+        event = CloudEvent<TestMatrixCompletedData>.fromJson(
           json,
           TestMatrixCompletedData.fromJson,
         );
-
-        await handler(event);
-
-        return Response.ok('');
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
+
+      await handler(event);
+
+      return Response.ok('');
     });
   }
 
