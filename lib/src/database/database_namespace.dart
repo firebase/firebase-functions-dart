@@ -19,7 +19,6 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'data_snapshot.dart';
 import 'event.dart';
@@ -123,26 +122,22 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? createdEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
+          final event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? createdEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
 
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
+          await handler(event);
 
           return Response.ok('');
         } else {
@@ -191,8 +186,6 @@ class DatabaseNamespace extends FunctionsNamespace {
         }
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
       }
     }, refPattern: _normalizeRefPattern(ref));
   }
@@ -288,26 +281,22 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? updatedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
+          final event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? updatedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
 
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
+          await handler(event);
 
           return Response.ok('');
         } else {
@@ -449,26 +438,22 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? deletedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
+          final event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? deletedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
 
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
+          await handler(event);
 
           return Response.ok('');
         } else {
@@ -624,26 +609,22 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? writtenEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
+          final event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? writtenEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
 
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
+          await handler(event);
 
           return Response.ok('');
         } else {

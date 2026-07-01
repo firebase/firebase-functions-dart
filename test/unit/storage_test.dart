@@ -22,6 +22,8 @@ import 'package:firebase_functions/src/storage/storage_object_data.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
+import 'shared_utils.dart';
+
 // Helper to find function by name
 FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
   try {
@@ -292,8 +294,8 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
-        final response = await func.handler(_createStorageRequest());
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
+        final response = await handler(_createStorageRequest());
 
         expect(response.statusCode, 500);
         final body = await response.readAsString();

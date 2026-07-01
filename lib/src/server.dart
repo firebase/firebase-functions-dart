@@ -116,8 +116,22 @@ Future<void> runFunctions(
 ///
 /// Use in tests to exercise the full routing pipeline without binding a port.
 @visibleForTesting
-Handler createTestHandler(Firebase firebase) =>
-    (request) => _routeRequest(request, firebase, firebase.$env);
+Handler createTestHandler(Firebase firebase) {
+  final env = firebase.$env;
+  var middleware = const Pipeline().middleware;
+
+  if (env.enableCors) {
+    middleware = middleware.addMiddleware(_corsMiddleware);
+  }
+
+  middleware = middleware.addMiddleware(
+    createLoggingMiddleware(projectId: env.projectId),
+  );
+
+  return middleware.addHandler(
+    (request) => _routeRequest(request, firebase, env),
+  );
+}
 
 /// CORS middleware for emulator mode.
 Handler _corsMiddleware(Handler innerHandler) => (request) {

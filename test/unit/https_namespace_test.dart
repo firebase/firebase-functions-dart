@@ -26,6 +26,8 @@ import 'package:firebase_functions/src/https/options.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
+import 'shared_utils.dart';
+
 // Helper to find function by name (uses kebab-case Cloud Run ID)
 FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
   try {
@@ -101,17 +103,19 @@ void main() {
           throw Exception('Unexpected crash');
         });
 
-        final func = _findFunction(firebase, 'crashfunction')!;
+        final handler = findHandler(firebase, 'crashfunction');
         final request = Request(
           'GET',
           Uri.parse('http://localhost/crashfunction'),
+          headers: {'accept': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 500);
-        expect(response.headers['Content-Type'], 'application/json');
+        expect(response.headers['content-type'], contains('application/json'));
 
-        final body = jsonDecode(await response.readAsString());
+        final body =
+            jsonDecode(await response.readAsString()) as Map<String, dynamic>;
         expect(body['error']['status'], 'INTERNAL');
       });
 
