@@ -27,6 +27,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   # Check license headers on all source files
   check-license-header:
@@ -36,6 +39,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Download addlicense
         run: |
@@ -73,6 +78,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -109,6 +116,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -155,6 +164,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
@@ -214,6 +225,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@4f1f4aec02e41874fa0262ea8ff5172d7978ad1e
+        with:
+          persist-credentials: false
 
       - name: Setup Dart SDK
         uses: dart-lang/setup-dart@2bd11704788983a6a210731656d0042e2df8b2c1
