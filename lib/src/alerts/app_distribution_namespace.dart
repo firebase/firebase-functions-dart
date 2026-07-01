@@ -68,6 +68,7 @@ class AppDistributionNamespace {
     final functionName = _alertTypeToFunctionName(alertType.value);
 
     _firebase.registerFunction(functionName, (request) async {
+      final AlertEvent<T> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
@@ -78,12 +79,13 @@ class AppDistributionNamespace {
           );
         }
 
-        final event = AlertEvent<T>.fromJson(json, payloadDecoder);
-        await handler(event);
-        return Response.ok('');
+        event = AlertEvent<T>.fromJson(json, payloadDecoder);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+      return Response.ok('');
     });
   }
 

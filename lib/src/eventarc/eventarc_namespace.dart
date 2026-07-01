@@ -57,21 +57,22 @@ class EventarcNamespace extends FunctionsNamespace {
     final functionName = _eventTypeToFunctionName(eventType);
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<Object> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
 
         // Parse CloudEvent with generic data
-        final event = CloudEvent<Object>.fromJson(json, (data) => data);
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
+        event = CloudEvent<Object>.fromJson(json, (data) => data);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

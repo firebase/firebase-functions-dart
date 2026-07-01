@@ -50,6 +50,7 @@ class RemoteConfigNamespace extends FunctionsNamespace {
     const functionName = 'onConfigUpdated';
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<ConfigUpdateData> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
@@ -63,19 +64,19 @@ class RemoteConfigNamespace extends FunctionsNamespace {
         }
 
         // Parse CloudEvent with ConfigUpdateData
-        final event = CloudEvent<ConfigUpdateData>.fromJson(
+        event = CloudEvent<ConfigUpdateData>.fromJson(
           json,
           ConfigUpdateData.fromJson,
         );
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

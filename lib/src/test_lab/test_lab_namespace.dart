@@ -49,6 +49,7 @@ class TestLabNamespace extends FunctionsNamespace {
     @mustBeConst TestLabOptions? options = const TestLabOptions(),
   }) {
     firebase.registerFunction(_functionName, (request) async {
+      final CloudEvent<TestMatrixCompletedData> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
@@ -60,17 +61,17 @@ class TestLabNamespace extends FunctionsNamespace {
           );
         }
 
-        final event = CloudEvent<TestMatrixCompletedData>.fromJson(
+        event = CloudEvent<TestMatrixCompletedData>.fromJson(
           json,
           TestMatrixCompletedData.fromJson,
         );
-
-        await handler(event);
-
-        return Response.ok('');
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+
+      return Response.ok('');
     });
   }
 

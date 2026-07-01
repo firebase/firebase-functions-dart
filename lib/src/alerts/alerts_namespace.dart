@@ -86,6 +86,7 @@ class AlertsNamespace extends FunctionsNamespace {
     final functionName = _alertTypeToFunctionName(alertType.value);
 
     firebase.registerFunction(functionName, (request) async {
+      final AlertEvent<T> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
@@ -96,12 +97,13 @@ class AlertsNamespace extends FunctionsNamespace {
           );
         }
 
-        final event = AlertEvent<T>.fromJson(json, fromJson);
-        await handler(event);
-        return Response.ok('');
+        event = AlertEvent<T>.fromJson(json, fromJson);
       } on FormatException catch (e) {
         return Response(400, body: 'Invalid CloudEvent: ${e.message}');
       }
+
+      await handler(event);
+      return Response.ok('');
     });
   }
 

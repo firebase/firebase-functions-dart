@@ -302,6 +302,19 @@ void main() {
         expect(body, isNot(contains('Handler error')));
       });
 
+      test('returns 500 when handler throws FormatException', () async {
+        storage.onObjectFinalized(bucket: 'my-bucket', (event) async {
+          throw const FormatException('User-level format error');
+        });
+
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
+        final response = await handler(_createStorageRequest());
+
+        expect(response.statusCode, 500);
+        final body = await response.readAsString();
+        expect(body, isNot(contains('Invalid CloudEvent')));
+      });
+
       test('returns 400 for invalid CloudEvent', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
