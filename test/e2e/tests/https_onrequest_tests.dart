@@ -32,6 +32,7 @@ void runHttpsOnRequestTests(
       client = getClient();
       emulator = getEmulator();
     });
+
     test('helloworld returns expected response', () async {
       print('GET ${client.baseUrl}/helloworld');
       final response = await client.get('helloworld');
