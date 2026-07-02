@@ -14,9 +14,7 @@
 
 import 'dart:convert';
 
-import 'package:shelf/shelf.dart' show Request, Response;
-
-import '../https/error.dart';
+import 'package:shelf/shelf.dart' show Request;
 
 Future<Map<String, dynamic>> readAsJsonMap(Request request) async {
   final decoded = await _converter.bind(request.read()).first;
@@ -27,11 +25,3 @@ Future<Map<String, dynamic>> readAsJsonMap(Request request) async {
 }
 
 final _converter = const Utf8Decoder().fuse(const JsonDecoder());
-
-extension HttpErrorExtension on HttpsError {
-  Response toShelfResponse() => Response(
-    httpStatusCode,
-    headers: {'Content-Type': 'application/json'},
-    body: jsonEncode(toErrorResponse()),
-  );
-}

@@ -18,9 +18,8 @@ library;
 import 'dart:convert';
 
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:http/http.dart' as http;
-
-import '../https/error.dart';
 
 /// URL to fetch Google's public keys in JWK format for JWT verification.
 /// This endpoint returns keys directly as JWKs, no certificate parsing needed.
@@ -64,7 +63,7 @@ class AuthBlockingTokenVerifier {
   /// If [audience] is provided, it's used for audience validation.
   /// For Cloud Run (GCF v2), pass `"run.app"` as the audience.
   ///
-  /// Throws [UnauthenticatedError] if verification fails.
+  /// Throws [HttpResponseException] if verification fails.
   Future<Map<String, dynamic>> verifyToken(
     String token, {
     String? audience,
@@ -78,14 +77,18 @@ class AuthBlockingTokenVerifier {
     JWT decoded;
     try {
       decoded = JWT.decode(token);
-    } catch (e) {
-      throw UnauthenticatedError('Invalid JWT format: $e');
+    } catch (e, s) {
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT format: $e',
+        innerError: e,
+        innerStack: s,
+      );
     }
 
     final kid = decoded.header?['kid'];
     if (kid is! String) {
-      throw UnauthenticatedError(
-        'Invalid JWT: missing "kid" header or not String',
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT: missing "kid" header or not String',
       );
     }
 
@@ -94,16 +97,26 @@ class AuthBlockingTokenVerifier {
     final key = keys[kid];
 
     if (key == null) {
-      throw UnauthenticatedError('Invalid JWT: unknown "kid"');
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT: unknown "kid"',
+      );
     }
 
     // Verify the token using dart_jsonwebtoken
     try {
       JWT.verify(token, key);
-    } on JWTException catch (e) {
-      throw UnauthenticatedError('Invalid JWT: ${e.message}');
-    } catch (e) {
-      throw UnauthenticatedError('Invalid JWT: $e');
+    } on JWTException catch (e, s) {
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT: ${e.message}',
+        innerError: e,
+        innerStack: s,
+      );
+    } catch (e, s) {
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT: $e',
+        innerError: e,
+        innerStack: s,
+      );
     }
 
     // Extract the payload as a map
@@ -120,8 +133,12 @@ class AuthBlockingTokenVerifier {
     try {
       final decoded = JWT.decode(token);
       return decoded.payload as Map<String, dynamic>;
-    } catch (e) {
-      throw InvalidArgumentError('Invalid JWT format');
+    } catch (e, s) {
+      throw HttpResponseException.badRequest(
+        message: 'Invalid JWT format',
+        innerError: e,
+        innerStack: s,
+      );
     }
   }
 
@@ -189,8 +206,8 @@ class AuthBlockingTokenVerifier {
     // Validate issuer
     final iss = payload['iss'] as String?;
     if (iss != _expectedIssuer) {
-      throw UnauthenticatedError(
-        'Invalid token issuer. Expected $_expectedIssuer, got $iss',
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid token issuer. Expected $_expectedIssuer, got $iss',
       );
     }
 
@@ -211,20 +228,22 @@ class AuthBlockingTokenVerifier {
     }
 
     if (!audienceValid) {
-      throw UnauthenticatedError(
-        'Invalid token audience. Expected $expectedAudience, got $aud',
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid token audience. Expected $expectedAudience, got $aud',
       );
     }
 
     // Validate expiration
     final exp = payload['exp'] as int?;
     if (exp == null) {
-      throw UnauthenticatedError('Token missing expiration claim');
+      throw HttpResponseException.unauthorized(
+        message: 'Token missing expiration claim',
+      );
     }
 
     final expiration = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
     if (DateTime.now().isAfter(expiration)) {
-      throw UnauthenticatedError('Token has expired');
+      throw HttpResponseException.unauthorized(message: 'Token has expired');
     }
 
     // Validate issued-at (not in the future)
@@ -233,7 +252,9 @@ class AuthBlockingTokenVerifier {
       final issuedAt = DateTime.fromMillisecondsSinceEpoch(iat * 1000);
       // Allow 5 minutes of clock skew
       if (issuedAt.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
-        throw UnauthenticatedError('Token issued in the future');
+        throw HttpResponseException.unauthorized(
+          message: 'Token issued in the future',
+        );
       }
     }
 
@@ -242,10 +263,14 @@ class AuthBlockingTokenVerifier {
     if (eventType != 'beforeSendEmail' && eventType != 'beforeSendSms') {
       final sub = payload['sub'] as String?;
       if (sub == null || sub.isEmpty) {
-        throw UnauthenticatedError('Token missing subject claim');
+        throw HttpResponseException.unauthorized(
+          message: 'Token missing subject claim',
+        );
       }
       if (sub.length > 128) {
-        throw UnauthenticatedError('Token subject exceeds 128 characters');
+        throw HttpResponseException.unauthorized(
+          message: 'Token subject exceeds 128 characters',
+        );
       }
     }
   }

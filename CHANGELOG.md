@@ -1,5 +1,9 @@
 ## 0.7.0-wip
 
+- **BREAKING:** Replace custom `HttpsError` implementation with `HttpResponseException`
+  from `package:google_cloud_shelf`. Surfacing errors in HTTP and callable handlers
+  now uses standard `HttpResponseException` constructors (e.g., `HttpResponseException.badRequest(...)`, `HttpResponseException.unauthorized(...)`).
+- Re-export `HttpResponseException` directly from `package:firebase_functions/firebase_functions.dart`.
 - **BREAKING:** Remove the `logger` field from `logger.dart` and made its
   method functions.
 

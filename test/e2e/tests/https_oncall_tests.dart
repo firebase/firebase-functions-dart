@@ -90,14 +90,14 @@ void runHttpsOnCallTests(FunctionsHttpClient Function() getClient) {
       expect(error['message'], contains('required'));
     });
 
-    test('divide throws FAILED_PRECONDITION on divide by zero', () async {
+    test('divide throws INVALID_ARGUMENT on divide by zero', () async {
       final response = await client.call('divide', data: {'a': 10, 'b': 0});
 
       expect(response.statusCode, equals(400));
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
       final error = json['error'] as Map<String, dynamic>;
-      expect(error['status'], equals('FAILED_PRECONDITION'));
+      expect(error['status'], equals('INVALID_ARGUMENT'));
       expect(error['message'], contains('divide by zero'));
     });
 

@@ -100,6 +100,8 @@ firebase.https.onCall(
 
 ### Error Handling
 
+Throw `HttpResponseException` (re-exported from `package:firebase_functions/firebase_functions.dart`) to surface HTTP status codes and error messages to clients:
+
 ```dart
 firebase.https.onCall(
   name: 'divide',
@@ -109,18 +111,22 @@ firebase.https.onCall(
     final b = data?['b'] as num?;
 
     if (a == null || b == null) {
-      throw InvalidArgumentError('Both "a" and "b" are required');
+      throw HttpResponseException.badRequest(
+        message: 'Both "a" and "b" are required',
+      );
     }
     if (b == 0) {
-      throw FailedPreconditionError('Cannot divide by zero');
+      throw HttpResponseException.badRequest(
+        message: 'Cannot divide by zero',
+      );
     }
 
-    return CallableResult({'result': a / b});
+    return {'result': a / b};
   },
 );
 ```
 
-Available error types: `InvalidArgumentError`, `FailedPreconditionError`, `NotFoundError`, `AlreadyExistsError`, `PermissionDeniedError`, `ResourceExhaustedError`, `UnauthenticatedError`, `UnavailableError`, `InternalError`, `DeadlineExceededError`, `CancelledError`.
+Common factories available on `HttpResponseException`: `badRequest`, `unauthorized`, `forbidden`, `notFound`, `conflict`, `tooManyRequests`, `internalServerError`, `notImplemented`, `serviceUnavailable`, `gatewayTimeout`.
 
 ## Pub/Sub Triggers
 
