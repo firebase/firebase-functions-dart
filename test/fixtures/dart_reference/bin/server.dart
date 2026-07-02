@@ -16,7 +16,6 @@
 
 import 'package:firebase_admin_sdk/firebase_admin_sdk.dart';
 import 'package:firebase_functions/firebase_functions.dart';
-import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'shared_options.dart';
 
 // =============================================================================

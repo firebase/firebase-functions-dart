@@ -15,7 +15,6 @@
 // ignore_for_file: experimental_member_use
 
 import 'package:firebase_functions/firebase_functions.dart';
-import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 
 void main(List<String> args) async {
   await runFunctions((firebase) {

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import 'package:firebase_functions/firebase_functions.dart';
-import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 
 // Define parameters - these are read from environment variables at runtime
 // and can be configured at deploy time via .env files or CLI prompts.
