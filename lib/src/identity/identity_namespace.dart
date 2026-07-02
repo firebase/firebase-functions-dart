@@ -219,7 +219,12 @@ class IdentityNamespace extends FunctionsNamespace {
       }
 
       // Parse request body
-      final body = await readAsJsonMap(request);
+      final Map<String, dynamic> body;
+      try {
+        body = await readAsJsonMap(request);
+      } on FormatException catch (e) {
+        throw HttpResponseException.badRequest(message: e.message);
+      }
 
       // Extract JWT from request body
       final data = body['data'] as Map<String, dynamic>?;

@@ -143,7 +143,7 @@ class FunctionsTestClient {
   /// tests to prevent "function already registered" errors.
   void dispose() => _firebase.functions.clear();
 
-  Future<Response> _invoke(String functionName, Request request) async {
+  Future<Response> _invoke(String _, Request request) async {
     // ignore: invalid_use_of_visible_for_testing_member
     final testHandler = createTestHandler(_firebase);
     return testHandler(request);

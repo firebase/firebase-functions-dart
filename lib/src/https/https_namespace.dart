@@ -252,8 +252,8 @@ class HttpsNamespace extends FunctionsNamespace {
     dynamic Function(Res result) extractResultData,
     Response Function(Res result) createNonStreamingResponse,
   ) async {
-    // Validate request - pass empty map if body is null to avoid double-read
-    if (!await request.isValidRequest(body ?? {})) {
+    // Validate request
+    if (body == null || !await request.isValidRequest(body)) {
       throw HttpResponseException.badRequest(
         message: 'Invalid callable request',
       );
