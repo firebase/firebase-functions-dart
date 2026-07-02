@@ -83,15 +83,11 @@ void runHttpsOnRequestTests(
       // Reduced from 10 to 5 requests to avoid CI timeout issues
       // The emulator spawns separate workers which can be slow in CI
       print('Making 5 concurrent requests...');
-      final futures = <Future<void>>[];
-
-      for (var i = 0; i < 5; i++) {
-        futures.add(() async {
-          final response = await client.get('helloworld');
-          expect(response.statusCode, equals(200));
-          expect(response.body, contains('Hello from Dart Functions!'));
-        }());
-      }
+      final futures = List.generate(5, (_) async {
+        final response = await client.get('helloworld');
+        expect(response.statusCode, equals(200));
+        expect(response.body, contains('Hello from Dart Functions!'));
+      });
 
       await Future.wait(futures);
     }, timeout: const Timeout(Duration(seconds: 60)));
