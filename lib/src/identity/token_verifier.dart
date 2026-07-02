@@ -77,9 +77,11 @@ class AuthBlockingTokenVerifier {
     JWT decoded;
     try {
       decoded = JWT.decode(token);
-    } catch (e) {
+    } catch (e, s) {
       throw HttpResponseException.unauthorized(
         message: 'Invalid JWT format: $e',
+        innerError: e,
+        innerStack: s,
       );
     }
 
@@ -103,12 +105,18 @@ class AuthBlockingTokenVerifier {
     // Verify the token using dart_jsonwebtoken
     try {
       JWT.verify(token, key);
-    } on JWTException catch (e) {
+    } on JWTException catch (e, s) {
       throw HttpResponseException.unauthorized(
         message: 'Invalid JWT: ${e.message}',
+        innerError: e,
+        innerStack: s,
       );
-    } catch (e) {
-      throw HttpResponseException.unauthorized(message: 'Invalid JWT: $e');
+    } catch (e, s) {
+      throw HttpResponseException.unauthorized(
+        message: 'Invalid JWT: $e',
+        innerError: e,
+        innerStack: s,
+      );
     }
 
     // Extract the payload as a map
@@ -125,8 +133,12 @@ class AuthBlockingTokenVerifier {
     try {
       final decoded = JWT.decode(token);
       return decoded.payload as Map<String, dynamic>;
-    } catch (e) {
-      throw HttpResponseException.badRequest(message: 'Invalid JWT format');
+    } catch (e, s) {
+      throw HttpResponseException.badRequest(
+        message: 'Invalid JWT format',
+        innerError: e,
+        innerStack: s,
+      );
     }
   }
 
