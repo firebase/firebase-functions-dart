@@ -15,6 +15,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../logger.dart' as logger;
 import 'expression.dart';
 
 // ============================================================================
@@ -354,8 +355,8 @@ abstract class Param<T extends Object> extends Expression<T> {
   @override
   T value() {
     if (Platform.environment['FUNCTIONS_CONTROL_API'] == 'true') {
-      print(
-        'Warning: ${toString()}.value() invoked during function deployment, '
+      logger.warning(
+        '${toString()}.value() invoked during function deployment, '
         'instead of during runtime.\n'
         'This is usually a mistake. In configs, use Params directly without '
         'calling .value().\n'
@@ -415,8 +416,8 @@ class SecretParam extends Param<String> {
   String runtimeValue() {
     final val = Platform.environment[name];
     if (val == null) {
-      print(
-        'Warning: No value found for secret parameter "$name". '
+      logger.warning(
+        'No value found for secret parameter "$name". '
         'A function can only access a secret if you include the secret '
         'in the function\'s secrets array.',
       );
@@ -701,8 +702,8 @@ class ListParam extends Param<List<String>> {
       }
     } on FormatException {
       // Invalid JSON, return default
-      print(
-        'Warning: Failed to parse list parameter "$name" as JSON array. '
+      logger.warning(
+        'Failed to parse list parameter "$name" as JSON array. '
         'Expected format: \'["value1", "value2"]\'. Returning default value.',
       );
     }
@@ -754,8 +755,8 @@ class EnumListParam<T extends Enum> extends Param<List<T>> {
         return result;
       }
     } on FormatException catch (e) {
-      print(
-        'Warning: Failed to parse enum list parameter "$name". '
+      logger.warning(
+        'Failed to parse enum list parameter "$name". '
         'Expected format: \'["value1", "value2"]\'. Error: $e. '
         'Returning default value.',
       );

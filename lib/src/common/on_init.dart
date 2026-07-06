@@ -17,6 +17,8 @@ library;
 
 import 'dart:async';
 
+import '../../logger.dart' as logger;
+
 /// Callback registered via [onInit].
 FutureOr<void> Function()? _initCallback;
 
@@ -73,8 +75,8 @@ bool _didInit = false;
 /// - [defineJsonSecret] for JSON-encoded secrets
 void onInit(FutureOr<void> Function() callback) {
   if (_initCallback != null) {
-    print(
-      'Warning: Setting onInit callback more than once. '
+    logger.warning(
+      'Setting onInit callback more than once. '
       'Only the most recent callback will be called.',
     );
   }
