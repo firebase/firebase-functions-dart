@@ -222,7 +222,7 @@ class IdentityNamespace extends FunctionsNamespace {
       final Map<String, dynamic> body;
       try {
         body = await readAsJsonMap(request);
-      } on Exception catch (e, s) {
+      } on FormatException catch (e, s) {
         throw HttpResponseException.badRequest(
           message: 'Invalid request body',
           innerError: e,

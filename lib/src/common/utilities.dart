@@ -17,8 +17,13 @@ import 'dart:convert';
 import 'package:shelf/shelf.dart' show Request;
 
 Future<Map<String, dynamic>> readAsJsonMap(Request request) async {
-  final decoded = await _converter.bind(request.read()).first;
-  return switch (decoded) {
+  final elements = await _converter.bind(request.read()).toList();
+  if (elements.length != 1) {
+    throw const FormatException(
+      'Request body must contain exactly one JSON object',
+    );
+  }
+  return switch (elements.single) {
     final Map<String, dynamic> m => m,
     _ => throw const FormatException('CloudEvent body must be a JSON object'),
   };
