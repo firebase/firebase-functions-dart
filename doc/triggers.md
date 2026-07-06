@@ -100,7 +100,7 @@ firebase.https.onCall(
 
 ### Error Handling
 
-Throw `HttpResponseException` (re-exported from `package:firebase_functions/firebase_functions.dart`) to surface HTTP status codes and error messages to clients:
+Throw `HttpResponseException` (re-exported by `package:firebase_functions/firebase_functions.dart`) to surface HTTP status codes and error messages to clients:
 
 ```dart
 firebase.https.onCall(
@@ -121,7 +121,7 @@ firebase.https.onCall(
       );
     }
 
-    return {'result': a / b};
+    return CallableResult({'result': a / b});
   },
 );
 ```

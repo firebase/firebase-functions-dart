@@ -111,7 +111,7 @@ class AuthBlockingTokenVerifier {
         innerError: e,
         innerStack: s,
       );
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       throw HttpResponseException.unauthorized(
         message: 'Invalid JWT: $e',
         innerError: e,
@@ -133,7 +133,7 @@ class AuthBlockingTokenVerifier {
     try {
       final decoded = JWT.decode(token);
       return decoded.payload as Map<String, dynamic>;
-    } catch (e, s) {
+    } on Exception catch (e, s) {
       throw HttpResponseException.badRequest(
         message: 'Invalid JWT format',
         innerError: e,
