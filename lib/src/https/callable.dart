@@ -17,10 +17,10 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:shelf/shelf.dart';
 
 import '../../logger.dart' as logger;
-import 'error.dart';
 
 /// JSON decoder function type.
 typedef JsonDecoder<T extends Object?> = T Function(Map<String, dynamic>);
@@ -265,11 +265,10 @@ class CallableResponse<T extends Object> {
       },
       onError: (Object error) {
         logger.error('Error in data stream', {'error': error.toString()});
-        if (error is HttpsError) {
-          writeSSE(error.toErrorResponse());
-        } else {
-          writeSSE(InternalError().toErrorResponse());
-        }
+        final errorJson = error is HttpResponseException
+            ? error.toJson()
+            : HttpResponseException.internalServerError().toJson();
+        writeSSE(errorJson);
         unawaited(closeStream());
       },
       onDone: () async {

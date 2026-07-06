@@ -69,11 +69,15 @@ void main(List<String> args) async {
       final b = (data?['b'] as num?)?.toDouble();
 
       if (a == null || b == null) {
-        throw InvalidArgumentError('Both "a" and "b" are required');
+        throw HttpResponseException.badRequest(
+          message: 'Both "a" and "b" are required',
+        );
       }
 
       if (b == 0) {
-        throw FailedPreconditionError('Cannot divide by zero');
+        throw HttpResponseException.badRequest(
+          message: 'Cannot divide by zero',
+        );
       }
 
       return CallableResult({'result': a / b});

@@ -90,6 +90,8 @@ import 'params.dart' as params;
 // Package re-exports
 export 'package:google_cloud_firestore/google_cloud_firestore.dart'
     show DocumentData, DocumentSnapshot, QueryDocumentSnapshot;
+export 'package:google_cloud_shelf/google_cloud_shelf.dart'
+    show HttpResponseException;
 export 'package:shelf/shelf.dart' show Request, Response;
 
 // Built-in params

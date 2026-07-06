@@ -12,17 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// ignore_for_file: avoid_dynamic_calls
-
 import 'dart:convert';
 
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
-import 'package:firebase_functions/src/https/error.dart';
 import 'package:firebase_functions/src/https/https_namespace.dart';
 import 'package:firebase_functions/src/pubsub/pubsub_namespace.dart';
 import 'package:firebase_functions/src/scheduler/scheduler_namespace.dart';
 import 'package:firebase_functions/src/server.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -63,23 +61,52 @@ void main() {
       },
     );
 
-    test('onRequest: HttpsError is passed through to client', () async {
-      https.onRequest(name: 'knownError', (request) async {
-        throw NotFoundError('User 42 not found');
-      });
+    test(
+      'onRequest: HttpResponseException returns JSON when Accept header is application/json',
+      () async {
+        https.onRequest(name: 'knownErrorJson', (request) async {
+          throw HttpResponseException.notFound(message: 'User 42 not found');
+        });
 
-      final handler = createTestHandler(firebase);
-      final request = Request('GET', Uri.parse('http://localhost/knownerror'));
-      final response = await handler(request);
+        final handler = createTestHandler(firebase);
+        final request = Request(
+          'GET',
+          Uri.parse('http://localhost/knownerrorjson'),
+          headers: {'accept': 'application/json'},
+        );
+        final response = await handler(request);
 
-      expect(response.statusCode, 404);
-      final body = await response.readAsString();
-      final json = jsonDecode(body) as Map<String, dynamic>;
+        expect(response.statusCode, 404);
+        expect(response.headers['content-type'], contains('application/json'));
 
-      // HttpsError messages ARE intentionally exposed
-      expect(json['error']['status'], 'NOT_FOUND');
-      expect(json['error']['message'], 'User 42 not found');
-    });
+        final body =
+            jsonDecode(await response.readAsString()) as Map<String, dynamic>;
+        final error = body['error'] as Map<String, dynamic>;
+        expect(error['code'], 404);
+        expect(error['status'], 'NOT_FOUND');
+        expect(error['message'], 'User 42 not found');
+      },
+    );
+
+    test(
+      'onRequest: HttpResponseException returns text response when Accept header is not JSON',
+      () async {
+        https.onRequest(name: 'knownErrorText', (request) async {
+          throw HttpResponseException.notFound(message: 'User 42 not found');
+        });
+
+        final handler = createTestHandler(firebase);
+        final request = Request(
+          'GET',
+          Uri.parse('http://localhost/knownerrortext'),
+        );
+        final response = await handler(request);
+
+        expect(response.statusCode, 404);
+        final body = await response.readAsString();
+        expect(body, contains('User 42 not found'));
+      },
+    );
   });
 
   group('Event handler error logging integration', () {

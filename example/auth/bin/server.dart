@@ -31,7 +31,9 @@ void main(List<String> args) async {
         // Example: Block users with certain email domains
         final email = user?.email;
         if (email != null && email.endsWith('@blocked.com')) {
-          throw PermissionDeniedError('Email domain not allowed');
+          throw HttpResponseException.forbidden(
+            message: 'Email domain not allowed',
+          );
         }
 
         // Example: Set custom claims based on email domain
