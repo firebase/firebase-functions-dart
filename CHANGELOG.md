@@ -25,6 +25,7 @@
 
 - Fix secret name resolution in `defineSecret`: the secret name is now taken
   from the argument passed to `defineSecret` rather than the Dart variable name.
+- Added `RunFunctionsOptions` with `poweredByHeader` to override the shelf's default.
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
 - Fix manifest discovery for functions registered with cascade syntax (e.g.
