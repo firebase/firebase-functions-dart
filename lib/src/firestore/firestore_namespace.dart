@@ -15,6 +15,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -453,15 +454,16 @@ class FirestoreNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !validateEventType(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Firestore $methodName: $ceType',
+            throw HttpResponseException.badRequest(
+              message: 'Invalid event type for Firestore $methodName: $ceType',
             );
           }
 
           final headers = _extractHeaders(request);
           if (headers == null) {
-            return Response(400, body: 'Missing required CloudEvent headers');
+            throw HttpResponseException.badRequest(
+              message: 'Missing required CloudEvent headers',
+            );
           }
 
           final params = _extractParams(document, headers.documentPath);
@@ -529,9 +531,8 @@ class FirestoreNamespace extends FunctionsNamespace {
             final json = await parseAndValidateCloudEvent(request);
 
             if (!validateEventType(json['type'] as String)) {
-              return Response(
-                400,
-                body:
+              throw HttpResponseException.badRequest(
+                message:
                     'Invalid event type for Firestore $methodName: ${json['type']}',
               );
             }
@@ -577,15 +578,18 @@ class FirestoreNamespace extends FunctionsNamespace {
                       ))(event);
             }
           } else {
-            return Response(
-              501,
-              body:
+            throw HttpResponseException.notImplemented(
+              message:
                   'Structured CloudEvent mode not yet supported for $methodName',
             );
           }
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await executeHandler();
@@ -617,15 +621,16 @@ class FirestoreNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !validateEventType(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Firestore $methodName: $ceType',
+            throw HttpResponseException.badRequest(
+              message: 'Invalid event type for Firestore $methodName: $ceType',
             );
           }
 
           final headers = _extractHeaders(request);
           if (headers == null) {
-            return Response(400, body: 'Missing required CloudEvent headers');
+            throw HttpResponseException.badRequest(
+              message: 'Missing required CloudEvent headers',
+            );
           }
 
           final params = _extractParams(document, headers.documentPath);
@@ -687,14 +692,17 @@ class FirestoreNamespace extends FunctionsNamespace {
                     ))(event);
           }
         } else {
-          return Response(
-            501,
-            body:
+          throw HttpResponseException.notImplemented(
+            message:
                 'Structured CloudEvent mode not yet supported for $methodName',
           );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await executeHandler();

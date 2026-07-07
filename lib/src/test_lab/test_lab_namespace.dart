@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -55,9 +56,8 @@ class TestLabNamespace extends FunctionsNamespace {
 
         final eventType = json['type'] as String;
         if (eventType != _eventType) {
-          return Response(
-            400,
-            body: 'Invalid event type for Test Lab: $eventType',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Test Lab: $eventType',
           );
         }
 
@@ -65,8 +65,12 @@ class TestLabNamespace extends FunctionsNamespace {
           json,
           TestMatrixCompletedData.fromJson,
         );
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);

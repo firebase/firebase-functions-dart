@@ -239,14 +239,14 @@ void main() {
       test('returns 400 for invalid CloudEvent', () async {
         remoteConfig.onConfigUpdated((event) async {});
 
-        final func = _findFunction(firebase, 'onconfigupdated')!;
+        final handler = findHandler(firebase, 'onconfigupdated');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onconfigupdated'),
           body: 'not json',
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
       });
@@ -254,7 +254,7 @@ void main() {
       test('returns 400 for wrong event type', () async {
         remoteConfig.onConfigUpdated((event) async {});
 
-        final func = _findFunction(firebase, 'onconfigupdated')!;
+        final handler = findHandler(firebase, 'onconfigupdated');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onconfigupdated'),
@@ -268,7 +268,7 @@ void main() {
           }),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
         final body = await response.readAsString();

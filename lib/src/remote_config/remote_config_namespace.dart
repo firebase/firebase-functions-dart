@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -57,9 +58,8 @@ class RemoteConfigNamespace extends FunctionsNamespace {
 
         // Verify it's a Remote Config event
         if (!_isRemoteConfigEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for Remote Config: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Remote Config: ${json['type']}',
           );
         }
 
@@ -68,8 +68,12 @@ class RemoteConfigNamespace extends FunctionsNamespace {
           json,
           ConfigUpdateData.fromJson,
         );
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       // Execute handler

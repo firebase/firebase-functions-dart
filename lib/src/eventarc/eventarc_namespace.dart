@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -64,8 +65,12 @@ class EventarcNamespace extends FunctionsNamespace {
 
         // Parse CloudEvent with generic data
         event = CloudEvent<Object>.fromJson(json, (data) => data);
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       // Execute handler
