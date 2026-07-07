@@ -17,7 +17,7 @@ library;
 
 import 'dart:async';
 
-import '../../logger.dart' as logger;
+import '../logger/logger.dart' as logger;
 
 /// Callback registered via [onInit].
 FutureOr<void> Function()? _initCallback;

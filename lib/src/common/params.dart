@@ -15,7 +15,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../../logger.dart' as logger;
+import '../logger/logger.dart' as logger;
 import 'expression.dart';
 
 // ============================================================================
