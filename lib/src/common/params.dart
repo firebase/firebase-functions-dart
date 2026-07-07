@@ -16,6 +16,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../logger/logger.dart' as logger;
+import 'environment.dart';
 import 'expression.dart';
 
 // ============================================================================
@@ -690,7 +691,7 @@ class ListParam extends Param<List<String>> {
 
   @override
   List<String> runtimeValue() {
-    final val = Platform.environment[name];
+    final val = FirebaseEnv().environment[name];
     if (val == null || val.isEmpty) {
       return options?.defaultValue ?? [];
     }
@@ -700,6 +701,7 @@ class ListParam extends Param<List<String>> {
       if (parsed is List && parsed.every((v) => v is String)) {
         return List<String>.from(parsed);
       }
+      throw const FormatException('Value is not a JSON array of strings');
     } on FormatException {
       // Invalid JSON, return default
       logger.warning(
@@ -735,7 +737,7 @@ class EnumListParam<T extends Enum> extends Param<List<T>> {
 
   @override
   List<T> runtimeValue() {
-    final val = Platform.environment[name];
+    final val = FirebaseEnv().environment[name];
     if (val == null || val.isEmpty) {
       return options?.defaultValue ?? [];
     }
@@ -754,6 +756,7 @@ class EnumListParam<T extends Enum> extends Param<List<T>> {
         }
         return result;
       }
+      throw const FormatException('Value is not a JSON array of strings');
     } on FormatException catch (e) {
       logger.warning(
         'Failed to parse enum list parameter "$name". '
