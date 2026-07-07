@@ -82,6 +82,7 @@ void runHttpsOnRequestTests(
 
     test(
       'handles multiple concurrent requests',
+      timeout: const Timeout(Duration(seconds: 60)),
       () async {
         // Reduced from 10 to 5 requests to avoid CI timeout issues
         // The emulator spawns separate workers which can be slow in CI
@@ -94,7 +95,6 @@ void runHttpsOnRequestTests(
 
         await Future.wait(futures);
       },
-      timeout: const Timeout(Duration(seconds: 60)),
     );
 
     test('function is discoverable via emulator', () async {
