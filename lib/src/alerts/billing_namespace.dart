@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -74,15 +75,18 @@ class BillingNamespace {
         final json = await parseAndValidateCloudEvent(request);
 
         if (!_isAlertEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for alerts: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for alerts: ${json['type']}',
           );
         }
 
         event = AlertEvent<T>.fromJson(json, payloadDecoder);
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);

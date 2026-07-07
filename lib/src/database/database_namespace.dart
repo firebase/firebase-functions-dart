@@ -15,6 +15,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -87,9 +88,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isCreatedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueCreated: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueCreated: $ceType',
             );
           }
 
@@ -142,9 +143,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isCreatedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueCreated: ${json['type']}',
             );
           }
@@ -178,8 +178,12 @@ class DatabaseNamespace extends FunctionsNamespace {
             params: params,
           );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);
@@ -230,9 +234,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isUpdatedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueUpdated: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueUpdated: $ceType',
             );
           }
 
@@ -298,9 +302,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isUpdatedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueUpdated: ${json['type']}',
             );
           }
@@ -345,8 +348,12 @@ class DatabaseNamespace extends FunctionsNamespace {
             params: params,
           );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);
@@ -394,9 +401,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isDeletedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueDeleted: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueDeleted: $ceType',
             );
           }
 
@@ -449,9 +456,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isDeletedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueDeleted: ${json['type']}',
             );
           }
@@ -485,8 +491,12 @@ class DatabaseNamespace extends FunctionsNamespace {
             params: params,
           );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);
@@ -545,9 +555,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isWrittenEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueWritten: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueWritten: $ceType',
             );
           }
 
@@ -614,9 +624,8 @@ class DatabaseNamespace extends FunctionsNamespace {
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isWrittenEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueWritten: ${json['type']}',
             );
           }
@@ -661,8 +670,12 @@ class DatabaseNamespace extends FunctionsNamespace {
             params: params,
           );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       await handler(event);

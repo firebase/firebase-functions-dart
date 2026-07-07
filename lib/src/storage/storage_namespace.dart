@@ -14,6 +14,7 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
@@ -147,16 +148,19 @@ class StorageNamespace extends FunctionsNamespace {
         // Verify it's the expected Storage event type
         final eventType = json['type'] as String;
         if (!_isStorageEvent(eventType)) {
-          return Response(
-            400,
-            body: 'Invalid event type for Storage: $eventType',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Storage: $eventType',
           );
         }
 
         // Parse CloudEvent with StorageObjectData
         event = StorageEvent.fromJson(json);
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
 
       // Execute handler

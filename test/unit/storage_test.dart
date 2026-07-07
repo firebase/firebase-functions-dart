@@ -318,14 +318,14 @@ void main() {
       test('returns 400 for invalid CloudEvent', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onobjectfinalized-mybucket'),
           body: 'not json',
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
       });
@@ -333,7 +333,7 @@ void main() {
       test('returns 400 for wrong event type', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onobjectfinalized-mybucket'),
@@ -352,7 +352,7 @@ void main() {
           }),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
         final body = await response.readAsString();
