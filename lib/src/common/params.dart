@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import 'dart:convert';
-import 'dart:io';
 
 import '../logger/logger.dart' as logger;
 import 'environment.dart';
@@ -334,9 +333,8 @@ class WireParamSpec<T extends Object> {
 /// Parameters are configuration values that can be set at deploy time
 /// and accessed at runtime via environment variables.
 ///
-/// **Important**: Parameters use `Platform.environment` for runtime resolution,
-/// which means values are read from the process environment variables set by
-/// Cloud Functions or the Firebase emulator.
+/// **Important**: Parameter values are read from the environment variables set
+/// by Cloud Functions or the Firebase emulator at runtime.
 abstract class Param<T extends Object> extends Expression<T> {
   const Param(this.name, this.options);
 
@@ -355,7 +353,7 @@ abstract class Param<T extends Object> extends Expression<T> {
   /// a warning will be logged since parameter values may not be finalized yet.
   @override
   T value() {
-    if (Platform.environment['FUNCTIONS_CONTROL_API'] == 'true') {
+    if (FirebaseEnv().functionsControlApi) {
       logger.warning(
         '${toString()}.value() invoked during function deployment, '
         'instead of during runtime.\n'
@@ -415,7 +413,7 @@ class SecretParam extends Param<String> {
 
   @override
   String runtimeValue() {
-    final val = Platform.environment[name];
+    final val = FirebaseEnv().environment[name];
     if (val == null) {
       logger.warning(
         'No value found for secret parameter "$name". '
@@ -432,7 +430,7 @@ class SecretParam extends Param<String> {
   /// Throws a [StateError] if called during deployment.
   @override
   String value() {
-    if (Platform.environment['FUNCTIONS_CONTROL_API'] == 'true') {
+    if (FirebaseEnv().functionsControlApi) {
       throw StateError(
         'Cannot access the value of secret "$name" during function deployment. '
         'Secret values are only available at runtime.',
@@ -478,7 +476,7 @@ class JsonSecretParam<T> {
   /// - The secret is not bound to the function
   /// - The stored value is not valid JSON
   T value() {
-    if (Platform.environment['FUNCTIONS_CONTROL_API'] == 'true') {
+    if (FirebaseEnv().functionsControlApi) {
       throw StateError(
         'Cannot access the value of secret "$name" during function deployment. '
         'Secret values are only available at runtime.',
@@ -489,7 +487,7 @@ class JsonSecretParam<T> {
 
   /// @internal
   T runtimeValue() {
-    final val = Platform.environment[name];
+    final val = FirebaseEnv().environment[name];
     if (val == null) {
       throw StateError(
         'No value found for secret parameter "$name". '
@@ -521,19 +519,19 @@ class JsonSecretParam<T> {
 
 /// A string parameter.
 ///
-/// Reads from `Platform.environment` at runtime.
+/// Reads from environment variables at runtime.
 class StringParam extends Param<String> {
   const StringParam(super.name, super.options);
 
   @override
   String runtimeValue() {
-    return Platform.environment[name] ?? options?.defaultValue ?? '';
+    return FirebaseEnv().environment[name] ?? options?.defaultValue ?? '';
   }
 }
 
 /// An integer parameter.
 ///
-/// Reads from `Platform.environment` at runtime and parses as int.
+/// Reads from environment variables at runtime and parses as int.
 ///
 /// Supports comparison methods for creating conditional expressions:
 /// ```dart
@@ -548,7 +546,7 @@ class IntParam extends Param<int> {
 
   @override
   int runtimeValue() {
-    final envValue = Platform.environment[name];
+    final envValue = FirebaseEnv().environment[name];
     if (envValue == null || envValue.isEmpty) {
       return options?.defaultValue ?? 0;
     }
@@ -595,7 +593,7 @@ class IntParam extends Param<int> {
 
 /// A double/float parameter.
 ///
-/// Reads from `Platform.environment` at runtime and parses as double.
+/// Reads from environment variables at runtime and parses as double.
 ///
 /// Supports comparison methods for creating conditional expressions:
 /// ```dart
@@ -609,7 +607,7 @@ class DoubleParam extends Param<double> {
 
   @override
   double runtimeValue() {
-    final envValue = Platform.environment[name];
+    final envValue = FirebaseEnv().environment[name];
     if (envValue == null || envValue.isEmpty) {
       return options?.defaultValue ?? 0.0;
     }
@@ -650,14 +648,14 @@ class DoubleParam extends Param<double> {
 
 /// A boolean parameter.
 ///
-/// Reads from `Platform.environment` at runtime. The value is considered
+/// Reads from environment variables at runtime. The value is considered
 /// `true` if the environment variable equals 'true' (case-sensitive).
 class BooleanParam extends Param<bool> {
   const BooleanParam(super.name, super.options);
 
   @override
   bool runtimeValue() {
-    final envValue = Platform.environment[name];
+    final envValue = FirebaseEnv().environment[name];
     if (envValue == null) {
       return options?.defaultValue ?? false;
     }
@@ -683,7 +681,7 @@ class BooleanParam extends Param<bool> {
 
 /// A string list parameter.
 ///
-/// Reads from `Platform.environment` at runtime and parses as JSON array.
+/// Reads from environment variables at runtime and parses as JSON array.
 /// The environment variable should contain a JSON array of strings,
 /// e.g., `'["value1", "value2"]'`.
 class ListParam extends Param<List<String>> {
@@ -802,7 +800,7 @@ class InternalExpression extends Param<String> {
 
   @override
   String runtimeValue() {
-    if (Platform.environment['FIREBASE_CONFIG'] case final String config) {
+    if (FirebaseEnv().environment['FIREBASE_CONFIG'] case final String config) {
       try {
         if (jsonDecode(config) case final Map<String, dynamic> map) {
           if (map[_configKey] case final String value) {
