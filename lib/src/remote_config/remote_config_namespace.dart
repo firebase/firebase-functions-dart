@@ -45,7 +45,6 @@ class RemoteConfigNamespace extends FunctionsNamespace {
   /// ```
   void onConfigUpdated(
     Future<void> Function(CloudEvent<ConfigUpdateData> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst RemoteConfigOptions? options = const RemoteConfigOptions(),
   }) {
     const functionName = 'onConfigUpdated';

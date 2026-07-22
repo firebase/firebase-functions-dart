@@ -35,7 +35,6 @@ class PerformanceNamespace {
   /// Handles performance threshold alerts.
   void onThresholdAlertPublished(
     FutureOr<void> Function(AlertEvent<ThresholdAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerPerformanceHandler<ThresholdAlertPayload>(

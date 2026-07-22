@@ -69,11 +69,9 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueCreated', ref);
@@ -215,11 +213,9 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueUpdated', ref);
@@ -382,11 +378,9 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueDeleted', ref);
@@ -536,11 +530,9 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueWritten', ref);

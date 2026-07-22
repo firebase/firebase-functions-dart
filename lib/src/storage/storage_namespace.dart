@@ -45,9 +45,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectArchived(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectArchived', _eventTypeArchived, bucket, handler);
@@ -70,9 +68,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectFinalized(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectFinalized', _eventTypeFinalized, bucket, handler);
@@ -93,9 +89,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectDeleted(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectDeleted', _eventTypeDeleted, bucket, handler);
@@ -117,9 +111,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectMetadataUpdated(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler(
