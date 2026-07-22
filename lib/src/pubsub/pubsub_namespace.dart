@@ -46,9 +46,7 @@ class PubSubNamespace extends FunctionsNamespace {
   /// ```
   void onMessagePublished(
     Future<void> Function(CloudEvent<PubsubMessage> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String topic,
-    // ignore: experimental_member_use
     @mustBeConst PubSubOptions? options = const PubSubOptions(),
   }) {
     // Generate function name from topic

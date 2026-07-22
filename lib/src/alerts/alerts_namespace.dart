@@ -77,11 +77,8 @@ class AlertsNamespace extends FunctionsNamespace {
   /// ```
   void onAlertPublished<T extends Object>(
     FutureOr<void> Function(AlertEvent<T> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required AlertType alertType,
-    // ignore: experimental_member_use
     @mustBeConst required T Function(Map<String, dynamic>) fromJson,
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     final functionName = _alertTypeToFunctionName(alertType.value);

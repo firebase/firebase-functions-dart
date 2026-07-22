@@ -46,7 +46,6 @@ class TestLabNamespace extends FunctionsNamespace {
   /// ```
   void onTestMatrixCompleted(
     Future<void> Function(CloudEvent<TestMatrixCompletedData> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst TestLabOptions? options = const TestLabOptions(),
   }) {
     firebase.registerFunction(_functionName, (request) async {

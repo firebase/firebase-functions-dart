@@ -35,7 +35,6 @@ class BillingNamespace {
   /// Handles billing plan update alerts.
   void onPlanUpdatePublished(
     FutureOr<void> Function(AlertEvent<PlanUpdatePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerBillingHandler<PlanUpdatePayload>(
@@ -50,7 +49,6 @@ class BillingNamespace {
   void onPlanAutomatedUpdatePublished(
     FutureOr<void> Function(AlertEvent<PlanAutomatedUpdatePayload> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerBillingHandler<PlanAutomatedUpdatePayload>(

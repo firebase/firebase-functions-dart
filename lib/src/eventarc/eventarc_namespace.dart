@@ -48,9 +48,7 @@ class EventarcNamespace extends FunctionsNamespace {
   /// ```
   void onCustomEventPublished(
     Future<void> Function(CloudEvent<Object> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String eventType,
-    // ignore: experimental_member_use
     @mustBeConst
     EventarcTriggerOptions? options = const EventarcTriggerOptions(),
   }) {

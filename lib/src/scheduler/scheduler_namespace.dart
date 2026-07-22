@@ -85,9 +85,7 @@ class SchedulerNamespace extends FunctionsNamespace {
   /// - `'0 0 1 * *'` - First day of every month at midnight
   void onSchedule(
     Future<void> Function(ScheduledEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String schedule,
-    // ignore: experimental_member_use
     @mustBeConst ScheduleOptions? options = const ScheduleOptions(),
   }) {
     // Generate function name from schedule
