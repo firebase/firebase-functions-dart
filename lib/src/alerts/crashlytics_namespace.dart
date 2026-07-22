@@ -35,7 +35,6 @@ class CrashlyticsNamespace {
   /// Handles new fatal issue alerts from Crashlytics.
   void onNewFatalIssuePublished(
     FutureOr<void> Function(AlertEvent<NewFatalIssuePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewFatalIssuePayload>(
@@ -50,7 +49,6 @@ class CrashlyticsNamespace {
   void onNewNonfatalIssuePublished(
     FutureOr<void> Function(AlertEvent<NewNonfatalIssuePayload> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewNonfatalIssuePayload>(
@@ -64,7 +62,6 @@ class CrashlyticsNamespace {
   /// Handles regression alerts from Crashlytics.
   void onRegressionAlertPublished(
     FutureOr<void> Function(AlertEvent<RegressionAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<RegressionAlertPayload>(
@@ -78,7 +75,6 @@ class CrashlyticsNamespace {
   /// Handles stability digest alerts from Crashlytics.
   void onStabilityDigestPublished(
     FutureOr<void> Function(AlertEvent<StabilityDigestPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<StabilityDigestPayload>(
@@ -92,7 +88,6 @@ class CrashlyticsNamespace {
   /// Handles velocity alerts from Crashlytics.
   void onVelocityAlertPublished(
     FutureOr<void> Function(AlertEvent<VelocityAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<VelocityAlertPayload>(
@@ -106,7 +101,6 @@ class CrashlyticsNamespace {
   /// Handles new ANR (Application Not Responding) issue alerts from Crashlytics.
   void onNewAnrIssuePublished(
     FutureOr<void> Function(AlertEvent<NewAnrIssuePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewAnrIssuePayload>(

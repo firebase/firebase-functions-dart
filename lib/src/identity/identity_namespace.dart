@@ -68,7 +68,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeUserCreated(
     FutureOr<BeforeCreateResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -99,7 +98,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeUserSignedIn(
     FutureOr<BeforeSignInResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -136,7 +134,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeEmailSent(
     FutureOr<BeforeEmailResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -173,7 +170,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeSmsSent(
     FutureOr<BeforeSmsResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -192,7 +188,6 @@ class IdentityNamespace extends FunctionsNamespace {
   void beforeOperation(
     FutureOr<BeforeResponse?> Function(AuthBlockingEvent event) handler, {
     required AuthBlockingEventType eventType,
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(eventType: eventType, options: options, handler: handler);

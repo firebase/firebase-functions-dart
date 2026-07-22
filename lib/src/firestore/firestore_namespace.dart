@@ -88,11 +88,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -131,11 +129,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -168,11 +164,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -215,11 +209,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -253,9 +245,7 @@ class FirestoreNamespace extends FunctionsNamespace {
   void onDocumentCreatedWithAuthContext(
     Future<void> Function(FirestoreAuthEvent<EmulatorDocumentSnapshot?> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -289,9 +279,7 @@ class FirestoreNamespace extends FunctionsNamespace {
       FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?> event,
     )
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -322,9 +310,7 @@ class FirestoreNamespace extends FunctionsNamespace {
   void onDocumentDeletedWithAuthContext(
     Future<void> Function(FirestoreAuthEvent<EmulatorDocumentSnapshot?> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -359,9 +345,7 @@ class FirestoreNamespace extends FunctionsNamespace {
       FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?> event,
     )
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
