@@ -22,7 +22,7 @@ Here are some resources to get help:
 - [Start with the quickstart](https://firebase.google.com/docs/functions/start-dart)
 - [Go through the guides](https://firebase.google.com/docs/functions/)
 - [Read the full API reference](https://pub.dev/documentation/firebase_functions/latest/)
-- [Browse some examples](example/)
+- [Browse some examples](https://github.com/firebase/functions-samples)
 - [Learn how to configure your application](doc/config.md) <!-- Remove when integrated into Firebase docs -->
 - [Codelabs](https://codelabs.developers.google.com/deploy-dart-on-firebase-functions)
 
