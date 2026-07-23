@@ -35,7 +35,6 @@ class AppDistributionNamespace {
   /// Handles new tester iOS device alerts.
   void onNewTesterIosDevicePublished(
     FutureOr<void> Function(AlertEvent<NewTesterDevicePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerAppDistributionHandler<NewTesterDevicePayload>(
@@ -49,7 +48,6 @@ class AppDistributionNamespace {
   /// Handles in-app feedback alerts.
   void onInAppFeedbackPublished(
     FutureOr<void> Function(AlertEvent<InAppFeedbackPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerAppDistributionHandler<InAppFeedbackPayload>(

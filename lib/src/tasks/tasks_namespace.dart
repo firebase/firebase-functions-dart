@@ -49,9 +49,7 @@ class TasksNamespace extends FunctionsNamespace {
   /// ```
   void onTaskDispatched(
     Future<void> Function(TaskRequest<dynamic> request) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String name,
-    // ignore: experimental_member_use
     @mustBeConst TaskQueueOptions? options = const TaskQueueOptions(),
   }) {
     firebase.registerFunction(name, (request) async {
