@@ -20,7 +20,7 @@ version: 0.7.0-wip
 repository: https://github.com/firebase/firebase-functions-dart
 
 environment:
-  sdk: ^3.9.0
+  sdk: ^3.11.0
 
 workspace:
   - example/hosting
@@ -41,7 +41,7 @@ workspace:
   - test/fixtures/dart_reference
 
 dependencies:
-  analyzer: '>=10.0.1 <13.0.0'
+  analyzer: '>=13.0.0 <15.0.0'
   build: ^4.0.4
   dart_jsonwebtoken: ^3.2.0
   firebase_admin_sdk: ^0.5.2
