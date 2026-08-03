@@ -18,6 +18,7 @@
 ///
 /// This test ensures that the Dart builder generates manifests compatible
 /// with the Node.js Firebase Functions SDK.
+@Tags(['snapshot'])
 library;
 
 import 'dart:convert';
@@ -35,7 +36,7 @@ void main() {
     setUpAll(() async {
       // Generate the basic example manifest
       print('Generating basic Dart manifest via build_runner...');
-      final buildResult = await Process.run('dart', [
+      final buildResult = await Process.run(Platform.resolvedExecutable, [
         'run',
         'build_runner',
         'build',
