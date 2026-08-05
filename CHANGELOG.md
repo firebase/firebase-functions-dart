@@ -1,4 +1,4 @@
-## 0.7.0-wip
+## 0.7.0
 
 - **BREAKING:** Replace custom `HttpsError` implementation with
   `HttpResponseException` from `package:google_cloud_shelf`. Surfacing errors

@@ -131,10 +131,10 @@ class EndpointSpec {
     final result = <String, dynamic>{};
 
     for (final arg in options.argumentList.arguments) {
-      if (arg is! NamedExpression) continue;
+      if (arg is! NamedArgument) continue;
 
-      final name = arg.name.label.name;
-      final expr = arg.expression;
+      final name = arg.name.lexeme;
+      final expr = arg.argumentExpression;
 
       // Helper to reduce boilerplate: only adds to map if value exists
       void add(String key, dynamic Function(Expression expr) func) {
@@ -285,7 +285,7 @@ class EndpointSpec {
   }
 
   /// Extracts a literal region option from an enum expression.
-  Object? _extractRegionLiteral(Expression? expression) {
+  Object? _extractRegionLiteral(Argument? expression) {
     final enumName = _extractEnumValueName(expression);
     if (enumName != null) {
       final regionString = _regionEnumToString(enumName);
@@ -515,7 +515,7 @@ class EndpointSpec {
 
   /// Extracts a CEL expression from an expression argument.
   /// Handles thenElse (ternary) expressions on boolean params.
-  String? _extractCelExpression(Expression? expression) {
+  String? _extractCelExpression(Argument? expression) {
     // Handle method invocation like: isProduction.thenElse(2048, 512)
     if (expression is MethodInvocation) {
       final target = expression.target;
@@ -543,7 +543,7 @@ class EndpointSpec {
   }
 
   /// Extracts a literal value from an expression.
-  Object? _extractLiteralValue(Expression expression) => switch (expression) {
+  Object? _extractLiteralValue(Argument expression) => switch (expression) {
     StringLiteral() => '"${expression.stringValue}"',
     IntegerLiteral() => expression.value,
     DoubleLiteral() => expression.value,
@@ -554,7 +554,7 @@ class EndpointSpec {
   /// Extracts arguments from constructor-like calls. When code is unresolved,
   /// wrappers such as `DeployOption(...)` can appear as invocations instead of
   /// [InstanceCreationExpression] nodes.
-  NodeList<Expression>? _extractCallArguments(
+  NodeList<Argument>? _extractCallArguments(
     Expression expression,
   ) => switch (expression) {
     InstanceCreationExpression(:final argumentList) => argumentList.arguments,
@@ -573,7 +573,7 @@ class EndpointSpec {
   /// Extracts an enum value name from an expression, handling both
   /// fully-qualified (`SupportedRegion.europeWest3`) and shorthand
   /// (`.europeWest3`) syntax.
-  String? _extractEnumValueName(Expression? expression) => switch (expression) {
+  String? _extractEnumValueName(Argument? expression) => switch (expression) {
     PrefixedIdentifier() => expression.identifier.name,
     SimpleIdentifier() => expression.name,
     PropertyAccess() => expression.propertyName.name,
