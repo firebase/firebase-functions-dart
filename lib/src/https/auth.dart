@@ -194,10 +194,11 @@ Future<(TokenStatus, AppCheckData?)> extractAppCheckToken(
 ///       request.headers,
 ///       adminApp: firebase.adminApp,
 ///     );
-///     if (tokens.result.auth != TokenStatus.valid) {
+///     final authData = tokens.authData;
+///     if (tokens.result.auth != TokenStatus.valid || authData == null) {
 ///       return Response.forbidden('Unauthorized');
 ///     }
-///     return Response.ok('Hello, ${tokens.authData!.uid}!');
+///     return Response.ok('Hello, ${authData.uid}!');
 ///   },
 /// );
 /// ```

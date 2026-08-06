@@ -155,11 +155,12 @@ void main(List<String> args) async {
         adminApp: firebase.adminApp,
       );
 
-      if (tokens.result.auth != TokenStatus.valid) {
+      final authData = tokens.authData;
+      if (tokens.result.auth != TokenStatus.valid || authData == null) {
         return Response.forbidden('Missing or invalid ID token');
       }
 
-      return Response.ok('Hello, ${tokens.authData!.uid}!');
+      return Response.ok('Hello, ${authData.uid}!');
     });
 
     // Conditional configuration based on boolean parameter
