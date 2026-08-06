@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:convert';
+
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/server.dart';
 import 'package:shelf/shelf.dart';
@@ -35,4 +37,20 @@ Handler findHandler(Firebase firebase, String name) {
       ),
     );
   };
+}
+
+/// Creates a minimal JWT token for testing.
+///
+/// This creates a token with a dummy header and signature, but a real
+/// base64-encoded payload. This is only for testing the decode functions
+/// in emulator mode where verification is skipped.
+String createJwt(Map<String, dynamic> payload) {
+  final headerJson = jsonEncode({'alg': 'HS256', 'typ': 'JWT'});
+  final payloadJson = jsonEncode(payload);
+
+  final header = base64Url.encode(utf8.encode(headerJson)).replaceAll('=', '');
+  final body = base64Url.encode(utf8.encode(payloadJson)).replaceAll('=', '');
+  const signature = 'dummysignature';
+
+  return '$header.$body.$signature';
 }

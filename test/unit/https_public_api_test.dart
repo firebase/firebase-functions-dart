@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Regression test for https://github.com/invertase/firebase-functions-dart/issues/235:
-// `checkTokens`/`extractAuthToken`/`extractAppCheckToken` and their supporting
-// types must be reachable from the public package barrel so `onRequest`
-// handlers can verify tokens without reaching into `src/`.
-import 'dart:convert';
-
 import 'package:firebase_functions/firebase_functions.dart';
 import 'package:test/test.dart';
+
+import 'shared_utils.dart';
 
 void main() {
   test(
     'checkTokens, extractAuthToken, extractAppCheckToken, TokenStatus and '
     'TokenVerificationResult are importable from the public barrel',
     () async {
-      final authJwt = _createJwt({'sub': 'user123'});
-      final appCheckJwt = _createJwt({'sub': 'app123'});
+      final authJwt = createJwt({'sub': 'user123'});
+      final appCheckJwt = createJwt({'sub': 'app123'});
 
       final (authStatus, authData) = await extractAuthToken({
         'authorization': 'Bearer $authJwt',
@@ -55,16 +51,4 @@ void main() {
       expect(tokens.appCheckData?.appId, 'app123');
     },
   );
-}
-
-/// Creates a minimal JWT for testing (unverified/emulator-mode decode path).
-String _createJwt(Map<String, dynamic> payload) {
-  final headerJson = jsonEncode({'alg': 'HS256', 'typ': 'JWT'});
-  final payloadJson = jsonEncode(payload);
-
-  final header = base64Url.encode(utf8.encode(headerJson)).replaceAll('=', '');
-  final body = base64Url.encode(utf8.encode(payloadJson)).replaceAll('=', '');
-  const signature = 'dummysignature';
-
-  return '$header.$body.$signature';
 }

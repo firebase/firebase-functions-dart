@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import 'dart:convert';
-
 import 'package:firebase_functions/src/https/auth.dart';
 import 'package:firebase_functions/src/https/callable.dart';
 import 'package:test/test.dart';
+
+import 'shared_utils.dart';
 
 void main() {
   // All tests use skipTokenVerification: true since we can't easily mock
@@ -44,7 +44,7 @@ void main() {
     );
 
     test('returns invalid when token has no uid/sub claim', () async {
-      final jwt = _createJwt({'email': 'test@example.com'});
+      final jwt = createJwt({'email': 'test@example.com'});
 
       final (status, auth) = await extractAuthToken({
         'authorization': 'Bearer $jwt',
@@ -55,7 +55,7 @@ void main() {
     });
 
     test('returns valid with AuthData for valid token', () async {
-      final jwt = _createJwt({
+      final jwt = createJwt({
         'sub': 'user123',
         'email': 'test@example.com',
         'custom_claim': 'value',
@@ -74,7 +74,7 @@ void main() {
     });
 
     test('extracts uid from user_id claim as fallback', () async {
-      final jwt = _createJwt({'user_id': 'user456'});
+      final jwt = createJwt({'user_id': 'user456'});
 
       final (status, auth) = await extractAuthToken({
         'authorization': 'Bearer $jwt',
@@ -85,7 +85,7 @@ void main() {
     });
 
     test('handles case-insensitive Bearer prefix', () async {
-      final jwt = _createJwt({'sub': 'user123'});
+      final jwt = createJwt({'sub': 'user123'});
 
       final (status, auth) = await extractAuthToken({
         'authorization': 'bearer $jwt',
@@ -105,7 +105,7 @@ void main() {
     });
 
     test('returns invalid for JWT with empty payload', () async {
-      final jwt = _createJwt({});
+      final jwt = createJwt({});
 
       final (status, auth) = await extractAuthToken({
         'authorization': 'Bearer $jwt',
@@ -125,7 +125,7 @@ void main() {
     });
 
     test('returns invalid when token has no sub claim', () async {
-      final jwt = _createJwt({'other': 'value'});
+      final jwt = createJwt({'other': 'value'});
 
       final (status, appCheck) = await extractAppCheckToken({
         'x-firebase-appcheck': jwt,
@@ -136,7 +136,7 @@ void main() {
     });
 
     test('returns valid with AppCheckData for valid token', () async {
-      final jwt = _createJwt({'sub': 'app123'});
+      final jwt = createJwt({'sub': 'app123'});
 
       final (status, appCheck) = await extractAppCheckToken({
         'x-firebase-appcheck': jwt,
@@ -149,7 +149,7 @@ void main() {
     });
 
     test('extracts app_id from explicit claim', () async {
-      final jwt = _createJwt({'sub': 'sub-value', 'app_id': 'explicit-app-id'});
+      final jwt = createJwt({'sub': 'sub-value', 'app_id': 'explicit-app-id'});
 
       final (status, appCheck) = await extractAppCheckToken({
         'x-firebase-appcheck': jwt,
@@ -162,8 +162,8 @@ void main() {
 
   group('checkTokens', () {
     test('returns both auth and app check data when present', () async {
-      final authJwt = _createJwt({'sub': 'user123'});
-      final appCheckJwt = _createJwt({'sub': 'app123'});
+      final authJwt = createJwt({'sub': 'user123'});
+      final appCheckJwt = createJwt({'sub': 'app123'});
 
       final result = await checkTokens({
         'authorization': 'Bearer $authJwt',
@@ -186,8 +186,8 @@ void main() {
     });
 
     test('handles mixed valid and invalid tokens', () async {
-      final authJwt = _createJwt({'sub': 'user123'});
-      final invalidAppCheckJwt = _createJwt({'no_sub': 'value'});
+      final authJwt = createJwt({'sub': 'user123'});
+      final invalidAppCheckJwt = createJwt({'no_sub': 'value'});
 
       final result = await checkTokens({
         'authorization': 'Bearer $authJwt',
@@ -241,20 +241,4 @@ void main() {
       expect(result.app, TokenStatus.missing);
     });
   });
-}
-
-/// Creates a minimal JWT token for testing.
-///
-/// This creates a token with a dummy header and signature, but a real
-/// base64-encoded payload. This is only for testing the decode functions
-/// in emulator mode where verification is skipped.
-String _createJwt(Map<String, dynamic> payload) {
-  final headerJson = jsonEncode({'alg': 'HS256', 'typ': 'JWT'});
-  final payloadJson = jsonEncode(payload);
-
-  final header = base64Url.encode(utf8.encode(headerJson)).replaceAll('=', '');
-  final body = base64Url.encode(utf8.encode(payloadJson)).replaceAll('=', '');
-  const signature = 'dummysignature';
-
-  return '$header.$body.$signature';
 }
