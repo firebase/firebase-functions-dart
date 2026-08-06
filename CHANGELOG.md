@@ -1,3 +1,11 @@
+## Unreleased
+
+- Expose `checkTokens`, `extractAuthToken`, `extractAppCheckToken`,
+  `TokenStatus`, and `TokenVerificationResult` from
+  `package:firebase_functions/firebase_functions.dart`, so `onRequest`
+  handlers can verify Firebase Auth ID tokens and App Check tokens without
+  reimplementing header parsing (#235).
+
 ## 0.7.0
 
 - **BREAKING:** Replace custom `HttpsError` implementation with

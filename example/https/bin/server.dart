@@ -147,6 +147,22 @@ void main(List<String> args) async {
       },
     );
 
+    // HTTPS onRequest example - verifying Auth/App Check tokens manually via
+    // checkTokens, the same verification onCall/onCallWithData run internally.
+    firebase.https.onRequest(name: 'whoAmI', (request) async {
+      final tokens = await checkTokens(
+        request.headers,
+        adminApp: firebase.adminApp,
+      );
+
+      final authData = tokens.authData;
+      if (tokens.result.auth != TokenStatus.valid || authData == null) {
+        return Response.forbidden('Missing or invalid ID token');
+      }
+
+      return Response.ok('Hello, ${authData.uid}!');
+    });
+
     // Conditional configuration based on boolean parameter
     firebase.https.onRequest(
       name: 'configuredEndpoint',

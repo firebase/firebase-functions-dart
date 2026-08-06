@@ -39,7 +39,10 @@ enum TokenStatus {
 class TokenVerificationResult {
   const TokenVerificationResult({required this.auth, required this.app});
 
+  /// Status of the Firebase Auth ID token.
   final TokenStatus auth;
+
+  /// Status of the App Check token.
   final TokenStatus app;
 }
 
@@ -173,7 +176,32 @@ Future<(TokenStatus, AppCheckData?)> extractAppCheckToken(
 
 /// Checks both auth and app check tokens on a request.
 ///
+/// This is the same verification `onCall`/`onCallWithData` run internally;
+/// use it directly inside an `onRequest` handler to get Auth and App Check
+/// verification without reimplementing header parsing.
+///
+/// Pass `adminApp: null` to skip verification and decode tokens unchecked
+/// (emulator mode).
+///
 /// Returns a record containing the verification result and extracted data.
+///
+/// Example:
+/// ```dart
+/// firebase.https.onRequest(
+///   name: 'secureEndpoint',
+///   (request) async {
+///     final tokens = await checkTokens(
+///       request.headers,
+///       adminApp: firebase.adminApp,
+///     );
+///     final authData = tokens.authData;
+///     if (tokens.result.auth != TokenStatus.valid || authData == null) {
+///       return Response.forbidden('Unauthorized');
+///     }
+///     return Response.ok('Hello, ${authData.uid}!');
+///   },
+/// );
+/// ```
 Future<
   ({
     TokenVerificationResult result,
