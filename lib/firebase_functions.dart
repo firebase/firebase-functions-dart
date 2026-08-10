@@ -90,6 +90,8 @@ import 'params.dart' as params;
 // Package re-exports
 export 'package:google_cloud_firestore/google_cloud_firestore.dart'
     show DocumentData, DocumentSnapshot, QueryDocumentSnapshot;
+export 'package:google_cloud_shelf/google_cloud_shelf.dart'
+    show HttpResponseException;
 export 'package:shelf/shelf.dart' show Request, Response;
 
 // Built-in params
@@ -114,8 +116,6 @@ export 'src/firestore/firestore.dart';
 export 'src/https/https.dart';
 // Experimental: Identity triggers (not yet supported in production or emulator)
 export 'src/identity/identity.dart';
-// Logger
-export 'src/logger/logger.dart' show LogEntry, LogSeverity, Logger, logger;
 // Experimental: Pub/Sub triggers (not yet supported in production or emulator)
 export 'src/pubsub/pubsub.dart';
 // Experimental: Remote Config triggers (not yet supported in production or emulator)
@@ -123,7 +123,7 @@ export 'src/remote_config/remote_config.dart';
 // Experimental: Scheduler triggers (not yet supported in production or emulator)
 export 'src/scheduler/scheduler.dart';
 // Core runtime
-export 'src/server.dart' show fireUp, runFunctions;
+export 'src/server.dart' show RunFunctionsOptions, fireUp, runFunctions;
 // Experimental: Storage triggers (emulator only)
 export 'src/storage/storage.dart';
 // Experimental: Task queue triggers (not yet supported in production or emulator)

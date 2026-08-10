@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'storage_event.dart';
@@ -45,9 +45,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectArchived(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectArchived', _eventTypeArchived, bucket, handler);
@@ -70,9 +68,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectFinalized(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectFinalized', _eventTypeFinalized, bucket, handler);
@@ -93,9 +89,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectDeleted(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler('onObjectDeleted', _eventTypeDeleted, bucket, handler);
@@ -117,9 +111,7 @@ class StorageNamespace extends FunctionsNamespace {
   /// ```
   void onObjectMetadataUpdated(
     Future<void> Function(StorageEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String bucket,
-    // ignore: experimental_member_use
     @mustBeConst StorageOptions? options = const StorageOptions(),
   }) {
     _createHandler(
@@ -140,6 +132,7 @@ class StorageNamespace extends FunctionsNamespace {
     final functionName = _bucketToFunctionName(methodName, bucket);
 
     firebase.registerFunction(functionName, (request) async {
+      final StorageEvent event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
@@ -147,25 +140,26 @@ class StorageNamespace extends FunctionsNamespace {
         // Verify it's the expected Storage event type
         final eventType = json['type'] as String;
         if (!_isStorageEvent(eventType)) {
-          return Response(
-            400,
-            body: 'Invalid event type for Storage: $eventType',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Storage: $eventType',
           );
         }
 
         // Parse CloudEvent with StorageObjectData
-        final event = StorageEvent.fromJson(json);
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+        event = StorageEvent.fromJson(json);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

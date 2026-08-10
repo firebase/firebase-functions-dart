@@ -15,11 +15,11 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'data_snapshot.dart';
 import 'event.dart';
@@ -69,17 +69,16 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueCreated', ref);
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<DataSnapshot?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -87,9 +86,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isCreatedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueCreated: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueCreated: $ceType',
             );
           }
 
@@ -123,36 +122,27 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? createdEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? createdEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isCreatedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueCreated: ${json['type']}',
             );
           }
@@ -171,7 +161,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<DataSnapshot?>(
+          event = DatabaseEvent<DataSnapshot?>(
             data: snapshot,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -185,15 +175,17 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -221,17 +213,16 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueUpdated', ref);
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<Change<DataSnapshot>?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -239,9 +230,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isUpdatedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueUpdated: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueUpdated: $ceType',
             );
           }
 
@@ -288,36 +279,27 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? updatedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? updatedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isUpdatedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueUpdated: ${json['type']}',
             );
           }
@@ -347,7 +329,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<Change<DataSnapshot>?>(
+          event = DatabaseEvent<Change<DataSnapshot>?>(
             data: change,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -361,16 +343,17 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
         );
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -395,17 +378,16 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueDeleted', ref);
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<DataSnapshot?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -413,9 +395,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isDeletedEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueDeleted: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueDeleted: $ceType',
             );
           }
 
@@ -449,36 +431,27 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - snapshot remains null
           }
 
-          try {
-            final event = DatabaseEvent<DataSnapshot?>(
-              data: snapshot,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? deletedEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<DataSnapshot?>(
+            data: snapshot,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? deletedEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isDeletedEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueDeleted: ${json['type']}',
             );
           }
@@ -497,7 +470,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<DataSnapshot?>(
+          event = DatabaseEvent<DataSnapshot?>(
             data: snapshot,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -511,16 +484,17 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
         );
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 
@@ -556,17 +530,16 @@ class DatabaseNamespace extends FunctionsNamespace {
 
     /// The database reference path to trigger on.
     /// Supports wildcards: '/users/{userId}', '/users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String ref,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst ReferenceOptions? options,
   }) {
     final functionName = _refToFunctionName('onValueWritten', ref);
     final instance = options?.instance ?? '*';
 
     firebase.registerFunction(functionName, (request) async {
+      final DatabaseEvent<Change<DataSnapshot>?> event;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -574,9 +547,9 @@ class DatabaseNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !_isWrittenEvent(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Database onValueWritten: $ceType',
+            throw HttpResponseException.badRequest(
+              message:
+                  'Invalid event type for Database onValueWritten: $ceType',
             );
           }
 
@@ -624,36 +597,27 @@ class DatabaseNamespace extends FunctionsNamespace {
             // Body parsing failed - change remains null
           }
 
-          try {
-            final event = DatabaseEvent<Change<DataSnapshot>?>(
-              data: change,
-              id: ceId,
-              source: ceSource,
-              specversion: '1.0',
-              subject: ceSubject,
-              time: DateTime.parse(ceTime),
-              type: ceType ?? writtenEventType,
-              firebaseDatabaseHost: databaseHost,
-              instance: instanceName,
-              ref: refPath,
-              location: location,
-              params: params,
-            );
-
-            await handler(event);
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
-          }
-
-          return Response.ok('');
+          event = DatabaseEvent<Change<DataSnapshot>?>(
+            data: change,
+            id: ceId,
+            source: ceSource,
+            specversion: '1.0',
+            subject: ceSubject,
+            time: DateTime.parse(ceTime),
+            type: ceType ?? writtenEventType,
+            firebaseDatabaseHost: databaseHost,
+            instance: instanceName,
+            ref: refPath,
+            location: location,
+            params: params,
+          );
         } else {
           // Structured content mode: full CloudEvent in JSON body
           final json = await parseAndValidateCloudEvent(request);
 
           if (!_isWrittenEvent(json['type'] as String)) {
-            return Response(
-              400,
-              body:
+            throw HttpResponseException.badRequest(
+              message:
                   'Invalid event type for Database onValueWritten: ${json['type']}',
             );
           }
@@ -683,7 +647,7 @@ class DatabaseNamespace extends FunctionsNamespace {
 
           final params = _extractParams(ref, refPath);
 
-          final event = DatabaseEvent<Change<DataSnapshot>?>(
+          event = DatabaseEvent<Change<DataSnapshot>?>(
             data: change,
             id: json['id'] as String,
             source: json['source'] as String,
@@ -697,16 +661,17 @@ class DatabaseNamespace extends FunctionsNamespace {
             location: json['location'] as String? ?? 'us-central1',
             params: params,
           );
-
-          await handler(event);
-          return Response.ok('');
         }
-      } catch (e, stackTrace) {
-        return Response(
-          500,
-          body: 'Error processing Database event: $e\n$stackTrace',
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
         );
       }
+
+      await handler(event);
+      return Response.ok('');
     }, refPattern: _normalizeRefPattern(ref));
   }
 

@@ -15,16 +15,15 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/options.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'auth.dart';
 import 'callable.dart';
 import 'cors.dart';
-import 'error.dart';
 import 'options.dart';
 
 /// HTTPS triggers namespace.
@@ -48,22 +47,12 @@ class HttpsNamespace extends FunctionsNamespace {
   /// ```
   void onRequest(
     Future<Response> Function(Request request) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String name,
-    // ignore: experimental_member_use
     @mustBeConst HttpsOptions? options = const HttpsOptions(),
   }) {
     firebase.registerFunction(
       name,
-      (request) async {
-        try {
-          return await handler(request);
-        } on HttpsError catch (e) {
-          return e.toShelfResponse();
-        } catch (e, stackTrace) {
-          return logInternalError(e, stackTrace).toShelfResponse();
-        }
-      },
+      (request) async => handler(request),
       external: true,
       // onRequest is opt-in: no CORS headers unless `cors` is set (or the
       // emulator's enableCors debug feature is on). Matches the Node.js SDK.
@@ -92,68 +81,68 @@ class HttpsNamespace extends FunctionsNamespace {
       CallableResponse<T> response,
     )
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String name,
-    // ignore: experimental_member_use
     @mustBeConst CallableOptions? options = const CallableOptions(),
   }) {
-    firebase.registerFunction(name, (request) async {
-      final bodyString = await request.change().readAsString();
-      Map<String, dynamic>? body;
-      if (bodyString.isNotEmpty) {
-        try {
-          body = jsonDecode(bodyString) as Map<String, dynamic>;
-        } catch (_) {
-          // Invalid JSON - body stays null, validation will fail
+    firebase.registerFunction(
+      name,
+      (request) async {
+        final bodyString = await request.change().readAsString();
+        Map<String, dynamic>? body;
+        if (bodyString.isNotEmpty) {
+          try {
+            body = jsonDecode(bodyString) as Map<String, dynamic>;
+          } catch (_) {
+            // Invalid JSON - body stays null, validation will fail
+          }
         }
-      }
 
-      // Extract auth and app check tokens
+        // Extract auth and app check tokens
 
-      final tokens = await checkTokens(
-        request.headers,
-        adminApp: firebase.$env.skipTokenVerification
-            ? null
-            : firebase.adminApp,
-      );
+        final tokens = await checkTokens(
+          request.headers,
+          adminApp: firebase.$env.skipTokenVerification
+              ? null
+              : firebase.adminApp,
+        );
 
-      // Check for invalid auth token
-      if (tokens.result.auth == TokenStatus.invalid) {
-        return UnauthenticatedError().toShelfResponse();
-      }
-
-      // Check for invalid or missing app check token if enforced
-      final enforceAppCheck =
-          options?.enforceAppCheck?.runtimeValue() ??
-          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
-          false;
-      if (tokens.result.app == TokenStatus.invalid) {
-        if (enforceAppCheck) {
-          return UnauthenticatedError().toShelfResponse();
+        // Check for invalid auth token
+        if (tokens.result.auth == TokenStatus.invalid) {
+          throw HttpResponseException.unauthorized();
         }
-      }
-      if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        return UnauthenticatedError().toShelfResponse();
-      }
 
-      final callableRequest = CallableRequest(
-        request,
-        body?['data'],
-        null,
-        auth: tokens.authData,
-        app: tokens.appCheckData,
-      );
+        // Check for invalid or missing app check token if enforced
+        final enforceAppCheck =
+            options?.enforceAppCheck?.runtimeValue() ??
+            getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+            false;
+        if (tokens.result.app == TokenStatus.invalid) {
+          if (enforceAppCheck) {
+            throw HttpResponseException.unauthorized();
+          }
+        }
+        if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
+          throw HttpResponseException.unauthorized();
+        }
 
-      return _handleCallable<Object?, T, CallableResult<T>>(
-        request,
-        callableRequest,
-        body,
-        options,
-        handler,
-        (result) => result.data,
-        (result) => result.toResponse(),
-      );
-    },
+        final callableRequest = CallableRequest(
+          request,
+          body?['data'],
+          null,
+          auth: tokens.authData,
+          app: tokens.appCheckData,
+        );
+
+        return _handleCallable<Object?, T, CallableResult<T>>(
+          request,
+          callableRequest,
+          body,
+          options,
+          handler,
+          (result) => result.data,
+          (result) => result.toResponse(),
+        );
+      },
       // Callables default to allowing any origin, and only ever accept POST.
       cors: CorsConfig(
         option: options?.cors,
@@ -191,63 +180,63 @@ class HttpsNamespace extends FunctionsNamespace {
     )
     handler, {
     required Input Function(Map<String, dynamic>) fromJson,
-    // ignore: experimental_member_use
     @mustBeConst required String name,
-    // ignore: experimental_member_use
     @mustBeConst CallableOptions? options = const CallableOptions(),
   }) {
-    firebase.registerFunction(name, (request) async {
-      final body = await request.json as Map<String, dynamic>?;
+    firebase.registerFunction(
+      name,
+      (request) async {
+        final body = await request.json as Map<String, dynamic>?;
 
-      // Extract auth and app check tokens
+        // Extract auth and app check tokens
 
-      final tokens = await checkTokens(
-        request.headers,
-        adminApp: firebase.$env.skipTokenVerification
-            ? null
-            : firebase.adminApp,
-      );
+        final tokens = await checkTokens(
+          request.headers,
+          adminApp: firebase.$env.skipTokenVerification
+              ? null
+              : firebase.adminApp,
+        );
 
-      // Check for invalid auth token
-      if (tokens.result.auth == TokenStatus.invalid) {
-        return UnauthenticatedError().toShelfResponse();
-      }
-
-      // Check for invalid or missing app check token if enforced
-      final enforceAppCheck =
-          options?.enforceAppCheck?.runtimeValue() ??
-          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
-          false;
-      if (tokens.result.app == TokenStatus.invalid) {
-        if (enforceAppCheck) {
-          return UnauthenticatedError().toShelfResponse();
+        // Check for invalid auth token
+        if (tokens.result.auth == TokenStatus.invalid) {
+          throw HttpResponseException.unauthorized();
         }
-      }
-      if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        return UnauthenticatedError().toShelfResponse();
-      }
 
-      final callableRequest = CallableRequest<Input>(
-        request,
-        body?['data'],
-        fromJson,
-        auth: tokens.authData,
-        app: tokens.appCheckData,
-      );
+        // Check for invalid or missing app check token if enforced
+        final enforceAppCheck =
+            options?.enforceAppCheck?.runtimeValue() ??
+            getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+            false;
+        if (tokens.result.app == TokenStatus.invalid) {
+          if (enforceAppCheck) {
+            throw HttpResponseException.unauthorized();
+          }
+        }
+        if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
+          throw HttpResponseException.unauthorized();
+        }
 
-      return _handleCallable<Input, Output, Output>(
-        request,
-        callableRequest,
-        body,
-        options,
-        handler,
-        (result) => result,
-        (result) => Response.ok(
-          jsonEncode({'result': result}),
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
-    },
+        final callableRequest = CallableRequest<Input>(
+          request,
+          body?['data'],
+          fromJson,
+          auth: tokens.authData,
+          app: tokens.appCheckData,
+        );
+
+        return _handleCallable<Input, Output, Output>(
+          request,
+          callableRequest,
+          body,
+          options,
+          handler,
+          (result) => result,
+          (result) => Response.ok(
+            jsonEncode({'result': result}),
+            headers: {'Content-Type': 'application/json'},
+          ),
+        );
+      },
       // Callables default to allowing any origin, and only ever accept POST.
       cors: CorsConfig(
         option: options?.cors,
@@ -278,9 +267,11 @@ class HttpsNamespace extends FunctionsNamespace {
     dynamic Function(Res result) extractResultData,
     Response Function(Res result) createNonStreamingResponse,
   ) async {
-    // Validate request - pass empty map if body is null to avoid double-read
-    if (!await request.isValidRequest(body ?? {})) {
-      return InvalidArgumentError('Invalid callable request').toShelfResponse();
+    // Validate request
+    if (body == null || !await request.isValidRequest(body)) {
+      throw HttpResponseException.badRequest(
+        message: 'Invalid callable request',
+      );
     }
 
     final heartbeatSeconds = options?.heartBeatIntervalSeconds?.runtimeValue();
@@ -310,26 +301,16 @@ class HttpsNamespace extends FunctionsNamespace {
 
       // Non-streaming response
       return createNonStreamingResponse(result);
-    } on HttpsError catch (e) {
-      // Handle HttpsError - use SSE format if streaming
+    } catch (e) {
       if (callableRequest.acceptsStreaming && !callableResponse.aborted) {
-        callableResponse.writeSSE(e.toErrorResponse());
+        final errorJson = e is HttpResponseException
+            ? e.toJson()
+            : HttpResponseException.internalServerError().toJson();
+        callableResponse.writeSSE(errorJson);
         unawaited(callableResponse.closeStream());
         return callableResponse.streamingResponse!;
       }
-
-      return e.toShelfResponse();
-    } catch (e, stackTrace) {
-      // Unexpected error - don't expose details to client
-      final error = logInternalError(e, stackTrace);
-
-      if (callableRequest.acceptsStreaming && !callableResponse.aborted) {
-        callableResponse.writeSSE(error.toErrorResponse());
-        unawaited(callableResponse.closeStream());
-        return callableResponse.streamingResponse!;
-      }
-
-      return error.toShelfResponse();
+      rethrow;
     }
   }
 }

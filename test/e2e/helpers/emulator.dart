@@ -21,6 +21,7 @@ class EmulatorHelper {
   EmulatorHelper({
     required this.projectPath,
     this.functionsPort = 5001,
+    this.hostingPort = 5003,
     this.pubsubPort = 8085,
     this.firestorePort = 8080,
     this.databasePort = 9000,
@@ -31,6 +32,7 @@ class EmulatorHelper {
   Process? _process;
   final String projectPath;
   final int functionsPort;
+  final int hostingPort;
   final int pubsubPort;
   final int firestorePort;
   final int databasePort;
@@ -71,7 +73,7 @@ class EmulatorHelper {
         ...baseArgs,
         'emulators:start',
         '--only',
-        'functions,pubsub,firestore,database,auth,storage',
+        'functions,hosting,pubsub,firestore,database,auth,storage',
         '--project',
         'demo-test',
         '--non-interactive',
@@ -291,6 +293,9 @@ class EmulatorHelper {
   /// Gets the base URL for the functions emulator.
   String get functionsUrl =>
       'http://localhost:$functionsPort/demo-test/us-central1';
+
+  /// Gets the base URL for the hosting emulator.
+  String get hostingUrl => 'http://localhost:$hostingPort';
 
   /// Gets the base URL for the Pub/Sub emulator.
   String get pubsubUrl => 'http://localhost:$pubsubPort';

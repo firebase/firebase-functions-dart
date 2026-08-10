@@ -32,6 +32,7 @@ void runHttpsOnRequestTests(
       client = getClient();
       emulator = getEmulator();
     });
+
     test('helloworld returns expected response', () async {
       print('GET ${client.baseUrl}/helloworld');
       final response = await client.get('helloworld');
@@ -81,23 +82,19 @@ void runHttpsOnRequestTests(
 
     test(
       'handles multiple concurrent requests',
+      timeout: const Timeout(Duration(seconds: 60)),
       () async {
         // Reduced from 10 to 5 requests to avoid CI timeout issues
         // The emulator spawns separate workers which can be slow in CI
         print('Making 5 concurrent requests...');
-        final futures = <Future<void>>[];
-
-        for (var i = 0; i < 5; i++) {
-          futures.add(() async {
-            final response = await client.get('helloworld');
-            expect(response.statusCode, equals(200));
-            expect(response.body, contains('Hello from Dart Functions!'));
-          }());
-        }
+        final futures = List.generate(5, (_) async {
+          final response = await client.get('helloworld');
+          expect(response.statusCode, equals(200));
+          expect(response.body, contains('Hello from Dart Functions!'));
+        });
 
         await Future.wait(futures);
       },
-      timeout: const Timeout(Duration(seconds: 60)),
     );
 
     test('function is discoverable via emulator', () async {
@@ -126,7 +123,7 @@ void runHttpsOnRequestTests(
 
         // Generic INTERNAL error is returned
         expect(error['status'], equals('INTERNAL'));
-        expect(error['message'], equals('An unexpected error occurred.'));
+        expect(error['message'], equals('Internal Server Error'));
 
         // Sensitive details must NOT appear anywhere in the response
         expect(response.body, isNot(contains('SECRET_DATA')));
@@ -145,10 +142,7 @@ void runHttpsOnRequestTests(
           reason: 'The actual error should be logged server-side for debugging',
         );
 
-        print(
-          '✓ Verified: 500 INTERNAL returned, no password leaked to client, '
-          'error logged server-side',
-        );
+        print('✓ Verified: 500 INTERNAL returned, error logged');
       },
     );
 
@@ -167,7 +161,7 @@ void runHttpsOnRequestTests(
 
         // Generic INTERNAL error is returned
         expect(error['status'], equals('INTERNAL'));
-        expect(error['message'], equals('An unexpected error occurred.'));
+        expect(error['message'], equals('Internal Server Error'));
 
         // No internal details leaked (no type names, stack traces, file paths)
         expect(response.body, isNot(contains('TypeError')));
@@ -175,10 +169,7 @@ void runHttpsOnRequestTests(
         expect(response.body, isNot(contains('.dart')));
         expect(response.body, isNot(contains('type ')));
 
-        print(
-          '✓ Verified: unexpected runtime crash returns generic 500, '
-          'no internals leaked',
-        );
+        print('✓ Verified: unexpected crash returns generic 500');
       },
     );
 

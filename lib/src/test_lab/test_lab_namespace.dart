@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'test_matrix_completed_data.dart';
@@ -46,34 +46,35 @@ class TestLabNamespace extends FunctionsNamespace {
   /// ```
   void onTestMatrixCompleted(
     Future<void> Function(CloudEvent<TestMatrixCompletedData> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst TestLabOptions? options = const TestLabOptions(),
   }) {
     firebase.registerFunction(_functionName, (request) async {
+      final CloudEvent<TestMatrixCompletedData> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
         final eventType = json['type'] as String;
         if (eventType != _eventType) {
-          return Response(
-            400,
-            body: 'Invalid event type for Test Lab: $eventType',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Test Lab: $eventType',
           );
         }
 
-        final event = CloudEvent<TestMatrixCompletedData>.fromJson(
+        event = CloudEvent<TestMatrixCompletedData>.fromJson(
           json,
           TestMatrixCompletedData.fromJson,
         );
-
-        await handler(event);
-
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await handler(event);
+
+      return Response.ok('');
     });
   }
 

@@ -86,6 +86,42 @@ firebase.https.onRequest(
 );
 ```
 
+## Function Service Account
+
+Use the `serviceAccount` option to choose which service account a function runs
+as. This matches the Firebase Functions Node.js SDK format: pass either the full
+service account email or the project-relative shorthand ending in `@`.
+
+```dart
+firebase.https.onRequest(
+  name: 'hello',
+  options: const HttpsOptions(
+    // Expands during deployment to:
+    // my-account@<project-id>.iam.gserviceaccount.com
+    serviceAccount: ServiceAccount('my-account@'),
+  ),
+  (request) async => Response.ok('Hello from Dart!'),
+);
+```
+
+You can also provide the full email when the service account is not
+project-relative:
+
+```dart
+firebase.https.onRequest(
+  name: 'helloWithFullServiceAccount',
+  options: const HttpsOptions(
+    serviceAccount: ServiceAccount(
+      'my-account@my-project.iam.gserviceaccount.com',
+    ),
+  ),
+  (request) async => Response.ok('Hello from Dart!'),
+);
+```
+
+Do not strip the trailing `@` from the shorthand form. `my-account@` is the
+cross-SDK shorthand; `my-account` is not equivalent.
+
 ## Firebase Admin SDK
 
 The Functions runtime uses a Firebase Admin SDK app for features such as

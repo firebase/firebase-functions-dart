@@ -15,8 +15,8 @@
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
+import '../../logger.dart' as logger;
 import '../common/options.dart';
-import '../logger/logger.dart';
 import 'options.dart';
 
 /// The default methods advertised in a preflight response.
@@ -101,11 +101,13 @@ final class CorsConfig {
       // worth warning about. An empty *resolved* value is more likely a
       // misconfigured param the user wants to hear about.
       if (value.isEmpty && option is! OptionLiteral<List<String>>) {
-        logger.warn('CORS option resolved to an empty list. Disabling CORS.');
+        logger.warning(
+          'CORS option resolved to an empty list. Disabling CORS.',
+        );
       }
       return value;
     } catch (e) {
-      logger.warn('Failed to resolve CORS option: $e. Disabling CORS.');
+      logger.warning('Failed to resolve CORS option: $e. Disabling CORS.');
       return const <String>[];
     }
   }

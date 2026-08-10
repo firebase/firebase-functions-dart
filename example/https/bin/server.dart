@@ -42,6 +42,8 @@ final isProduction = defineBoolean(
   ),
 );
 
+final apiKey = defineSecret('API_KEY');
+
 void main(List<String> args) async {
   await runFunctions((firebase) {
     // Basic callable function - untyped data
@@ -67,11 +69,15 @@ void main(List<String> args) async {
       final b = (data?['b'] as num?)?.toDouble();
 
       if (a == null || b == null) {
-        throw InvalidArgumentError('Both "a" and "b" are required');
+        throw HttpResponseException.badRequest(
+          message: 'Both "a" and "b" are required',
+        );
       }
 
       if (b == 0) {
-        throw FailedPreconditionError('Cannot divide by zero');
+        throw HttpResponseException.badRequest(
+          message: 'Cannot divide by zero',
+        );
       }
 
       return CallableResult({'result': a / b});
@@ -123,6 +129,21 @@ void main(List<String> args) async {
       options: HttpsOptions(minInstances: DeployOption.param(minInstances)),
       (request) async {
         return Response.ok(welcomeMessage.value());
+      },
+    );
+
+    // HTTPS function using a secret from Cloud Secret Manager
+    firebase.https.onRequest(
+      name: 'secretExample',
+      // ignore: non_const_argument_for_const_parameter
+      options: HttpsOptions(
+        secrets: [apiKey],
+        invoker: const Invoker.private(),
+      ),
+      (request) async {
+        final key = apiKey.value();
+        final preview = key.length >= 4 ? '${key.substring(0, 4)}...' : key;
+        return Response.ok('API key starts with: $preview');
       },
     );
 

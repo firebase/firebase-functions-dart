@@ -173,7 +173,7 @@ The project uses strict analysis settings (`strict-casts`, `strict-inference`, `
 
 ### Error Handling
 
-- Use `HttpsError` with the appropriate `FunctionsErrorCode` for user-facing errors.
+- Use `HttpResponseException` from `package:google_cloud_shelf` (`badRequest`, `unauthorized`, `notFound`, etc.) for user-facing errors.
 - Match the Node.js SDK error codes and behavior where applicable.
 
 ## Testing Requirements

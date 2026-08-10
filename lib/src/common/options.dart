@@ -204,6 +204,12 @@ typedef Instances = DeployOption<int>;
 typedef Omit = Option<bool>;
 typedef PreserveExternalChanges = Option<bool>;
 typedef Region = DeployOption<SupportedRegion>;
+
+/// Service account to run the function as.
+///
+/// Accepts a full service account email, such as
+/// `my-account@my-project.iam.gserviceaccount.com`, or the Firebase Functions
+/// project-relative shorthand `my-account@`.
 typedef ServiceAccount = DeployOption<String>;
 typedef TimeoutSeconds = DeployOption<int>;
 typedef VpcConnector = DeployOption<String>;

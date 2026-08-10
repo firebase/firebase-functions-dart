@@ -50,6 +50,10 @@ final isProduction = defineBoolean(
   ),
 );
 
+final apiKey = defineSecret('API_KEY');
+
+final apiConfig = defineJsonSecret<Map<String, dynamic>>('API_CONFIG');
+
 void main(List<String> args) async {
   FirebaseApp.initializeApp();
 
@@ -81,11 +85,15 @@ void main(List<String> args) async {
       final b = (data?['b'] as num?)?.toDouble();
 
       if (a == null || b == null) {
-        throw InvalidArgumentError('Both "a" and "b" are required');
+        throw HttpResponseException.badRequest(
+          message: 'Both "a" and "b" are required',
+        );
       }
 
       if (b == 0) {
-        throw FailedPreconditionError('Cannot divide by zero');
+        throw HttpResponseException.badRequest(
+          message: 'Cannot divide by zero',
+        );
       }
 
       return CallableResult({'result': a / b});
@@ -408,7 +416,9 @@ void main(List<String> args) async {
         // Example: Block users with certain email domains
         final email = user?.email;
         if (email != null && email.endsWith('@blocked.com')) {
-          throw PermissionDeniedError('Email domain not allowed');
+          throw HttpResponseException.forbidden(
+            message: 'Email domain not allowed',
+          );
         }
 
         // Example: Set custom claims based on email domain
@@ -687,6 +697,15 @@ void main(List<String> args) async {
       (request) async => Response.ok('HTTPS with all options'),
     );
 
+    // HTTPS onRequest with project-relative service account shorthand.
+    firebase.https.onRequest(
+      name: 'serviceAccountShorthand',
+      options: const HttpsOptions(
+        serviceAccount: ServiceAccount('super-account@'),
+      ),
+      (request) async => Response.ok('HTTPS with service account shorthand'),
+    );
+
     // Callable with ALL CallableOptions
     firebase.https.onCall(
       name: 'callableFull',
@@ -752,6 +771,14 @@ void main(List<String> args) async {
       (request) async => Response.ok('Custom invoker'),
     );
 
+    // HTTPS onRequest with secrets — tests variableToParamName resolution
+    firebase.https.onRequest(
+      name: 'httpsWithSecrets',
+      // ignore: non_const_argument_for_const_parameter
+      options: HttpsOptions(secrets: [apiKey, apiConfig]),
+      (request) async => Response.ok('HTTPS with secrets'),
+    );
+
     // Pub/Sub with options
     firebase.pubsub.onMessagePublished(
       topic: optionsTopic,
@@ -793,6 +820,13 @@ void main(List<String> args) async {
       name: 'httpsCrossFileOptions',
       options: crossFileOpts,
       (request) async => Response.ok('Cross-file options'),
+    );
+
+    // Used by E2E hosting rewrite tests to verify the correct request path
+    // is passed to the handler after the hosting emulator strips the routing prefix.
+    firebase.https.onRequest(
+      name: 'echoPath',
+      (request) async => Response.ok(request.requestedUri.path),
     );
 
     print('Functions registered successfully!');

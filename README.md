@@ -22,7 +22,7 @@ Here are some resources to get help:
 - [Start with the quickstart](https://firebase.google.com/docs/functions/start-dart)
 - [Go through the guides](https://firebase.google.com/docs/functions/)
 - [Read the full API reference](https://pub.dev/documentation/firebase_functions/latest/)
-- [Browse some examples](example/)
+- [Browse some examples](https://github.com/firebase/functions-samples)
 - [Learn how to configure your application](doc/config.md) <!-- Remove when integrated into Firebase docs -->
 - [Codelabs](https://codelabs.developers.google.com/deploy-dart-on-firebase-functions)
 
@@ -49,4 +49,6 @@ void main(List<String> args) {
 ## Status: Experimental
 
 This package provides a Dart implementation of Firebase Cloud Functions. Only HTTPS triggers are currently supported in production. Other trigger types are experimental and have [varying levels of support](doc/triggers.md).
+
+To follow ongoing development of Firestore and other background triggers in production, see the [Firebase UserVoice request](https://firebase.uservoice.com/forums/948424-general/suggestions/51256099-support-background-triggers-like-firestore-in-cl).
 

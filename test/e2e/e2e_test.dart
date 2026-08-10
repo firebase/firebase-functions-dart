@@ -25,12 +25,14 @@ import 'helpers/auth_client.dart';
 import 'helpers/database_client.dart';
 import 'helpers/emulator.dart';
 import 'helpers/firestore_client.dart';
+import 'helpers/hosting_client.dart';
 import 'helpers/http_client.dart';
 import 'helpers/pubsub_client.dart';
 import 'helpers/storage_client.dart';
 import 'helpers/test_client_base.dart';
 import 'tests/database_tests.dart';
 import 'tests/firestore_tests.dart';
+import 'tests/hosting_tests.dart';
 import 'tests/https_oncall_tests.dart';
 import 'tests/https_onrequest_tests.dart';
 import 'tests/identity_tests.dart';
@@ -42,6 +44,7 @@ import 'tests/storage_tests.dart';
 void main() {
   EmulatorHelper? emulator;
   FunctionsHttpClient? client;
+  HostingHttpClient? hostingClient;
   PubSubClient? pubsubClient;
   FirestoreClient? firestoreClient;
   DatabaseClient? databaseClient;
@@ -95,6 +98,9 @@ void main() {
     // Create HTTP client
     client = FunctionsHttpClient(emulator!.functionsUrl);
 
+    // Create Hosting client
+    hostingClient = HostingHttpClient(emulator!.hostingUrl);
+
     // Create Pub/Sub client
     pubsubClient = PubSubClient(emulator!.pubsubUrl, 'demo-test');
 
@@ -127,6 +133,7 @@ void main() {
     try {
       for (final client in <TestClientBase>[
         ?client,
+        ?hostingClient,
         ?pubsubClient,
         ?firestoreClient,
         ?databaseClient,
@@ -146,6 +153,7 @@ void main() {
 
   // Run all test groups (pass closures to defer value access)
   runHttpsOnRequestTests(() => client!, () => emulator!);
+  runHostingTests(() => hostingClient!);
   runHttpsOnCallTests(() => client!);
   runIntegrationTests(() => examplePath);
   runPubSubTests(() => examplePath, () => pubsubClient!, () => emulator!);

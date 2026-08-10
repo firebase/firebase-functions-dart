@@ -1,5 +1,40 @@
-## 0.7.0-wip
+## Unreleased
 
+- Fix `extractAuthToken` dropping custom claims from `AuthData.token` for
+  verified (non-emulator) ID tokens; custom claims set via
+  `auth.setCustomUserClaims()` are now included alongside the standard claims.
+
+## 0.7.0
+
+- **BREAKING:** Replace custom `HttpsError` implementation with
+  `HttpResponseException` from `package:google_cloud_shelf`. Surfacing errors
+  in HTTP and callable handlers now uses standard `HttpResponseException`
+  constructors (e.g., `HttpResponseException.badRequest(...)`,
+  `HttpResponseException.unauthorized(...)`).
+- Re-export `HttpResponseException` directly from
+  `package:firebase_functions/firebase_functions.dart`.
+- **BREAKING:** Remove the `logger` field from `logger.dart` and made its
+  method functions.
+
+  You can fix this with:
+
+  ```diff
+  -  import '../logger/logger.dart';
+  +  import '../../logger.dart' as logger;
+  ```
+
+- **BREAKING:** Remove the `logger` exports from
+  `package:firebase_functions/firebase_functions.dart`.
+
+  You can fix this by explicitly importanting the logging library:
+
+  ```dart
+  import '../../logger.dart' as logger;
+  ```
+
+- Fix secret name resolution in `defineSecret`: the secret name is now taken
+  from the argument passed to `defineSecret` rather than the Dart variable name.
+- Added `RunFunctionsOptions` with `poweredByHeader` to override the shelf's default.
 - Fix manifest generation for function options declared with named factories,
   including `Memory.fromInt` in `CallableOptions`.
 - Fix manifest discovery for functions registered with cascade syntax (e.g.
@@ -8,6 +43,8 @@
 - Emit a build warning when no functions are discovered instead of silently
   writing an endpoint-less `functions.yaml`.
 - Fix normalize function names by lowercasing only, not camelCase-to-kebab
+- Document and test `ServiceAccount('service-account@')` project-relative
+  shorthand parity with the Node.js SDK.
 
 ## 0.6.0
 

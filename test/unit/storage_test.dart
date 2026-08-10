@@ -22,6 +22,8 @@ import 'package:firebase_functions/src/storage/storage_object_data.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
+import 'shared_utils.dart';
+
 // Helper to find function by name
 FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
   try {
@@ -292,25 +294,38 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
-        final response = await func.handler(_createStorageRequest());
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
+        final response = await handler(_createStorageRequest());
 
         expect(response.statusCode, 500);
         final body = await response.readAsString();
         expect(body, isNot(contains('Handler error')));
       });
 
+      test('returns 500 when handler throws FormatException', () async {
+        storage.onObjectFinalized(bucket: 'my-bucket', (event) async {
+          throw const FormatException('User-level format error');
+        });
+
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
+        final response = await handler(_createStorageRequest());
+
+        expect(response.statusCode, 500);
+        final body = await response.readAsString();
+        expect(body, isNot(contains('Invalid CloudEvent')));
+      });
+
       test('returns 400 for invalid CloudEvent', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onobjectfinalized-mybucket'),
           body: 'not json',
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
       });
@@ -318,7 +333,7 @@ void main() {
       test('returns 400 for wrong event type', () async {
         storage.onObjectFinalized(bucket: 'my-bucket', (event) async {});
 
-        final func = _findFunction(firebase, 'onobjectfinalized-mybucket')!;
+        final handler = findHandler(firebase, 'onobjectfinalized-mybucket');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onobjectfinalized-mybucket'),
@@ -337,7 +352,7 @@ void main() {
           }),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
         final body = await response.readAsString();

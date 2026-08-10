@@ -15,11 +15,11 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'document_snapshot.dart';
 import 'event.dart';
@@ -88,11 +88,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -131,11 +129,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -168,11 +164,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -215,11 +209,9 @@ class FirestoreNamespace extends FunctionsNamespace {
 
     /// The Firestore document path to trigger on.
     /// Supports wildcards: 'users/{userId}', 'users/{userId}/posts/{postId}'
-    // ignore: experimental_member_use
     @mustBeConst required String document,
 
     /// Options that can be set on an individual event-handling function.
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -253,9 +245,7 @@ class FirestoreNamespace extends FunctionsNamespace {
   void onDocumentCreatedWithAuthContext(
     Future<void> Function(FirestoreAuthEvent<EmulatorDocumentSnapshot?> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -289,9 +279,7 @@ class FirestoreNamespace extends FunctionsNamespace {
       FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?> event,
     )
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -322,9 +310,7 @@ class FirestoreNamespace extends FunctionsNamespace {
   void onDocumentDeletedWithAuthContext(
     Future<void> Function(FirestoreAuthEvent<EmulatorDocumentSnapshot?> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerDocumentHandler(
@@ -359,9 +345,7 @@ class FirestoreNamespace extends FunctionsNamespace {
       FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?> event,
     )
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String document,
-    // ignore: experimental_member_use
     @mustBeConst DocumentOptions? options,
   }) {
     _registerChangeHandler(
@@ -446,6 +430,7 @@ class FirestoreNamespace extends FunctionsNamespace {
     final functionName = _documentToFunctionName(methodName, document);
 
     firebase.registerFunction(functionName, (request) async {
+      final Future<void> Function() executeHandler;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -453,15 +438,16 @@ class FirestoreNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !validateEventType(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Firestore $methodName: $ceType',
+            throw HttpResponseException.badRequest(
+              message: 'Invalid event type for Firestore $methodName: $ceType',
             );
           }
 
           final headers = _extractHeaders(request);
           if (headers == null) {
-            return Response(400, body: 'Missing required CloudEvent headers');
+            throw HttpResponseException.badRequest(
+              message: 'Missing required CloudEvent headers',
+            );
           }
 
           final params = _extractParams(document, headers.documentPath);
@@ -474,57 +460,53 @@ class FirestoreNamespace extends FunctionsNamespace {
               : 'value';
           final snapshot = parsed?[snapshotKey];
 
-          try {
-            if (withAuthContext) {
-              final event = FirestoreAuthEvent<EmulatorDocumentSnapshot?>(
-                data: snapshot,
-                id: headers.id,
-                source: headers.source,
-                specversion: '1.0',
-                subject: headers.subject,
-                time: DateTime.parse(headers.time),
-                type: headers.type,
-                location: 'us-central1',
-                project: _extractProject(headers.source),
-                database: headers.database,
-                namespace: headers.namespace,
-                document: headers.documentPath,
-                params: params,
-                authType: AuthType.fromString(headers.authType ?? 'unknown'),
-                authId: headers.authId,
-              );
+          if (withAuthContext) {
+            final event = FirestoreAuthEvent<EmulatorDocumentSnapshot?>(
+              data: snapshot,
+              id: headers.id,
+              source: headers.source,
+              specversion: '1.0',
+              subject: headers.subject,
+              time: DateTime.parse(headers.time),
+              type: headers.type,
+              location: 'us-central1',
+              project: _extractProject(headers.source),
+              database: headers.database,
+              namespace: headers.namespace,
+              document: headers.documentPath,
+              params: params,
+              authType: AuthType.fromString(headers.authType ?? 'unknown'),
+              authId: headers.authId,
+            );
 
-              await (handler
-                  as Future<void> Function(
-                    FirestoreAuthEvent<EmulatorDocumentSnapshot?>,
-                  ))(event);
-            } else {
-              final event = FirestoreEvent<EmulatorDocumentSnapshot?>(
-                data: snapshot,
-                id: headers.id,
-                source: headers.source,
-                specversion: '1.0',
-                subject: headers.subject,
-                time: DateTime.parse(headers.time),
-                type: headers.type,
-                location: 'us-central1',
-                project: _extractProject(headers.source),
-                database: headers.database,
-                namespace: headers.namespace,
-                document: headers.documentPath,
-                params: params,
-              );
+            executeHandler = () =>
+                (handler
+                    as Future<void> Function(
+                      FirestoreAuthEvent<EmulatorDocumentSnapshot?>,
+                    ))(event);
+          } else {
+            final event = FirestoreEvent<EmulatorDocumentSnapshot?>(
+              data: snapshot,
+              id: headers.id,
+              source: headers.source,
+              specversion: '1.0',
+              subject: headers.subject,
+              time: DateTime.parse(headers.time),
+              type: headers.type,
+              location: 'us-central1',
+              project: _extractProject(headers.source),
+              database: headers.database,
+              namespace: headers.namespace,
+              document: headers.documentPath,
+              params: params,
+            );
 
-              await (handler
-                  as Future<void> Function(
-                    FirestoreEvent<EmulatorDocumentSnapshot?>,
-                  ))(event);
-            }
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
+            executeHandler = () =>
+                (handler
+                    as Future<void> Function(
+                      FirestoreEvent<EmulatorDocumentSnapshot?>,
+                    ))(event);
           }
-
-          return Response.ok('');
         } else {
           // Structured content mode: full CloudEvent in JSON body
           // Only supported for onDocumentCreated variants
@@ -533,9 +515,8 @@ class FirestoreNamespace extends FunctionsNamespace {
             final json = await parseAndValidateCloudEvent(request);
 
             if (!validateEventType(json['type'] as String)) {
-              return Response(
-                400,
-                body:
+              throw HttpResponseException.badRequest(
+                message:
                     'Invalid event type for Firestore $methodName: ${json['type']}',
               );
             }
@@ -560,10 +541,11 @@ class FirestoreNamespace extends FunctionsNamespace {
                 authId: json['authid'] as String?,
               );
 
-              await (handler
-                  as Future<void> Function(
-                    FirestoreAuthEvent<EmulatorDocumentSnapshot?>,
-                  ))(event);
+              executeHandler = () =>
+                  (handler
+                      as Future<void> Function(
+                        FirestoreAuthEvent<EmulatorDocumentSnapshot?>,
+                      ))(event);
             } else {
               final event = FirestoreEvent<EmulatorDocumentSnapshot?>.fromJson(
                 json,
@@ -573,26 +555,29 @@ class FirestoreNamespace extends FunctionsNamespace {
                 },
               );
 
-              await (handler
-                  as Future<void> Function(
-                    FirestoreEvent<EmulatorDocumentSnapshot?>,
-                  ))(event);
+              executeHandler = () =>
+                  (handler
+                      as Future<void> Function(
+                        FirestoreEvent<EmulatorDocumentSnapshot?>,
+                      ))(event);
             }
-
-            return Response.ok('');
+          } else {
+            throw HttpResponseException.notImplemented(
+              message:
+                  'Structured CloudEvent mode not yet supported for $methodName',
+            );
           }
-
-          return Response(
-            501,
-            body:
-                'Structured CloudEvent mode not yet supported for $methodName',
-          );
         }
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await executeHandler();
+      return Response.ok('');
     }, documentPattern: document);
   }
 
@@ -612,6 +597,7 @@ class FirestoreNamespace extends FunctionsNamespace {
     final functionName = _documentToFunctionName(methodName, document);
 
     firebase.registerFunction(functionName, (request) async {
+      final Future<void> Function() executeHandler;
       try {
         final isBinaryMode = request.headers.containsKey('ce-type');
 
@@ -619,15 +605,16 @@ class FirestoreNamespace extends FunctionsNamespace {
           final ceType = request.headers['ce-type'];
 
           if (ceType != null && !validateEventType(ceType)) {
-            return Response(
-              400,
-              body: 'Invalid event type for Firestore $methodName: $ceType',
+            throw HttpResponseException.badRequest(
+              message: 'Invalid event type for Firestore $methodName: $ceType',
             );
           }
 
           final headers = _extractHeaders(request);
           if (headers == null) {
-            return Response(400, body: 'Missing required CloudEvent headers');
+            throw HttpResponseException.badRequest(
+              message: 'Missing required CloudEvent headers',
+            );
           }
 
           final params = _extractParams(document, headers.documentPath);
@@ -636,75 +623,74 @@ class FirestoreNamespace extends FunctionsNamespace {
           final beforeSnapshot = parsed?['old_value'];
           final afterSnapshot = parsed?['value'];
 
-          try {
-            final change = Change<EmulatorDocumentSnapshot>(
-              before: beforeSnapshot,
-              after: afterSnapshot,
+          final change = Change<EmulatorDocumentSnapshot>(
+            before: beforeSnapshot,
+            after: afterSnapshot,
+          );
+
+          if (withAuthContext) {
+            final event = FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?>(
+              data: change,
+              id: headers.id,
+              source: headers.source,
+              specversion: '1.0',
+              subject: headers.subject,
+              time: DateTime.parse(headers.time),
+              type: headers.type,
+              location: 'us-central1',
+              project: _extractProject(headers.source),
+              database: headers.database,
+              namespace: headers.namespace,
+              document: headers.documentPath,
+              params: params,
+              authType: AuthType.fromString(headers.authType ?? 'unknown'),
+              authId: headers.authId,
             );
 
-            if (withAuthContext) {
-              final event =
-                  FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?>(
-                    data: change,
-                    id: headers.id,
-                    source: headers.source,
-                    specversion: '1.0',
-                    subject: headers.subject,
-                    time: DateTime.parse(headers.time),
-                    type: headers.type,
-                    location: 'us-central1',
-                    project: _extractProject(headers.source),
-                    database: headers.database,
-                    namespace: headers.namespace,
-                    document: headers.documentPath,
-                    params: params,
-                    authType: AuthType.fromString(
-                      headers.authType ?? 'unknown',
-                    ),
-                    authId: headers.authId,
-                  );
+            executeHandler = () =>
+                (handler
+                    as Future<void> Function(
+                      FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?>,
+                    ))(event);
+          } else {
+            final event = FirestoreEvent<Change<EmulatorDocumentSnapshot>?>(
+              data: change,
+              id: headers.id,
+              source: headers.source,
+              specversion: '1.0',
+              subject: headers.subject,
+              time: DateTime.parse(headers.time),
+              type: headers.type,
+              location: 'us-central1',
+              project: _extractProject(headers.source),
+              database: headers.database,
+              namespace: headers.namespace,
+              document: headers.documentPath,
+              params: params,
+            );
 
-              await (handler
-                  as Future<void> Function(
-                    FirestoreAuthEvent<Change<EmulatorDocumentSnapshot>?>,
-                  ))(event);
-            } else {
-              final event = FirestoreEvent<Change<EmulatorDocumentSnapshot>?>(
-                data: change,
-                id: headers.id,
-                source: headers.source,
-                specversion: '1.0',
-                subject: headers.subject,
-                time: DateTime.parse(headers.time),
-                type: headers.type,
-                location: 'us-central1',
-                project: _extractProject(headers.source),
-                database: headers.database,
-                namespace: headers.namespace,
-                document: headers.documentPath,
-                params: params,
-              );
-
-              await (handler
-                  as Future<void> Function(
-                    FirestoreEvent<Change<EmulatorDocumentSnapshot>?>,
-                  ))(event);
-            }
-          } catch (e, stackTrace) {
-            return logEventHandlerError(e, stackTrace);
+            executeHandler = () =>
+                (handler
+                    as Future<void> Function(
+                      FirestoreEvent<Change<EmulatorDocumentSnapshot>?>,
+                    ))(event);
           }
-
-          return Response.ok('');
         } else {
-          return Response(
-            501,
-            body:
+          throw HttpResponseException.notImplemented(
+            message:
                 'Structured CloudEvent mode not yet supported for $methodName',
           );
         }
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await executeHandler();
+      return Response.ok('');
     }, documentPattern: document);
   }
 

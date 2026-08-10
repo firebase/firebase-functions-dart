@@ -17,7 +17,6 @@ import 'dart:async';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'options.dart';
 import 'scheduled_event.dart';
@@ -86,29 +85,22 @@ class SchedulerNamespace extends FunctionsNamespace {
   /// - `'0 0 1 * *'` - First day of every month at midnight
   void onSchedule(
     Future<void> Function(ScheduledEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String schedule,
-    // ignore: experimental_member_use
     @mustBeConst ScheduleOptions? options = const ScheduleOptions(),
   }) {
     // Generate function name from schedule
     final functionName = _scheduleToFunctionName(schedule);
 
     firebase.registerFunction(functionName, (request) async {
-      try {
-        // Extract event data from request headers
-        final headers = _lowercaseHeaders(request.headers);
-        final event = ScheduledEvent.fromHeaders(headers);
+      // Extract event data from request headers
+      final headers = _lowercaseHeaders(request.headers);
+      final event = ScheduledEvent.fromHeaders(headers);
 
-        // Execute handler
-        await handler(event);
+      // Execute handler
+      await handler(event);
 
-        // Return success (Cloud Scheduler expects 2xx response)
-        return Response.ok('');
-      } catch (e, stackTrace) {
-        // Cloud Scheduler will retry based on retry config
-        return logEventHandlerError(e, stackTrace);
-      }
+      // Return success (Cloud Scheduler expects 2xx response)
+      return Response.ok('');
     });
   }
 

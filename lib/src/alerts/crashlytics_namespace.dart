@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'alert_event.dart';
 import 'alert_type.dart';
@@ -35,7 +35,6 @@ class CrashlyticsNamespace {
   /// Handles new fatal issue alerts from Crashlytics.
   void onNewFatalIssuePublished(
     FutureOr<void> Function(AlertEvent<NewFatalIssuePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewFatalIssuePayload>(
@@ -50,7 +49,6 @@ class CrashlyticsNamespace {
   void onNewNonfatalIssuePublished(
     FutureOr<void> Function(AlertEvent<NewNonfatalIssuePayload> event)
     handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewNonfatalIssuePayload>(
@@ -64,7 +62,6 @@ class CrashlyticsNamespace {
   /// Handles regression alerts from Crashlytics.
   void onRegressionAlertPublished(
     FutureOr<void> Function(AlertEvent<RegressionAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<RegressionAlertPayload>(
@@ -78,7 +75,6 @@ class CrashlyticsNamespace {
   /// Handles stability digest alerts from Crashlytics.
   void onStabilityDigestPublished(
     FutureOr<void> Function(AlertEvent<StabilityDigestPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<StabilityDigestPayload>(
@@ -92,7 +88,6 @@ class CrashlyticsNamespace {
   /// Handles velocity alerts from Crashlytics.
   void onVelocityAlertPublished(
     FutureOr<void> Function(AlertEvent<VelocityAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<VelocityAlertPayload>(
@@ -106,7 +101,6 @@ class CrashlyticsNamespace {
   /// Handles new ANR (Application Not Responding) issue alerts from Crashlytics.
   void onNewAnrIssuePublished(
     FutureOr<void> Function(AlertEvent<NewAnrIssuePayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerCrashlyticsHandler<NewAnrIssuePayload>(
@@ -126,24 +120,27 @@ class CrashlyticsNamespace {
     final functionName = _alertTypeToFunctionName(alertType.value);
 
     _firebase.registerFunction(functionName, (request) async {
+      final AlertEvent<T> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
         if (!_isAlertEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for alerts: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for alerts: ${json['type']}',
           );
         }
 
-        final event = AlertEvent<T>.fromJson(json, payloadDecoder);
-        await handler(event);
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+        event = AlertEvent<T>.fromJson(json, payloadDecoder);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await handler(event);
+      return Response.ok('');
     });
   }
 

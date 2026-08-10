@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'message.dart';
 import 'options.dart';
@@ -46,43 +46,43 @@ class PubSubNamespace extends FunctionsNamespace {
   /// ```
   void onMessagePublished(
     Future<void> Function(CloudEvent<PubsubMessage> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String topic,
-    // ignore: experimental_member_use
     @mustBeConst PubSubOptions? options = const PubSubOptions(),
   }) {
     // Generate function name from topic
     final functionName = _topicToFunctionName(topic);
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<PubsubMessage> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
 
         // Verify it's a Pub/Sub event
         if (!_isPubSubEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for Pub/Sub: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Pub/Sub: ${json['type']}',
           );
         }
 
         // Parse CloudEvent with PubsubMessage data
-        final event = CloudEvent<PubsubMessage>.fromJson(
+        event = CloudEvent<PubsubMessage>.fromJson(
           json,
           PubsubMessage.fromJson,
         );
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

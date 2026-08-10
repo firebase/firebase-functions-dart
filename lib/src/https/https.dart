@@ -14,6 +14,5 @@
 
 export 'callable.dart';
 export 'cors.dart' show corsAllowAnyOrigin, corsDisabled;
-export 'error.dart';
 export 'https_namespace.dart';
 export 'options.dart';

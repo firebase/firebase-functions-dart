@@ -96,6 +96,7 @@ Future<(TokenStatus, AuthData?)> extractAuthToken(
       final decoded = await auth.verifyIdToken(idToken);
       uid = decoded.uid;
       decodedToken = {
+        ...decoded.claims,
         'uid': decoded.uid,
         'sub': decoded.sub,
         'aud': decoded.aud,

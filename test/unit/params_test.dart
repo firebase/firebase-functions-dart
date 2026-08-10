@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/common/expression.dart';
 import 'package:firebase_functions/src/common/params.dart';
 import 'package:test/test.dart';
@@ -395,8 +396,50 @@ void main() {
     });
   });
 
+  group('defineList()', () {
+    setUp(() {
+      clearParams();
+      FirebaseEnv.mockEnvironment = null;
+    });
+
+    tearDown(() {
+      FirebaseEnv.mockEnvironment = null;
+    });
+
+    test('returns parsed string list from environment', () {
+      FirebaseEnv.mockEnvironment = {'MY_LIST': '["foo", "bar"]'};
+      final param = defineList('MY_LIST');
+      expect(param.runtimeValue(), ['foo', 'bar']);
+    });
+
+    test('returns default value when JSON is not a string array', () {
+      FirebaseEnv.mockEnvironment = {'MY_LIST': '[1, 2, 3]'};
+      final param = defineList(
+        'MY_LIST',
+        const ParamOptions(defaultValue: ['default']),
+      );
+      expect(param.runtimeValue(), ['default']);
+    });
+
+    test('returns default value on invalid JSON', () {
+      FirebaseEnv.mockEnvironment = {'MY_LIST': '{not valid json'};
+      final param = defineList(
+        'MY_LIST',
+        const ParamOptions(defaultValue: ['default']),
+      );
+      expect(param.runtimeValue(), ['default']);
+    });
+  });
+
   group('defineEnumList()', () {
-    setUp(() => clearParams());
+    setUp(() {
+      clearParams();
+      FirebaseEnv.mockEnvironment = null;
+    });
+
+    tearDown(() {
+      FirebaseEnv.mockEnvironment = null;
+    });
 
     test('registers an EnumListParam', () {
       final param = defineEnumList(TestRegion.values);
@@ -437,6 +480,15 @@ void main() {
       expect(spec.name, 'TEST_REGION_LIST');
       expect(spec.type, 'list');
       expect(spec.label, 'Deployment Regions');
+    });
+
+    test('returns default value when JSON is not a string array', () {
+      FirebaseEnv.mockEnvironment = {'TEST_REGION_LIST': '[1, 2, 3]'};
+      final param = defineEnumList(
+        TestRegion.values,
+        const ParamOptions(defaultValue: [TestRegion.usCentral1]),
+      );
+      expect(param.runtimeValue(), [TestRegion.usCentral1]);
     });
   });
 

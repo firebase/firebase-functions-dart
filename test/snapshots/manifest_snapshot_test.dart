@@ -18,6 +18,7 @@
 ///
 /// This test ensures that the Dart builder generates manifests compatible
 /// with the Node.js Firebase Functions SDK.
+@Tags(['snapshot'])
 library;
 
 import 'dart:convert';
@@ -35,12 +36,17 @@ void main() {
     setUpAll(() async {
       // Generate the basic example manifest
       print('Generating basic Dart manifest via build_runner...');
-      final buildResult = await Process.run('dart', [
+      const args = [
         'run',
         'build_runner',
         'build',
         '--delete-conflicting-outputs',
-      ], workingDirectory: 'test/fixtures/dart_reference');
+      ];
+      final buildResult = await Process.run(
+        Platform.resolvedExecutable,
+        args,
+        workingDirectory: 'test/fixtures/dart_reference',
+      );
 
       if (buildResult.exitCode != 0) {
         throw Exception(
@@ -98,11 +104,11 @@ void main() {
       final nodejsParams = nodejsManifest['params'] as List;
 
       expect(
-        dartParams.length,
-        equals(nodejsParams.length),
+        dartParams,
+        hasLength(nodejsParams.length),
         reason: 'Should have same number of params',
       );
-      expect(dartParams.length, equals(3));
+      expect(dartParams, hasLength(5));
     });
 
     test('should have WELCOME_MESSAGE string param', () {
@@ -157,6 +163,32 @@ void main() {
       expect(dartParam['description'], equals(nodejsParam['description']));
     });
 
+    test('should have API_KEY secret param', () {
+      final dartParam = _getParam(dartManifest, 'API_KEY');
+      final nodejsParam = _getParam(nodejsManifest, 'API_KEY');
+
+      expect(dartParam, isNotNull);
+      expect(nodejsParam, isNotNull);
+
+      expect(dartParam!['type'], equals('secret'));
+      expect(nodejsParam!['type'], equals('secret'));
+    });
+
+    test('should have API_CONFIG JSON secret param', () {
+      final dartParam = _getParam(dartManifest, 'API_CONFIG');
+      final nodejsParam = _getParam(nodejsManifest, 'API_CONFIG');
+
+      expect(dartParam, isNotNull);
+      expect(nodejsParam, isNotNull);
+
+      expect(dartParam!['type'], equals('secret'));
+      expect(nodejsParam!['type'], equals('secret'));
+
+      // format: json is Dart-specific (defineJsonSecret has no Node.js equivalent)
+      expect(dartParam['format'], equals('json'));
+      expect(nodejsParam.containsKey('format'), isFalse);
+    });
+
     // =========================================================================
     // RequiredAPIs Tests
     // =========================================================================
@@ -166,11 +198,11 @@ void main() {
       final nodejsAPIs = nodejsManifest['requiredAPIs'] as List;
 
       expect(
-        dartAPIs.length,
-        equals(nodejsAPIs.length),
+        dartAPIs,
+        hasLength(nodejsAPIs.length),
         reason: 'Should have same number of requiredAPIs',
       );
-      expect(dartAPIs.length, equals(5));
+      expect(dartAPIs, hasLength(5));
 
       // Check each API matches
       for (final nodejsApi in nodejsAPIs) {
@@ -326,15 +358,15 @@ void main() {
       final nodejsEndpoints = nodejsManifest['endpoints'] as Map;
 
       expect(
-        dartEndpoints.keys.length,
-        equals(55),
+        dartEndpoints.keys,
+        hasLength(58),
         reason:
-            'Should discover 55 functions (7 Callable + 6 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options)',
+            'Should discover 58 functions (7 Callable + 7 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options + 1 Secrets + 1 echoPath)',
       );
       expect(
-        nodejsEndpoints.keys.length,
-        equals(55),
-        reason: 'Node.js reference should also have 55 endpoints',
+        nodejsEndpoints.keys,
+        hasLength(58),
+        reason: 'Node.js reference should also have 58 endpoints',
       );
 
       // Verify both manifests have the same endpoints (normalized via
@@ -1844,6 +1876,17 @@ void main() {
       expect(nodejsFunc['preserveExternalChanges'], isNull);
     });
 
+    test('serviceAccountShorthand should preserve trailing @', () {
+      final dartFunc = _getEndpoint(dartManifest, 'serviceAccountShorthand')!;
+      final nodejsFunc = _getEndpoint(
+        nodejsManifest,
+        'serviceAccountShorthand',
+      )!;
+
+      expect(dartFunc['serviceAccountEmail'], equals('super-account@'));
+      expect(nodejsFunc['serviceAccountEmail'], equals('super-account@'));
+    });
+
     test('callableFull should NOT have runtime-only options', () {
       final dartFunc = _getEndpoint(dartManifest, 'callableFull')!;
       final nodejsFunc = _getEndpoint(nodejsManifest, 'callableFull')!;
@@ -1957,6 +2000,54 @@ void main() {
       expect(dartFunc['availableMemoryMb'], equals(512));
       expect(nodejsFunc['availableMemoryMb'], equals(512));
     });
+
+    // =========================================================================
+    // Secrets Tests
+    // =========================================================================
+
+    test('should resolve secret variable names via variableToParamName', () {
+      final dartFunc = _getEndpoint(dartManifest, 'httpsWithSecrets')!;
+      final nodejsFunc = _getEndpoint(nodejsManifest, 'httpsWithSecrets')!;
+
+      expect(dartFunc['secretEnvironmentVariables'], isNotNull);
+      expect(nodejsFunc['secretEnvironmentVariables'], isNotNull);
+
+      final dartSecrets = dartFunc['secretEnvironmentVariables'] as List;
+      final nodejsSecrets = nodejsFunc['secretEnvironmentVariables'] as List;
+
+      expect(dartSecrets, hasLength(2));
+      expect(nodejsSecrets, hasLength(2));
+
+      // Variable 'apiKey' bound to defineSecret('API_KEY') resolves to 'API_KEY'
+      final dartApiKey = dartSecrets.firstWhere(
+        (s) => (s as Map)['key'] == 'API_KEY',
+        orElse: () => null,
+      );
+      expect(dartApiKey, isNotNull);
+      expect((dartApiKey as Map)['secret'], equals('API_KEY'));
+
+      final nodejsApiKey = nodejsSecrets.firstWhere(
+        (s) => (s as Map)['key'] == 'API_KEY',
+        orElse: () => null,
+      );
+      expect(nodejsApiKey, isNotNull);
+      expect((nodejsApiKey as Map)['secret'], equals('API_KEY'));
+
+      // Variable 'apiConfig' bound to defineJsonSecret('API_CONFIG') resolves to 'API_CONFIG'
+      final dartApiConfig = dartSecrets.firstWhere(
+        (s) => (s as Map)['key'] == 'API_CONFIG',
+        orElse: () => null,
+      );
+      expect(dartApiConfig, isNotNull);
+      expect((dartApiConfig as Map)['secret'], equals('API_CONFIG'));
+
+      final nodejsApiConfig = nodejsSecrets.firstWhere(
+        (s) => (s as Map)['key'] == 'API_CONFIG',
+        orElse: () => null,
+      );
+      expect(nodejsApiConfig, isNotNull);
+      expect((nodejsApiConfig as Map)['secret'], equals('API_CONFIG'));
+    });
   });
 }
 
@@ -1984,9 +2075,8 @@ Map<String, dynamic>? _getParam(Map<String, dynamic> manifest, String name) {
   final params = manifest['params'] as List?;
   if (params == null) return null;
   for (final param in params) {
-    if ((param as Map)['name'] == name) {
-      return param as Map<String, dynamic>;
-    }
+    final typedParam = param as Map<String, dynamic>;
+    if (typedParam['name'] == name) return typedParam;
   }
   return null;
 }

@@ -18,12 +18,12 @@ library;
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/utilities.dart';
 import '../firebase.dart';
-import '../https/error.dart';
 import 'auth_blocking_event.dart';
 import 'options.dart';
 import 'responses.dart';
@@ -68,7 +68,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeUserCreated(
     FutureOr<BeforeCreateResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -99,7 +98,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeUserSignedIn(
     FutureOr<BeforeSignInResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -136,7 +134,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeEmailSent(
     FutureOr<BeforeEmailResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -173,7 +170,6 @@ class IdentityNamespace extends FunctionsNamespace {
   /// ```
   void beforeSmsSent(
     FutureOr<BeforeSmsResponse?> Function(AuthBlockingEvent event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(
@@ -192,7 +188,6 @@ class IdentityNamespace extends FunctionsNamespace {
   void beforeOperation(
     FutureOr<BeforeResponse?> Function(AuthBlockingEvent event) handler, {
     required AuthBlockingEventType eventType,
-    // ignore: experimental_member_use
     @mustBeConst BlockingOptions? options = const BlockingOptions(),
   }) {
     _beforeOperation(eventType: eventType, options: options, handler: handler);
@@ -213,45 +208,50 @@ class IdentityNamespace extends FunctionsNamespace {
     final functionName = eventType.value;
 
     firebase.registerFunction(functionName, (request) async {
-      try {
-        // Validate request
-        if (!_isValidRequest(request)) {
-          throw InvalidArgumentError('Bad Request');
-        }
-
-        // Parse request body
-        final body = await readAsJsonMap(request);
-
-        // Extract JWT from request body
-        final data = body['data'] as Map<String, dynamic>?;
-        final jwt = data?['jwt'] as String?;
-
-        if (jwt == null) {
-          throw InvalidArgumentError('Missing JWT in request body');
-        }
-
-        // Decode and verify JWT payload
-        final decodedPayload = await _decodeAndVerifyJwt(jwt);
-
-        // Parse the event
-        final event = AuthBlockingEvent.fromDecodedPayload(decodedPayload);
-
-        // Validate response claims
-        final response = await handler(event);
-        _validateAuthResponse(eventType, response);
-
-        // Generate response payload
-        final result = generateResponsePayload(response);
-
-        return Response.ok(
-          jsonEncode(result.toJson()),
-          headers: {'Content-Type': 'application/json'},
-        );
-      } on HttpsError catch (e) {
-        return e.toShelfResponse();
-      } catch (e, stackTrace) {
-        return logInternalError(e, stackTrace).toShelfResponse();
+      // Validate request
+      if (!_isValidRequest(request)) {
+        throw HttpResponseException.badRequest(message: 'Bad Request');
       }
+
+      // Parse request body
+      final Map<String, dynamic> body;
+      try {
+        body = await readAsJsonMap(request);
+      } on FormatException catch (e, s) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid request body',
+          innerError: e,
+          innerStack: s,
+        );
+      }
+
+      // Extract JWT from request body
+      final data = body['data'] as Map<String, dynamic>?;
+      final jwt = data?['jwt'] as String?;
+
+      if (jwt == null) {
+        throw HttpResponseException.badRequest(
+          message: 'Missing JWT in request body',
+        );
+      }
+
+      // Decode and verify JWT payload
+      final decodedPayload = await _decodeAndVerifyJwt(jwt);
+
+      // Parse the event
+      final event = AuthBlockingEvent.fromDecodedPayload(decodedPayload);
+
+      // Validate response claims
+      final response = await handler(event);
+      _validateAuthResponse(eventType, response);
+
+      // Generate response payload
+      final result = generateResponsePayload(response);
+
+      return Response.ok(
+        jsonEncode(result.toJson()),
+        headers: {'Content-Type': 'application/json'},
+      );
     });
   }
 
@@ -328,15 +328,17 @@ class IdentityNamespace extends FunctionsNamespace {
             .where(customClaims.containsKey)
             .toList();
         if (invalidClaims.isNotEmpty) {
-          throw InvalidArgumentError(
-            'The customClaims claims "${invalidClaims.join(",")}" are reserved '
-            'and cannot be specified.',
+          throw HttpResponseException.badRequest(
+            message:
+                'The customClaims claims "${invalidClaims.join(",")}" are reserved '
+                'and cannot be specified.',
           );
         }
         if (jsonEncode(customClaims).length > claimsMaxPayloadSize) {
-          throw InvalidArgumentError(
-            'The customClaims payload should not exceed $claimsMaxPayloadSize '
-            'characters.',
+          throw HttpResponseException.badRequest(
+            message:
+                'The customClaims payload should not exceed $claimsMaxPayloadSize '
+                'characters.',
           );
         }
       }
@@ -349,15 +351,17 @@ class IdentityNamespace extends FunctionsNamespace {
             .where(sessionClaims.containsKey)
             .toList();
         if (invalidClaims.isNotEmpty) {
-          throw InvalidArgumentError(
-            'The sessionClaims claims "${invalidClaims.join(",")}" are reserved '
-            'and cannot be specified.',
+          throw HttpResponseException.badRequest(
+            message:
+                'The sessionClaims claims "${invalidClaims.join(",")}" are reserved '
+                'and cannot be specified.',
           );
         }
         if (jsonEncode(sessionClaims).length > claimsMaxPayloadSize) {
-          throw InvalidArgumentError(
-            'The sessionClaims payload should not exceed $claimsMaxPayloadSize '
-            'characters.',
+          throw HttpResponseException.badRequest(
+            message:
+                'The sessionClaims payload should not exceed $claimsMaxPayloadSize '
+                'characters.',
           );
         }
 
@@ -365,9 +369,10 @@ class IdentityNamespace extends FunctionsNamespace {
         final customClaims = authResponse.customClaims ?? {};
         final combinedClaims = {...customClaims, ...sessionClaims};
         if (jsonEncode(combinedClaims).length > claimsMaxPayloadSize) {
-          throw InvalidArgumentError(
-            'The customClaims and sessionClaims payloads should not exceed '
-            '$claimsMaxPayloadSize characters combined.',
+          throw HttpResponseException.badRequest(
+            message:
+                'The customClaims and sessionClaims payloads should not exceed '
+                '$claimsMaxPayloadSize characters combined.',
           );
         }
       }

@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'alert_event.dart';
 import 'alert_type.dart';
@@ -35,7 +35,6 @@ class PerformanceNamespace {
   /// Handles performance threshold alerts.
   void onThresholdAlertPublished(
     FutureOr<void> Function(AlertEvent<ThresholdAlertPayload> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst AlertOptions? options = const AlertOptions(),
   }) {
     _registerPerformanceHandler<ThresholdAlertPayload>(
@@ -55,24 +54,27 @@ class PerformanceNamespace {
     final functionName = _alertTypeToFunctionName(alertType.value);
 
     _firebase.registerFunction(functionName, (request) async {
+      final AlertEvent<T> event;
       try {
         final json = await parseAndValidateCloudEvent(request);
 
         if (!_isAlertEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for alerts: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for alerts: ${json['type']}',
           );
         }
 
-        final event = AlertEvent<T>.fromJson(json, payloadDecoder);
-        await handler(event);
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+        event = AlertEvent<T>.fromJson(json, payloadDecoder);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      await handler(event);
+      return Response.ok('');
     });
   }
 

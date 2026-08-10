@@ -14,11 +14,11 @@
 
 import 'dart:async';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/cloud_event.dart';
-import '../common/utilities.dart';
 import '../firebase.dart';
 import 'config_update_data.dart';
 import 'options.dart';
@@ -45,40 +45,41 @@ class RemoteConfigNamespace extends FunctionsNamespace {
   /// ```
   void onConfigUpdated(
     Future<void> Function(CloudEvent<ConfigUpdateData> event) handler, {
-    // ignore: experimental_member_use
     @mustBeConst RemoteConfigOptions? options = const RemoteConfigOptions(),
   }) {
     const functionName = 'onConfigUpdated';
 
     firebase.registerFunction(functionName, (request) async {
+      final CloudEvent<ConfigUpdateData> event;
       try {
         // Read and parse CloudEvent
         final json = await parseAndValidateCloudEvent(request);
 
         // Verify it's a Remote Config event
         if (!_isRemoteConfigEvent(json['type'] as String)) {
-          return Response(
-            400,
-            body: 'Invalid event type for Remote Config: ${json['type']}',
+          throw HttpResponseException.badRequest(
+            message: 'Invalid event type for Remote Config: ${json['type']}',
           );
         }
 
         // Parse CloudEvent with ConfigUpdateData
-        final event = CloudEvent<ConfigUpdateData>.fromJson(
+        event = CloudEvent<ConfigUpdateData>.fromJson(
           json,
           ConfigUpdateData.fromJson,
         );
-
-        // Execute handler
-        await handler(event);
-
-        // Return success
-        return Response.ok('');
-      } on FormatException catch (e) {
-        return Response(400, body: 'Invalid CloudEvent: ${e.message}');
-      } catch (e, stackTrace) {
-        return logEventHandlerError(e, stackTrace);
+      } on FormatException catch (e, stackTrace) {
+        throw HttpResponseException.badRequest(
+          message: 'Invalid CloudEvent: ${e.message}',
+          innerError: e,
+          innerStack: stackTrace,
+        );
       }
+
+      // Execute handler
+      await handler(event);
+
+      // Return success
+      return Response.ok('');
     });
   }
 

@@ -14,15 +14,12 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
-import 'package:stack_trace/stack_trace.dart' show Trace;
-
 import '../firebase.dart';
-import '../logger/logger.dart';
 import 'options.dart';
 import 'task_request.dart';
 
@@ -52,9 +49,7 @@ class TasksNamespace extends FunctionsNamespace {
   /// ```
   void onTaskDispatched(
     Future<void> Function(TaskRequest<dynamic> request) handler, {
-    // ignore: experimental_member_use
     @mustBeConst required String name,
-    // ignore: experimental_member_use
     @mustBeConst TaskQueueOptions? options = const TaskQueueOptions(),
   }) {
     firebase.registerFunction(name, (request) async {
@@ -133,13 +128,10 @@ class TasksNamespace extends FunctionsNamespace {
         // Return 204 No Content (matching Node.js behavior)
         return Response(204);
       } catch (e, stackTrace) {
-        logger.error('$e\n${Trace.from(stackTrace).terse}');
-        return Response(
-          500,
-          body: jsonEncode({
-            'error': {'status': 'INTERNAL', 'message': 'INTERNAL'},
-          }),
-          headers: {HttpHeaders.contentTypeHeader: 'application/json'},
+        throw HttpResponseException.internalServerError(
+          message: 'INTERNAL',
+          innerError: e,
+          innerStack: stackTrace,
         );
       }
     });

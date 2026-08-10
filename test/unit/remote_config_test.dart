@@ -22,6 +22,8 @@ import 'package:firebase_functions/src/remote_config/remote_config_namespace.dar
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
+import 'shared_utils.dart';
+
 // Helper to find function by name
 FirebaseFunctionDeclaration? _findFunction(Firebase firebase, String name) {
   try {
@@ -226,8 +228,8 @@ void main() {
           throw Exception('Handler error');
         });
 
-        final func = _findFunction(firebase, 'onconfigupdated')!;
-        final response = await func.handler(_createRemoteConfigRequest());
+        final handler = findHandler(firebase, 'onconfigupdated');
+        final response = await handler(_createRemoteConfigRequest());
 
         expect(response.statusCode, 500);
         final body = await response.readAsString();
@@ -237,14 +239,14 @@ void main() {
       test('returns 400 for invalid CloudEvent', () async {
         remoteConfig.onConfigUpdated((event) async {});
 
-        final func = _findFunction(firebase, 'onconfigupdated')!;
+        final handler = findHandler(firebase, 'onconfigupdated');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onconfigupdated'),
           body: 'not json',
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
       });
@@ -252,7 +254,7 @@ void main() {
       test('returns 400 for wrong event type', () async {
         remoteConfig.onConfigUpdated((event) async {});
 
-        final func = _findFunction(firebase, 'onconfigupdated')!;
+        final handler = findHandler(firebase, 'onconfigupdated');
         final request = Request(
           'POST',
           Uri.parse('http://localhost/onconfigupdated'),
@@ -266,7 +268,7 @@ void main() {
           }),
           headers: {'content-type': 'application/json'},
         );
-        final response = await func.handler(request);
+        final response = await handler(request);
 
         expect(response.statusCode, 400);
         final body = await response.readAsString();
