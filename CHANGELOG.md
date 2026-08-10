@@ -1,3 +1,9 @@
+## Unreleased
+
+- Fix `extractAuthToken` dropping custom claims from `AuthData.token` for
+  verified (non-emulator) ID tokens; custom claims set via
+  `auth.setCustomUserClaims()` are now included alongside the standard claims.
+
 ## 0.7.0
 
 - **BREAKING:** Replace custom `HttpsError` implementation with
