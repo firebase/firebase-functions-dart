@@ -25,4 +25,5 @@ environment:
   sdk: ^3.9.0
 
 dependencies:
-  firebase_functions: ^0.7.0
+  firebase_functions:
+    path: ../../..
