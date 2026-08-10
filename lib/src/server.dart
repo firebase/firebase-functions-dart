@@ -25,6 +25,7 @@ import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
 import 'common/on_init.dart';
 import 'firebase.dart';
+import 'https/cors.dart';
 import 'logger/logger.dart';
 
 /// Callback type for the user's function registration code.
@@ -73,13 +74,14 @@ Future<void> runFunctions(FunctionsRunner runner) async {
     // Run user's function registration code
     await runner(firebase);
 
-    // Build request handler with middleware pipeline
-    var middleware = const Pipeline().middleware;
-
-    final env = firebase.$env;
-    if (env.enableCors) {
-      middleware = middleware.addMiddleware(_corsMiddleware);
-    }
+    // Build request handler with middleware pipeline.
+    //
+    // Note: the emulator's `enableCors` debug feature is deliberately *not* a
+    // blanket middleware. It is folded into each function's own CORS resolution
+    // (see CorsConfig.resolveOrigins) so that a function which explicitly
+    // disables CORS keeps it disabled under the emulator, and so that event
+    // triggers never receive CORS headers. This matches the Node.js SDK.
+    final middleware = const Pipeline().middleware;
 
     // Build request handler with middleware pipeline
     final handler = middleware.addHandler((request) {
@@ -97,57 +99,6 @@ Future<void> runFunctions(FunctionsRunner runner) async {
     // Start HTTP server
     await shelf_io.serve(handler, InternetAddress.anyIPv4, env.port);
   });
-}
-
-/// CORS middleware for emulator mode.
-Handler _corsMiddleware(Handler innerHandler) => (request) {
-  // Handle preflight OPTIONS requests
-  if (request.method.toUpperCase() == 'OPTIONS') {
-    return Response(204, headers: _corsAnyOriginHeaders);
-  }
-
-  return Future.sync(() => innerHandler(request)).then((response) {
-    // Add CORS headers to all responses if enabled
-    return response.change(headers: _corsAnyOriginHeaders);
-  });
-};
-
-const _corsAnyOriginHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': '*',
-  'Access-Control-Allow-Headers': '*',
-};
-
-Response _buildOptionsCorsResponse(
-  Request request,
-  List<String> allowedOrigins,
-) => Response.ok('', headers: corsHeadersFor(request, allowedOrigins));
-
-Response _applyCorsHeaders(
-  Request request,
-  Response response,
-  List<String> allowedOrigins,
-) => response.change(headers: corsHeadersFor(request, allowedOrigins));
-
-@visibleForTesting
-Map<String, String> corsHeadersFor(
-  Request request,
-  List<String> allowedOrigins,
-) {
-  if (allowedOrigins.contains('*')) {
-    return _corsAnyOriginHeaders;
-  }
-
-  final origin = request.headers['origin'];
-  if (origin != null && allowedOrigins.contains(origin)) {
-    return {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': '*',
-      'Access-Control-Allow-Headers': '*',
-    };
-  }
-
-  return const {};
 }
 
 /// Routes incoming requests to the appropriate function handler.
@@ -183,7 +134,7 @@ FutureOr<Response> _routeRequest(
   }
 
   // Shared process mode (development): Route by path
-  return _routeByPath(request, functions, requestPath);
+  return _routeByPath(request, functions, requestPath, env);
 }
 
 /// Routes request to the function specified by FUNCTION_TARGET.
@@ -215,10 +166,15 @@ FutureOr<Response> _routeToTargetFunction(
   // served via HTTP in a single process, so the signature type distinction
   // from the Node.js model does not apply here.
 
-  // Validate HTTP method for event functions
-  if (request.method.toUpperCase() == 'OPTIONS' &&
-      targetFunction.allowedOrigins != null) {
-    return _buildOptionsCorsResponse(request, targetFunction.allowedOrigins!);
+  // Resolve CORS once per request, matching the Node.js SDK. Event triggers
+  // have no CORS config at all, so `origins` stays null for them.
+  final cors = targetFunction.cors;
+  final origins = cors?.resolveOrigins(debugCorsEnabled: env.enableCors);
+
+  // Answer the preflight without invoking the handler (and without running the
+  // callable auth checks, which a preflight cannot satisfy).
+  if (request.method.toUpperCase() == 'OPTIONS' && origins != null) {
+    return buildPreflightResponse(request, origins, methods: cors!.methods);
   }
 
   if (!targetFunction.external && request.method.toUpperCase() != 'POST') {
@@ -231,10 +187,7 @@ FutureOr<Response> _routeToTargetFunction(
 
   final wrappedHandler = withInit(targetFunction.handler);
   final response = await wrappedHandler(request);
-  if (targetFunction.allowedOrigins != null) {
-    return _applyCorsHeaders(request, response, targetFunction.allowedOrigins!);
-  }
-  return response;
+  return applyCorsHeaders(request, response, origins);
 }
 
 /// Routes request by path matching (development/shared process mode).
@@ -242,6 +195,7 @@ FutureOr<Response> _routeByPath(
   Request request,
   List<FirebaseFunctionDeclaration> functions,
   String requestPath,
+  FirebaseEnv env,
 ) async {
   // Use a local variable for the potentially reconstructed request
   var currentRequest = request;
@@ -274,11 +228,14 @@ FutureOr<Response> _routeByPath(
   // Try to find a matching function by name
   for (final function in functions) {
     if (functionName == function.name) {
-      if (currentRequest.method.toUpperCase() == 'OPTIONS' &&
-          function.allowedOrigins != null) {
-        return _buildOptionsCorsResponse(
+      final cors = function.cors;
+      final origins = cors?.resolveOrigins(debugCorsEnabled: env.enableCors);
+
+      if (currentRequest.method.toUpperCase() == 'OPTIONS' && origins != null) {
+        return buildPreflightResponse(
           currentRequest,
-          function.allowedOrigins!,
+          origins,
+          methods: cors!.methods,
         );
       }
 
@@ -288,14 +245,7 @@ FutureOr<Response> _routeByPath(
 
       final wrappedHandler = withInit(function.handler);
       final response = await wrappedHandler(currentRequest);
-      if (function.allowedOrigins != null) {
-        return _applyCorsHeaders(
-          currentRequest,
-          response,
-          function.allowedOrigins!,
-        );
-      }
-      return response;
+      return applyCorsHeaders(currentRequest, response, origins);
     }
   }
 

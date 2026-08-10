@@ -544,7 +544,19 @@ void main() {
         );
 
         final func = _findFunction(firebase, 'optionsfunction')!;
-        expect(func.allowedOrigins, ['https://example.com']);
+        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), [
+          'https://example.com',
+        ]);
+      });
+
+      test('onRequest emits no CORS headers when no cors option given', () {
+        https.onRequest(
+          name: 'requestNoCors',
+          (request) async => Response.ok('OK'),
+        );
+
+        final func = _findFunction(firebase, 'requestnocors')!;
+        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), isNull);
       });
 
       test('CallableOptions can be provided', () {
@@ -570,11 +582,14 @@ void main() {
           firebase,
           'callableoptionsfunctionwithorigins',
         )!;
-        expect(func.allowedOrigins, ['https://example.com']);
+        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), [
+          'https://example.com',
+        ]);
+        expect(func.cors!.methods, ['POST']);
       });
 
       test(
-        'onCall defaults allowedOrigins to [*] when no cors option given',
+        'onCall defaults to allowing any origin when no cors option given',
         () {
           https.onCall(
             name: 'callableNoCors',
@@ -582,12 +597,13 @@ void main() {
           );
 
           final func = _findFunction(firebase, 'callablenocors')!;
-          expect(func.allowedOrigins, ['*']);
+          expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
         },
       );
 
       test(
-        'onCallWithData defaults allowedOrigins to [*] when no cors option given',
+        'onCallWithData defaults to allowing any origin when no cors option '
+        'given',
         () {
           https.onCallWithData<_GreetRequest, String>(
             name: 'typedNoCors',
@@ -596,7 +612,7 @@ void main() {
           );
 
           final func = _findFunction(firebase, 'typednocors')!;
-          expect(func.allowedOrigins, ['*']);
+          expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
         },
       );
     });

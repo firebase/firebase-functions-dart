@@ -24,6 +24,7 @@ import 'common/environment.dart';
 import 'database/database_namespace.dart';
 import 'eventarc/eventarc_namespace.dart';
 import 'firestore/firestore_namespace.dart';
+import 'https/cors.dart';
 import 'https/https_namespace.dart';
 import 'identity/identity_namespace.dart';
 import 'pubsub/pubsub_namespace.dart';
@@ -167,13 +168,14 @@ extension FirebaseX on Firebase {
   /// [external] indicates if the function accepts non-POST requests.
   /// [documentPattern] is the Firestore document path pattern (e.g., 'users/{userId}').
   /// [refPattern] is the Database ref path pattern (e.g., 'messages/{messageId}').
+  /// [cors] is the CORS configuration, for HTTPS functions only.
   void registerFunction(
     String name,
     FirebaseFunctionHandler handler, {
     bool external = false,
     String? documentPattern,
     String? refPattern,
-    List<String>? allowedOrigins,
+    CorsConfig? cors,
   }) {
     // Check for duplicate function names
     if (functions.any((f) => f.name == name)) {
@@ -189,7 +191,7 @@ extension FirebaseX on Firebase {
         name: transformedName,
         handler: handler,
         external: external,
-        allowedOrigins: allowedOrigins,
+        cors: cors,
         documentPattern: documentPattern,
         refPattern: refPattern,
       ),
@@ -209,7 +211,7 @@ final class FirebaseFunctionDeclaration {
     required this.name,
     required this.handler,
     required this.external,
-    this.allowedOrigins,
+    this.cors,
     this.documentPattern,
     this.refPattern,
   }) : path = name;
@@ -234,8 +236,9 @@ final class FirebaseFunctionDeclaration {
   /// Event-driven functions are internal (false, POST only).
   final bool external;
 
-  /// Allowed origins for CORS (if specified).
-  final List<String>? allowedOrigins;
+  /// CORS configuration, or null for functions that never emit CORS headers
+  /// (event-driven triggers).
+  final CorsConfig? cors;
 
   /// The function handler.
   final FirebaseFunctionHandler handler;

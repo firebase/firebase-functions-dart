@@ -23,6 +23,7 @@ import '../common/utilities.dart';
 import '../firebase.dart';
 import 'auth.dart';
 import 'callable.dart';
+import 'cors.dart';
 import 'error.dart';
 import 'options.dart';
 
@@ -64,7 +65,9 @@ class HttpsNamespace extends FunctionsNamespace {
         }
       },
       external: true,
-      allowedOrigins: options?.cors?.runtimeValue(),
+      // onRequest is opt-in: no CORS headers unless `cors` is set (or the
+      // emulator's enableCors debug feature is on). Matches the Node.js SDK.
+      cors: CorsConfig(option: options?.cors),
     );
   }
 
@@ -150,7 +153,14 @@ class HttpsNamespace extends FunctionsNamespace {
         (result) => result.data,
         (result) => result.toResponse(),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
+    },
+      // Callables default to allowing any origin, and only ever accept POST.
+      cors: CorsConfig(
+        option: options?.cors,
+        methods: callableCorsMethods,
+        enabledByDefault: true,
+      ),
+    );
   }
 
   /// Creates an HTTPS callable function with typed data.
@@ -237,7 +247,14 @@ class HttpsNamespace extends FunctionsNamespace {
           headers: {'Content-Type': 'application/json'},
         ),
       );
-    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
+    },
+      // Callables default to allowing any origin, and only ever accept POST.
+      cors: CorsConfig(
+        option: options?.cors,
+        methods: callableCorsMethods,
+        enabledByDefault: true,
+      ),
+    );
   }
 
   /// Internal handler for callable functions.

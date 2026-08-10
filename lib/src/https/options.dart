@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import '../common/options.dart';
+import 'cors.dart';
 
 /// Options for HTTPS functions (onRequest).
 class HttpsOptions extends GlobalOptions {
@@ -38,6 +39,10 @@ class HttpsOptions extends GlobalOptions {
   });
 
   /// CORS configuration for the function.
+  ///
+  /// See [Cors] for how the origin list is interpreted. When omitted, no CORS
+  /// headers are emitted for `onRequest` functions; callable functions default
+  /// to allowing any origin.
   final Cors? cors;
 }
 
@@ -75,6 +80,21 @@ class CallableOptions extends HttpsOptions {
 
 // Type aliases for HTTPS-specific options
 
+/// The set of origins allowed to make cross-origin requests to a function.
+///
+/// - `Cors(['*'])` allows any origin. The request's `Origin` header is
+///   reflected back in `Access-Control-Allow-Origin` rather than a literal
+///   `*`, matching `cors: true` in the Node.js SDK.
+/// - `Cors(['https://example.com'])` allows only the listed origins, compared
+///   as exact, case-sensitive strings.
+/// - `Cors(<String>[])` disables CORS entirely, equivalent to `cors: false`.
+///   An empty list also wins over the emulator's `enableCors` debug feature.
+///
+/// The value may also come from a parameter or expression, in which case it is
+/// resolved once per request. If resolution fails, CORS is disabled for that
+/// request and a warning is logged.
+///
+/// See [corsAllowAnyOrigin] and [corsDisabled] for the two constant shorthands.
 typedef Cors = Option<List<String>>;
 typedef ConsumeAppCheckToken = Option<bool>;
 typedef HeartBeatIntervalSeconds = Option<int>;
