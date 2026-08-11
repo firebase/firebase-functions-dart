@@ -625,20 +625,16 @@ void main() {
         },
       );
 
-      test(
-        'onCallWithData defaults to allowing any origin when no cors option '
-        'given',
-        () {
-          https.onCallWithData<_GreetRequest, String>(
-            name: 'typedNoCors',
-            fromJson: _GreetRequest.fromJson,
-            (request, response) async => 'OK',
-          );
+      test('onCallWithData defaults to allowing any origin', () {
+        https.onCallWithData<_GreetRequest, String>(
+          name: 'typedNoCors',
+          fromJson: _GreetRequest.fromJson,
+          (request, response) async => 'OK',
+        );
 
-          final func = _findFunction(firebase, 'typednocors')!;
-          expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
-        },
-      );
+        final func = _findFunction(firebase, 'typednocors')!;
+        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
+      });
     });
   });
 }
