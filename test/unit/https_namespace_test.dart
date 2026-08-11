@@ -20,6 +20,7 @@ import 'dart:convert';
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/callable.dart';
+import 'package:firebase_functions/src/https/cors.dart';
 import 'package:firebase_functions/src/https/https_namespace.dart';
 import 'package:firebase_functions/src/https/options.dart';
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
@@ -568,9 +569,14 @@ void main() {
         );
 
         final func = _findFunction(firebase, 'optionsfunction')!;
-        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), [
-          'https://example.com',
-        ]);
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsFixedOrigin>().having(
+            (d) => d.origin,
+            'origin',
+            'https://example.com',
+          ),
+        );
       });
 
       test('onRequest emits no CORS headers when no cors option given', () {
@@ -580,7 +586,7 @@ void main() {
         );
 
         final func = _findFunction(firebase, 'requestnocors')!;
-        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), isNull);
+        expect(func.cors!.resolve(debugCorsEnabled: false), isA<CorsOff>());
       });
 
       test('CallableOptions can be provided', () {
@@ -606,9 +612,14 @@ void main() {
           firebase,
           'callableoptionsfunctionwithorigins',
         )!;
-        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), [
-          'https://example.com',
-        ]);
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsFixedOrigin>().having(
+            (d) => d.origin,
+            'origin',
+            'https://example.com',
+          ),
+        );
         expect(func.cors!.methods, ['POST']);
       });
 
@@ -621,7 +632,10 @@ void main() {
           );
 
           final func = _findFunction(firebase, 'callablenocors')!;
-          expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
+          expect(
+            func.cors!.resolve(debugCorsEnabled: false),
+            isA<CorsReflectAny>(),
+          );
         },
       );
 
@@ -633,7 +647,10 @@ void main() {
         );
 
         final func = _findFunction(firebase, 'typednocors')!;
-        expect(func.cors!.resolveOrigins(debugCorsEnabled: false), ['*']);
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsReflectAny>(),
+        );
       });
     });
   });

@@ -16,6 +16,7 @@ import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/https.dart';
 import 'package:firebase_functions/src/server.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:shelf/shelf.dart';
 import 'package:test/test.dart';
 
@@ -69,9 +70,13 @@ void main() {
             headers: {'origin': origin},
           );
 
+      // Two entries, so this exercises dynamic matching rather than the
+      // single-entry collapse to a static header.
       void echoAllowingExample(Firebase f) => f.https.onRequest(
         name: 'echo',
-        options: const HttpsOptions(cors: Cors(['https://example.com'])),
+        options: const HttpsOptions(
+          cors: Cors(['https://example.com', 'https://other.com']),
+        ),
         (request) async => Response.ok('ok'),
       );
 
@@ -159,6 +164,85 @@ void main() {
           response.headers['access-control-allow-origin'],
           'https://example.com',
         );
+      });
+
+      test('error response from a thrown exception keeps CORS headers', () async {
+        // Without this, a callable rejecting a bad token returns a bare 401 and
+        // the browser reports an opaque CORS failure instead of the real status.
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(cors: corsAllowAnyOrigin),
+            (request) async => throw HttpResponseException.unauthorized(),
+          ),
+        );
+
+        final response = await handler(get('/echo'));
+        expect(response.statusCode, 401);
+        expect(
+          response.headers['access-control-allow-origin'],
+          'https://example.com',
+        );
+      });
+
+      test('unhandled error response keeps CORS headers', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(cors: corsAllowAnyOrigin),
+            (request) async => throw StateError('kaboom'),
+          ),
+        );
+
+        final response = await handler(get('/echo'));
+        expect(response.statusCode, 500);
+        expect(
+          response.headers['access-control-allow-origin'],
+          'https://example.com',
+        );
+      });
+
+      test('a single allowed origin is emitted statically', () async {
+        // Matches how Node.js collapses a one-element allow-list: the header is
+        // set regardless of the request, leaving the browser to reject it.
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(cors: Cors(['https://example.com'])),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final response = await handler(
+          get('/echo', origin: 'https://evil.com'),
+        );
+        expect(
+          response.headers['access-control-allow-origin'],
+          'https://example.com',
+        );
+      });
+
+      test('regex origins are matched', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(
+              cors: Cors([CorsPattern(r'^https://.*\.example\.com$')]),
+            ),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final ok = await handler(
+          get('/echo', origin: 'https://app.example.com'),
+        );
+        expect(
+          ok.headers['access-control-allow-origin'],
+          'https://app.example.com',
+        );
+
+        final bad = await handler(get('/echo', origin: 'https://evil.com'));
+        expect(bad.headers.containsKey('access-control-allow-origin'), isFalse);
       });
 
       test('emulator enableCors respects an explicit opt-out', () async {

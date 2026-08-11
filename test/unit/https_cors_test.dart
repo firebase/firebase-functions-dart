@@ -33,54 +33,108 @@ Request _request({
 
 void main() {
   group('corsHeadersFor', () {
-    test('reflects the request origin when any origin is allowed', () {
-      final headers = corsHeadersFor(_request(origin: 'https://example.com'), [
-        '*',
-      ]);
+    test('wildcard emits a literal star and no Vary', () {
+      // Mirrors `cors: '*'`: the response does not depend on the origin.
+      final headers = corsHeadersFor(
+        _request(origin: 'https://a.com'),
+        const CorsWildcard(),
+      );
 
-      // Reflecting rather than emitting a literal `*` matches `cors: true` in
-      // the Node.js SDK, and is required for credentialed requests.
-      expect(headers['Access-Control-Allow-Origin'], 'https://example.com');
+      expect(headers['Access-Control-Allow-Origin'], '*');
+      expect(headers.containsKey('Vary'), isFalse);
+    });
+
+    test('reflect-any echoes the request origin with Vary', () {
+      final headers = corsHeadersFor(
+        _request(origin: 'https://a.com'),
+        const CorsReflectAny(),
+      );
+
+      expect(headers['Access-Control-Allow-Origin'], 'https://a.com');
       expect(headers['Vary'], 'Origin');
     });
 
-    test('omits allow-origin when the request has no Origin header', () {
-      final headers = corsHeadersFor(_request(), ['*']);
+    test('reflect-any omits the header when there is no Origin', () {
+      final headers = corsHeadersFor(_request(), const CorsReflectAny());
 
       expect(headers.containsKey('Access-Control-Allow-Origin'), isFalse);
       expect(headers['Vary'], 'Origin');
     });
 
-    test('reflects an origin present in the allow-list', () {
-      final headers = corsHeadersFor(_request(origin: 'https://example.com'), [
-        'https://other.com',
-        'https://example.com',
-      ]);
+    test('fixed origin is emitted even when the request differs', () {
+      // Node.js collapses a one-element allow-list to a bare string, which the
+      // cors middleware sets unconditionally; the browser rejects a mismatch.
+      final headers = corsHeadersFor(
+        _request(origin: 'https://evil.com'),
+        const CorsFixedOrigin('https://example.com'),
+      );
 
       expect(headers['Access-Control-Allow-Origin'], 'https://example.com');
-    });
-
-    test('omits allow-origin for an origin not in the allow-list', () {
-      final headers = corsHeadersFor(_request(origin: 'https://evil.com'), [
-        'https://example.com',
-      ]);
-
-      expect(headers.containsKey('Access-Control-Allow-Origin'), isFalse);
-      // Vary is still required: the response varies on Origin even when the
-      // origin is rejected, or a cache will serve this to an allowed origin.
       expect(headers['Vary'], 'Origin');
     });
 
-    test('emits nothing when CORS is disabled', () {
-      expect(corsHeadersFor(_request(origin: 'https://a.com'), null), isEmpty);
+    test('match list reflects an allowed origin', () {
+      final headers = corsHeadersFor(
+        _request(origin: 'https://b.com'),
+        const CorsMatchList(['https://a.com', 'https://b.com']),
+      );
+
+      expect(headers['Access-Control-Allow-Origin'], 'https://b.com');
+    });
+
+    test('match list omits the header for a disallowed origin', () {
+      final headers = corsHeadersFor(
+        _request(origin: 'https://evil.com'),
+        const CorsMatchList(['https://a.com', 'https://b.com']),
+      );
+
+      expect(headers.containsKey('Access-Control-Allow-Origin'), isFalse);
+      // Vary is still required, or a cache may serve this to an allowed origin.
+      expect(headers['Vary'], 'Origin');
+    });
+
+    test('match list supports regex patterns', () {
+      const decision = CorsMatchList([
+        CorsPattern(r'^https://.*\.example\.com$'),
+      ]);
+
       expect(
-        corsHeadersFor(_request(origin: 'https://a.com'), const []),
+        corsHeadersFor(
+          _request(origin: 'https://app.example.com'),
+          decision,
+        )['Access-Control-Allow-Origin'],
+        'https://app.example.com',
+      );
+      expect(
+        corsHeadersFor(
+          _request(origin: 'https://example.com.evil.com'),
+          decision,
+        ).containsKey('Access-Control-Allow-Origin'),
+        isFalse,
+      );
+    });
+
+    test('an invalid regex is ignored rather than thrown', () {
+      final headers = corsHeadersFor(
+        _request(origin: 'https://a.com'),
+        const CorsMatchList([CorsPattern('([unclosed')]),
+      );
+
+      expect(headers.containsKey('Access-Control-Allow-Origin'), isFalse);
+    });
+
+    test('emits nothing when disabled', () {
+      expect(
+        corsHeadersFor(_request(origin: 'https://a.com'), const CorsOff()),
         isEmpty,
       );
     });
 
     test('does not advertise methods or headers on non-preflight', () {
-      final headers = corsHeadersFor(_request(origin: 'https://a.com'), ['*']);
+      final headers = corsHeadersFor(
+        _request(origin: 'https://a.com'),
+        const CorsReflectAny(),
+      );
 
       expect(headers.containsKey('Access-Control-Allow-Methods'), isFalse);
       expect(headers.containsKey('Access-Control-Allow-Headers'), isFalse);
@@ -90,7 +144,7 @@ void main() {
       test('advertises the configured methods', () {
         final headers = corsHeadersFor(
           _request(method: 'OPTIONS', origin: 'https://a.com'),
-          ['*'],
+          const CorsReflectAny(),
           isPreflight: true,
           methods: callableCorsMethods,
         );
@@ -101,7 +155,7 @@ void main() {
       test('advertises default methods when unspecified', () {
         final headers = corsHeadersFor(
           _request(method: 'OPTIONS', origin: 'https://a.com'),
-          ['*'],
+          const CorsReflectAny(),
           isPreflight: true,
         );
 
@@ -121,7 +175,7 @@ void main() {
             origin: 'https://a.com',
             requestHeaders: 'authorization,content-type',
           ),
-          ['*'],
+          const CorsReflectAny(),
           isPreflight: true,
         );
 
@@ -132,40 +186,38 @@ void main() {
         expect(headers['Vary'], 'Origin, Access-Control-Request-Headers');
       });
 
-      test('omits allow-headers when none were requested', () {
+      test('varies on request-headers even when none were sent', () {
+        // The cors middleware pushes this Vary unconditionally on preflight.
         final headers = corsHeadersFor(
           _request(method: 'OPTIONS', origin: 'https://a.com'),
-          ['*'],
+          const CorsReflectAny(),
           isPreflight: true,
         );
 
         expect(headers.containsKey('Access-Control-Allow-Headers'), isFalse);
-        expect(headers['Vary'], 'Origin');
+        expect(headers['Vary'], 'Origin, Access-Control-Request-Headers');
+      });
+
+      test('a wildcard preflight still varies on request-headers only', () {
+        final headers = corsHeadersFor(
+          _request(method: 'OPTIONS', origin: 'https://a.com'),
+          const CorsWildcard(),
+          isPreflight: true,
+        );
+
+        expect(headers['Access-Control-Allow-Origin'], '*');
+        expect(headers['Vary'], 'Access-Control-Request-Headers');
       });
     });
   });
 
-  group('buildPreflightResponse', () {
-    test('responds 204 with an empty body', () async {
-      final response = buildPreflightResponse(
-        _request(method: 'OPTIONS', origin: 'https://a.com'),
-        ['*'],
-      );
-
-      expect(response.statusCode, 204);
-      expect(await response.readAsString(), isEmpty);
-      expect(response.headers['content-length'], '0');
-      expect(response.headers['access-control-allow-origin'], 'https://a.com');
-    });
-  });
-
   group('applyCorsHeaders', () {
-    test('leaves the response untouched when CORS is disabled', () {
+    test('leaves the response untouched when disabled', () {
       final original = Response.ok('body');
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
         original,
-        null,
+        const CorsOff(),
       );
 
       expect(result, same(original));
@@ -175,7 +227,7 @@ void main() {
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
         Response.ok('x', headers: {'Vary': 'Accept-Encoding'}),
-        ['*'],
+        const CorsReflectAny(),
       );
 
       expect(result.headers['vary'], 'Accept-Encoding, Origin');
@@ -185,7 +237,7 @@ void main() {
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
         Response.ok('x', headers: {'Vary': 'origin, Accept-Encoding'}),
-        ['*'],
+        const CorsReflectAny(),
       );
 
       expect(result.headers['vary'], 'origin, Accept-Encoding');
@@ -195,7 +247,7 @@ void main() {
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
         Response.ok('x', headers: {'Vary': '*'}),
-        ['*'],
+        const CorsReflectAny(),
       );
 
       expect(result.headers['vary'], '*');
@@ -205,7 +257,7 @@ void main() {
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
         Response.ok('{}', headers: {'Content-Type': 'application/json'}),
-        ['*'],
+        const CorsReflectAny(),
       );
 
       expect(result.headers['content-type'], 'application/json');
@@ -213,47 +265,80 @@ void main() {
     });
   });
 
-  group('CorsConfig.resolveOrigins', () {
+  group('CorsConfig.resolve', () {
     test('onRequest default is off', () {
       const config = CorsConfig();
-      expect(config.resolveOrigins(debugCorsEnabled: false), isNull);
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsOff>());
     });
 
-    test('callable default is any origin', () {
+    test('callable default reflects any origin', () {
+      // Node.js defaults callables to `cors: true`, i.e. reflect, not `*`.
       const config = CorsConfig(enabledByDefault: true);
-      expect(config.resolveOrigins(debugCorsEnabled: false), ['*']);
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsReflectAny>());
     });
 
-    test('uses an explicit allow-list', () {
+    test('a single origin collapses to a fixed header', () {
       const config = CorsConfig(option: Cors(['https://example.com']));
-      expect(config.resolveOrigins(debugCorsEnabled: false), [
-        'https://example.com',
-      ]);
+      expect(
+        config.resolve(debugCorsEnabled: false),
+        isA<CorsFixedOrigin>().having(
+          (d) => d.origin,
+          'origin',
+          'https://example.com',
+        ),
+      );
+    });
+
+    test('several origins become a match list', () {
+      const config = CorsConfig(
+        option: Cors(['https://a.com', 'https://b.com']),
+      );
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsMatchList>());
+    });
+
+    test('a lone star means the literal wildcard', () {
+      expect(
+        const CorsConfig(
+          option: corsAnyOriginWildcard,
+        ).resolve(debugCorsEnabled: false),
+        isA<CorsWildcard>(),
+      );
+    });
+
+    test('corsAllowAnyOrigin means reflect', () {
+      expect(
+        const CorsConfig(
+          option: corsAllowAnyOrigin,
+        ).resolve(debugCorsEnabled: false),
+        isA<CorsReflectAny>(),
+      );
+    });
+
+    test('a lone pattern stays dynamic rather than collapsing', () {
+      const config = CorsConfig(option: Cors([CorsPattern('example')]));
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsMatchList>());
     });
 
     test('an empty list disables CORS', () {
       const config = CorsConfig(option: corsDisabled, enabledByDefault: true);
-      expect(config.resolveOrigins(debugCorsEnabled: false), isNull);
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsOff>());
     });
 
-    test(
-      'emulator debug feature enables CORS for an unconfigured function',
-      () {
-        const config = CorsConfig();
-        expect(config.resolveOrigins(debugCorsEnabled: true), ['*']);
-      },
-    );
+    test('emulator debug feature enables an unconfigured function', () {
+      const config = CorsConfig();
+      expect(config.resolve(debugCorsEnabled: true), isA<CorsReflectAny>());
+    });
 
     test('emulator debug feature widens an explicit allow-list', () {
       const config = CorsConfig(option: Cors(['https://example.com']));
-      expect(config.resolveOrigins(debugCorsEnabled: true), ['*']);
+      expect(config.resolve(debugCorsEnabled: true), isA<CorsReflectAny>());
     });
 
     test('emulator debug feature respects an explicit opt-out', () {
       // Matches the Node.js SDK: `cors: false` stays off even under the
       // emulator, so local behaviour reproduces production.
       const config = CorsConfig(option: corsDisabled);
-      expect(config.resolveOrigins(debugCorsEnabled: true), isNull);
+      expect(config.resolve(debugCorsEnabled: true), isA<CorsOff>());
     });
 
     test('disables CORS when the option throws instead of crashing', () {
@@ -262,26 +347,26 @@ void main() {
         enabledByDefault: true,
       );
 
-      expect(config.resolveOrigins(debugCorsEnabled: false), isNull);
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsOff>());
     });
 
     test('resolves an expression to its runtime value', () {
       const config = CorsConfig(
-        option: Cors.expression(LiteralExpression(['https://example.com'])),
+        option: Cors.expression(
+          LiteralExpression(<Object>['https://a.com', 'https://b.com']),
+        ),
       );
 
-      expect(config.resolveOrigins(debugCorsEnabled: false), [
-        'https://example.com',
-      ]);
+      expect(config.resolve(debugCorsEnabled: false), isA<CorsMatchList>());
     });
   });
 }
 
-final class _ThrowingExpression extends Expression<List<String>> {
+final class _ThrowingExpression extends Expression<List<Object>> {
   const _ThrowingExpression();
 
   @override
-  List<String> runtimeValue() => throw StateError('unavailable');
+  List<Object> runtimeValue() => throw StateError('unavailable');
 
   @override
   String toCEL() => 'broken';

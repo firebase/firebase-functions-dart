@@ -82,19 +82,26 @@ class CallableOptions extends HttpsOptions {
 
 /// The set of origins allowed to make cross-origin requests to a function.
 ///
-/// - `Cors(['*'])` allows any origin. The request's `Origin` header is
-///   reflected back in `Access-Control-Allow-Origin` rather than a literal
-///   `*`, matching `cors: true` in the Node.js SDK.
-/// - `Cors(['https://example.com'])` allows only the listed origins, compared
-///   as exact, case-sensitive strings.
-/// - `Cors(<String>[])` disables CORS entirely, equivalent to `cors: false`.
-///   An empty list also wins over the emulator's `enableCors` debug feature.
+/// Each entry is either an exact-match origin [String] or a [CorsPattern]
+/// regular expression, mirroring `Array<string | RegExp>` in the Node.js SDK.
+///
+/// - `Cors(<Object>[])` disables CORS, equivalent to `cors: false`. An empty
+///   list also wins over the emulator's `enableCors` debug feature.
+/// - `Cors(['*'])` emits a literal `Access-Control-Allow-Origin: *` with no
+///   `Vary`, equivalent to `cors: '*'`. See [corsAnyOriginWildcard].
+/// - [corsAllowAnyOrigin] reflects the request's `Origin` instead, equivalent
+///   to `cors: true`. This is the default for callable functions, and the one
+///   to prefer: a reflected origin also works for credentialed requests.
+/// - `Cors(['https://example.com'])` — a **single** entry — emits that origin
+///   unconditionally and lets the browser reject a mismatch, matching how the
+///   Node.js SDK collapses a one-element allow-list.
+/// - `Cors(['https://a.com', 'https://b.com'])` reflects the request's origin
+///   only when it matches, and omits the header otherwise.
+/// - `Cors([CorsPattern(r'^https://.*\.example\.com$')])` matches by regex.
 ///
 /// The value may also come from a parameter or expression, in which case it is
 /// resolved once per request. If resolution fails, CORS is disabled for that
 /// request and a warning is logged.
-///
-/// See [corsAllowAnyOrigin] and [corsDisabled] for the two constant shorthands.
-typedef Cors = Option<List<String>>;
+typedef Cors = Option<List<Object>>;
 typedef ConsumeAppCheckToken = Option<bool>;
 typedef HeartBeatIntervalSeconds = Option<int>;

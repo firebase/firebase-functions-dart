@@ -92,10 +92,14 @@ Future<void> runFunctions(
   //
   // Note: the emulator's `enableCors` debug feature is deliberately *not* a
   // blanket middleware. It is folded into each function's own CORS resolution
-  // (see CorsConfig.resolveOrigins) so that a function which explicitly
-  // disables CORS keeps it disabled under the emulator, and so that event
-  // triggers never receive CORS headers. This matches the Node.js SDK.
+  // (see CorsConfig.resolve) so that a function which explicitly disables CORS
+  // keeps it disabled under the emulator, and so that event triggers never
+  // receive CORS headers. This matches the Node.js SDK.
   var middleware = const Pipeline().middleware;
+
+  // Outermost, so it also decorates responses synthesised from a thrown
+  // exception by the layers below.
+  middleware = middleware.addMiddleware(corsResponseMiddleware);
 
   middleware = middleware.addMiddleware(
     createLoggingMiddleware(projectId: projectId),
@@ -123,6 +127,8 @@ Handler createTestHandler(Firebase firebase) {
   final env = firebase.$env;
   var middleware = const Pipeline().middleware;
 
+  middleware = middleware.addMiddleware(corsResponseMiddleware);
+
   middleware = middleware.addMiddleware(
     createLoggingMiddleware(projectId: env.projectId),
   );
@@ -131,6 +137,61 @@ Handler createTestHandler(Firebase firebase) {
     (request) => _routeRequest(request, firebase, env),
   );
 }
+
+/// Per-request slot holding the CORS decision made during routing.
+///
+/// Routing happens deep inside the pipeline, but the headers must be attached
+/// at the very outside so that a response synthesised from a thrown exception
+/// still carries them — otherwise a callable rejecting a bad token returns a
+/// bare 401 and the browser reports an opaque CORS failure instead of the real
+/// status. The router writes here; [corsResponseMiddleware] reads it.
+final class _CorsSlot {
+  CorsDecision decision = const CorsOff();
+  List<String> methods = defaultCorsMethods;
+}
+
+const _corsSlotKey = #firebaseFunctionsCorsSlot;
+
+/// Records [function]'s CORS decision for this request.
+///
+/// Returns whether CORS is enabled, so callers can decide to answer a
+/// preflight.
+bool _recordCorsDecision(
+  FirebaseFunctionDeclaration function,
+  FirebaseEnv env,
+) {
+  final cors = function.cors;
+  if (cors == null) return false;
+
+  final decision = cors.resolve(debugCorsEnabled: env.enableCors);
+  if (Zone.current[_corsSlotKey] case final _CorsSlot slot) {
+    slot
+      ..decision = decision
+      ..methods = cors.methods;
+  }
+  return decision is! CorsOff;
+}
+
+/// Attaches CORS headers to every response leaving the pipeline.
+///
+/// Must be the outermost middleware: it has to see responses produced by the
+/// error-handling layers below it, not just those the router returns normally.
+@visibleForTesting
+Handler corsResponseMiddleware(Handler innerHandler) => (request) async {
+  final slot = _CorsSlot();
+  final response = await runZoned(
+    () async => innerHandler(request),
+    zoneValues: {_corsSlotKey: slot},
+  );
+
+  return applyCorsHeaders(
+    request,
+    response,
+    slot.decision,
+    isPreflight: request.method.toUpperCase() == 'OPTIONS',
+    methods: slot.methods,
+  );
+};
 
 /// Routes incoming requests to the appropriate function handler.
 FutureOr<Response> _routeRequest(
@@ -197,15 +258,16 @@ FutureOr<Response> _routeToTargetFunction(
   // served via HTTP in a single process, so the signature type distinction
   // from the Node.js model does not apply here.
 
-  // Resolve CORS once per request, matching the Node.js SDK. Event triggers
-  // have no CORS config at all, so `origins` stays null for them.
-  final cors = targetFunction.cors;
-  final origins = cors?.resolveOrigins(debugCorsEnabled: env.enableCors);
+  // Resolve CORS once per request, matching the Node.js SDK, and record it for
+  // corsResponseMiddleware to apply. Event triggers have no CORS config, so
+  // nothing is recorded for them.
+  final corsEnabled = _recordCorsDecision(targetFunction, env);
 
   // Answer the preflight without invoking the handler (and without running the
-  // callable auth checks, which a preflight cannot satisfy).
-  if (request.method.toUpperCase() == 'OPTIONS' && origins != null) {
-    return buildPreflightResponse(request, origins, methods: cors!.methods);
+  // callable auth checks, which a preflight cannot satisfy). The middleware
+  // attaches the headers on the way out.
+  if (request.method.toUpperCase() == 'OPTIONS' && corsEnabled) {
+    return Response(204);
   }
 
   if (!targetFunction.external && request.method.toUpperCase() != 'POST') {
@@ -217,8 +279,7 @@ FutureOr<Response> _routeToTargetFunction(
   }
 
   final wrappedHandler = withInit(targetFunction.handler);
-  final response = await wrappedHandler(request);
-  return applyCorsHeaders(request, response, origins);
+  return wrappedHandler(request);
 }
 
 FutureOr<Response> _routeByPath(
@@ -287,19 +348,15 @@ FutureOr<Response> _routeByPath(
       continue;
     }
 
-    // Resolve CORS once per request, matching the Node.js SDK. Event triggers
-    // have no CORS config at all, so `origins` stays null for them.
-    final cors = function.cors;
-    final origins = cors?.resolveOrigins(debugCorsEnabled: env.enableCors);
+    // Resolve CORS once per request, matching the Node.js SDK, and record it
+    // for corsResponseMiddleware to apply.
+    final corsEnabled = _recordCorsDecision(function, env);
 
     // Answer the preflight without invoking the handler (and without running
-    // the callable auth checks, which a preflight cannot satisfy).
-    if (currentRequest.method.toUpperCase() == 'OPTIONS' && origins != null) {
-      return buildPreflightResponse(
-        currentRequest,
-        origins,
-        methods: cors!.methods,
-      );
+    // the callable auth checks, which a preflight cannot satisfy). The
+    // middleware attaches the headers on the way out.
+    if (currentRequest.method.toUpperCase() == 'OPTIONS' && corsEnabled) {
+      return Response(204);
     }
 
     if (!function.external && currentRequest.method.toUpperCase() != 'POST') {
@@ -311,8 +368,7 @@ FutureOr<Response> _routeByPath(
     final handlerRequest = _withOriginalPath(currentRequest, originalPath);
 
     final wrappedHandler = withInit(function.handler);
-    final response = await wrappedHandler(handlerRequest);
-    return applyCorsHeaders(handlerRequest, response, origins);
+    return wrappedHandler(handlerRequest);
   }
 
   // No matching function found.
