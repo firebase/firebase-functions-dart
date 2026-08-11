@@ -48,10 +48,41 @@ firebase emulators:start --only functions --project demo-test
 ./check-headers.sh http://127.0.0.1:5001/demo-test/us-central1
 ```
 
-## Check a deployment
+## Deploy it
+
+Two things stop this example deploying straight from the repo. Only the source
+directory is uploaded, so `resolution: workspace` in its pubspec has no
+workspace root to resolve against; and it asks for `firebase_functions` from
+pub.dev, which is the released version and will not contain unreleased local
+changes. `prepare-deploy.sh` produces a fixed-up copy:
 
 ```sh
+git push                       # the ref has to be reachable
+cd example/cors
+./prepare-deploy.sh feat/cors ~/tmp/cors-deploy
+cd ~/tmp/cors-deploy
+dart pub get
+dart run build_runner build --delete-conflicting-outputs
 firebase deploy --only functions --project YOUR_PROJECT
+```
+
+Set `CORS_DEMO_REPO` if you are pushing to a fork rather than upstream.
+
+You will need:
+
+- a **Blaze** project, since these deploy as gen2 functions on Cloud Run;
+- the **Dart-aware firebase-tools**, as stock releases do not understand
+  `"runtime": "dart3"`. Point at the fork's entry point directly, for example
+  `alias firebase='node /path/to/firebase-tools/lib/bin/firebase.js'`, and
+  rebuild it with `npm run build` if `lib/` looks stale.
+
+Deployed functions are public only if you allow unauthenticated invocations. If
+a probe returns 403 with no CORS headers, that is Cloud Run rejecting the call
+before your function runs, not a CORS bug.
+
+Then point the checks at the deployment:
+
+```sh
 ./check-headers.sh https://us-central1-YOUR_PROJECT.cloudfunctions.net
 ```
 
