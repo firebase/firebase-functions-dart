@@ -194,5 +194,36 @@ Response applyCorsHeaders(
 ) {
   final headers = corsHeadersFor(request, allowedOrigins);
   if (headers.isEmpty) return response;
-  return response.change(headers: headers);
+  return response.change(headers: _withMergedVary(response.headers, headers));
+}
+
+/// Merges the CORS `Vary` value into any `Vary` the response already carries.
+///
+/// Overwriting would silently drop a value the handler depends on — most often
+/// `Accept-Encoding`, which affects how caches store the body. The `cors`
+/// middleware in the Node.js SDK appends for the same reason.
+Map<String, String> _withMergedVary(
+  Map<String, String> responseHeaders,
+  Map<String, String> corsHeaders,
+) {
+  final existing = responseHeaders['vary'];
+  final added = corsHeaders['Vary'];
+  if (existing == null || existing.isEmpty || added == null) return corsHeaders;
+
+  // `Vary: *` already means "varies on everything"; narrowing it would be a lie.
+  if (existing.split(',').any((value) => value.trim() == '*')) {
+    return {...corsHeaders, 'Vary': '*'};
+  }
+
+  final seen = <String>{};
+  final merged = <String>[];
+  for (final value in [...existing.split(','), ...added.split(',')]) {
+    final trimmed = value.trim();
+    // Field names are case-insensitive, so dedupe on the lowered form but keep
+    // the casing the response already used.
+    if (trimmed.isNotEmpty && seen.add(trimmed.toLowerCase())) {
+      merged.add(trimmed);
+    }
+  }
+  return {...corsHeaders, 'Vary': merged.join(', ')};
 }

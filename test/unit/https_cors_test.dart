@@ -34,10 +34,9 @@ Request _request({
 void main() {
   group('corsHeadersFor', () {
     test('reflects the request origin when any origin is allowed', () {
-      final headers = corsHeadersFor(
-        _request(origin: 'https://example.com'),
-        ['*'],
-      );
+      final headers = corsHeadersFor(_request(origin: 'https://example.com'), [
+        '*',
+      ]);
 
       // Reflecting rather than emitting a literal `*` matches `cors: true` in
       // the Node.js SDK, and is required for credentialed requests.
@@ -172,6 +171,36 @@ void main() {
       expect(result, same(original));
     });
 
+    test('merges into an existing Vary instead of replacing it', () {
+      final result = applyCorsHeaders(
+        _request(origin: 'https://a.com'),
+        Response.ok('x', headers: {'Vary': 'Accept-Encoding'}),
+        ['*'],
+      );
+
+      expect(result.headers['vary'], 'Accept-Encoding, Origin');
+    });
+
+    test('dedupes Vary case-insensitively', () {
+      final result = applyCorsHeaders(
+        _request(origin: 'https://a.com'),
+        Response.ok('x', headers: {'Vary': 'origin, Accept-Encoding'}),
+        ['*'],
+      );
+
+      expect(result.headers['vary'], 'origin, Accept-Encoding');
+    });
+
+    test('leaves a wildcard Vary alone', () {
+      final result = applyCorsHeaders(
+        _request(origin: 'https://a.com'),
+        Response.ok('x', headers: {'Vary': '*'}),
+        ['*'],
+      );
+
+      expect(result.headers['vary'], '*');
+    });
+
     test('preserves existing response headers', () {
       final result = applyCorsHeaders(
         _request(origin: 'https://a.com'),
@@ -203,17 +232,17 @@ void main() {
     });
 
     test('an empty list disables CORS', () {
-      const config = CorsConfig(
-        option: corsDisabled,
-        enabledByDefault: true,
-      );
+      const config = CorsConfig(option: corsDisabled, enabledByDefault: true);
       expect(config.resolveOrigins(debugCorsEnabled: false), isNull);
     });
 
-    test('emulator debug feature enables CORS for an unconfigured function', () {
-      const config = CorsConfig();
-      expect(config.resolveOrigins(debugCorsEnabled: true), ['*']);
-    });
+    test(
+      'emulator debug feature enables CORS for an unconfigured function',
+      () {
+        const config = CorsConfig();
+        expect(config.resolveOrigins(debugCorsEnabled: true), ['*']);
+      },
+    );
 
     test('emulator debug feature widens an explicit allow-list', () {
       const config = CorsConfig(option: Cors(['https://example.com']));
@@ -238,9 +267,7 @@ void main() {
 
     test('resolves an expression to its runtime value', () {
       const config = CorsConfig(
-        option: Cors.expression(
-          LiteralExpression(['https://example.com']),
-        ),
+        option: Cors.expression(LiteralExpression(['https://example.com'])),
       );
 
       expect(config.resolveOrigins(debugCorsEnabled: false), [
