@@ -298,18 +298,16 @@ void main() {
 
     test('a lone star means the literal wildcard', () {
       expect(
-        const CorsConfig(
-          option: corsAnyOriginWildcard,
-        ).resolve(debugCorsEnabled: false),
+        const CorsConfig(option: corsAnyOriginWildcard)
+            .resolve(debugCorsEnabled: false),
         isA<CorsWildcard>(),
       );
     });
 
     test('corsAllowAnyOrigin means reflect', () {
       expect(
-        const CorsConfig(
-          option: corsAllowAnyOrigin,
-        ).resolve(debugCorsEnabled: false),
+        const CorsConfig(option: corsAllowAnyOrigin)
+            .resolve(debugCorsEnabled: false),
         isA<CorsReflectAny>(),
       );
     });

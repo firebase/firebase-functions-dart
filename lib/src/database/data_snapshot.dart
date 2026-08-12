@@ -22,8 +22,8 @@ class DataSnapshot {
   DataSnapshot({
     required this.instance,
     required this.ref,
-    required dynamic data,
-  }) : _data = data;
+    required this._data,
+  });
 
   /// The database instance URL.
   final String instance;

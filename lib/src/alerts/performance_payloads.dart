@@ -103,8 +103,7 @@ class ThresholdAlertPayload {
   final String investigateUri;
 
   Map<String, dynamic> toJson() => {
-    '@type':
-        'type.googleapis.com/google.events.firebase.firebasealerts.v1.PerformanceThresholdAlertPayload',
+    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.PerformanceThresholdAlertPayload',
     'eventName': eventName,
     'eventType': eventType,
     'metricType': metricType,

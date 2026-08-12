@@ -432,9 +432,8 @@ void runStorageTests(
 
       // Read the actual function name from the manifest since it may be
       // truncated with a hash suffix due to the 50-char Cloud Run ID limit.
-      final manifestContent = File(
-        '$examplePath/functions.yaml',
-      ).readAsStringSync();
+      final manifestContent = File('$examplePath/functions.yaml')
+          .readAsStringSync();
       functionName =
           _findFunctionName(manifestContent, 'onobjectmetadataupdated') ??
           'onobjectmetadataupdated-demotestfirebasestorageapp';
@@ -568,8 +567,7 @@ void runStorageTests(
       expect(
         updateCount,
         greaterThanOrEqualTo(3),
-        reason:
-            'All 3 metadata update events should trigger onObjectMetadataUpdated',
+        reason: 'All 3 metadata update events should trigger onObjectMetadataUpdated',
       );
 
       print('✓ All sequential metadata update events triggered');

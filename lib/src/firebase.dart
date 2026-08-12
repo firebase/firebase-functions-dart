@@ -38,7 +38,7 @@ import 'test_lab/test_lab_namespace.dart';
 ///
 /// Provides access to all function namespaces (https, pubsub, firestore, etc.).
 class Firebase {
-  Firebase._({required this.adminApp, required FirebaseEnv env}) : _env = env;
+  Firebase._({required this.adminApp, required this._env});
 
   final FirebaseEnv _env;
 
