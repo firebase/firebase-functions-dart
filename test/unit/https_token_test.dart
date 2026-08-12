@@ -63,6 +63,20 @@ void main() {
       expect(authData.token?['sub'], 'user-abc');
     });
 
+    test('extracts custom claims from verified token', () async {
+      final token = mintIdToken(
+        uid: 'user-claims',
+        extraClaims: {'role': 'admin'},
+      );
+
+      final (status, authData) = await extractAuthToken({
+        'authorization': 'Bearer $token',
+      }, auth: auth);
+
+      expect(status, TokenStatus.valid);
+      expect(authData!.token?['role'], 'admin');
+    });
+
     test('rejects an expired token', () async {
       final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       final token = mintIdToken(exp: now - 3600, iat: now - 7200);

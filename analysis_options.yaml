@@ -50,5 +50,4 @@ linter:
     - sort_constructors_first
     - sort_unnamed_constructors_first
     - unnecessary_ignore
-    - use_if_null_to_convert_nulls_to_bools
     - use_string_buffers
