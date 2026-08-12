@@ -20,6 +20,21 @@ import 'package:test/test.dart';
 // Test enum for defineEnumList tests
 enum TestRegion { usCentral1, europeWest1, asiaNortheast1 }
 
+final class _WarningProbeParam extends Param<String> {
+  _WarningProbeParam(this.onToString) : super('WARNING_PROBE', null);
+
+  final void Function() onToString;
+
+  @override
+  String runtimeValue() => 'runtime value';
+
+  @override
+  String toString() {
+    onToString();
+    return super.toString();
+  }
+}
+
 void main() {
   group('Parameter Factory Functions', () {
     setUp(() {
@@ -362,6 +377,82 @@ void main() {
     test('returns params.NAME format', () {
       final param = defineString('MY_PARAM');
       expect(param.toString(), 'params.MY_PARAM');
+    });
+  });
+
+  group('FirebaseEnv parameter resolution', () {
+    setUp(() {
+      clearParams();
+      FirebaseEnv.mockEnvironment = {};
+    });
+
+    tearDown(() {
+      FirebaseEnv.mockEnvironment = null;
+    });
+
+    test('Param.value observes the mocked deployment state', () {
+      FirebaseEnv.mockEnvironment = {'FUNCTIONS_CONTROL_API': 'true'};
+      var warningWasBuilt = false;
+      final param = _WarningProbeParam(() => warningWasBuilt = true);
+
+      expect(param.value(), 'runtime value');
+      expect(warningWasBuilt, isTrue);
+    });
+
+    test('StringParam reads from mockEnvironment', () {
+      FirebaseEnv.mockEnvironment = {'MY_STRING': 'hello world'};
+
+      expect(defineString('MY_STRING').runtimeValue(), 'hello world');
+    });
+
+    test('IntParam reads from mockEnvironment', () {
+      FirebaseEnv.mockEnvironment = {'MY_INT': '42'};
+
+      expect(defineInt('MY_INT').runtimeValue(), 42);
+    });
+
+    test('DoubleParam reads from mockEnvironment', () {
+      FirebaseEnv.mockEnvironment = {'MY_DOUBLE': '3.5'};
+
+      expect(defineDouble('MY_DOUBLE').runtimeValue(), 3.5);
+    });
+
+    test('BooleanParam reads from mockEnvironment', () {
+      FirebaseEnv.mockEnvironment = {'MY_BOOL': 'true'};
+
+      expect(defineBoolean('MY_BOOL').runtimeValue(), isTrue);
+    });
+
+    test('SecretParam reads a mocked secret value', () {
+      FirebaseEnv.mockEnvironment = {'API_KEY': 'secret-value'};
+
+      final secret = defineSecret('API_KEY');
+      expect(secret.runtimeValue(), 'secret-value');
+
+      FirebaseEnv.mockEnvironment = {
+        'FUNCTIONS_CONTROL_API': 'true',
+        'API_KEY': 'secret-value',
+      };
+      expect(secret.value, throwsA(isA<StateError>()));
+    });
+
+    test('JsonSecretParam parses a mocked JSON secret', () {
+      FirebaseEnv.mockEnvironment = {
+        'API_CONFIG': '{"region":"us-central1","retries":3}',
+      };
+
+      final secret = defineJsonSecret<Map<String, dynamic>>('API_CONFIG');
+      expect(secret.runtimeValue(), {'region': 'us-central1', 'retries': 3});
+      FirebaseEnv.mockEnvironment = {'FUNCTIONS_CONTROL_API': 'true'};
+      expect(secret.value, throwsA(isA<StateError>()));
+    });
+
+    test('InternalExpression reads from mockEnvironment', () {
+      FirebaseEnv.mockEnvironment = {
+        'FIREBASE_CONFIG': '{"projectId":"demo-project"}',
+      };
+
+      expect(ParamInput.projectId.runtimeValue(), 'demo-project');
     });
   });
 
