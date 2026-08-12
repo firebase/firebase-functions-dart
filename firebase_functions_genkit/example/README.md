@@ -1,0 +1,1 @@
+Sample of creating a genkit flow and setting it up for an http trigger.
