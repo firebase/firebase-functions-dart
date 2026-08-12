@@ -3,6 +3,13 @@
 - Fix `extractAuthToken` dropping custom claims from `AuthData.token` for
   verified (non-emulator) ID tokens; custom claims set via
   `auth.setCustomUserClaims()` are now included alongside the standard claims.
+- Fix CORS to match the Node.js SDK: preflights echo
+  `Access-Control-Request-Headers` instead of sending `*`, which the Fetch spec
+  excludes `Authorization` from, breaking authenticated callables in the
+  browser; error responses keep their CORS headers.
+- **BREAKING:** `Cors` is now `Option<List<Object>>`, accepting exact origins or
+  `CorsPattern` regexes, with `corsAllowAnyOrigin`, `corsAnyOriginWildcard` and
+  `corsDisabled` for the `cors: true`/`'*'`/`false` equivalents.
 
 ## 0.7.0
 
