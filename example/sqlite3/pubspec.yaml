@@ -12,17 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-name: firestore_example
-description: Firestore trigger examples for Firebase Functions for Dart
+name: sqlite3_example
+description: >-
+  Firebase Functions for Dart example that depends on sqlite3, which uses native
+  build hooks (compiles a C library) — exercises cross-compilation on deploy.
 publish_to: none
 
 resolution: workspace
 
 environment:
-  sdk: ^3.7.0
+  sdk: ^3.13.0
 
 dependencies:
   firebase_functions: ^0.8.0-wip
+  # Recent sqlite3 ships a build hook that compiles libsqlite3 from source,
+  # which is what makes this example require native cross-compilation to deploy.
+  sqlite3: ^3.3.3
 
 dev_dependencies:
   build_runner: ^2.10.5

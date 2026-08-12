@@ -400,7 +400,10 @@ void main() {
       expect(nodejsFunc['platform'], equals('gcfv2'));
       expect(dartFunc['callableTrigger'], isNotNull);
       expect(nodejsFunc['callableTrigger'], isNotNull);
-      expect(dartFunc['command'], equals(['./bin/server']));
+      expect(
+        dartFunc['command'],
+        equals(['./build/cli/linux_x64/bundle/bin/server']),
+      );
       expect(dartFunc['baseImageUri'], contains('-docker.pkg.dev/'));
 
       // Callable functions should NOT have httpsTrigger

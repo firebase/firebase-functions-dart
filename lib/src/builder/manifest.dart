@@ -218,7 +218,7 @@ Map<String, dynamic> _buildEndpointMap(EndpointSpec endpoint) {
   if (!primaryRegion.startsWith('{{')) {
     map['baseImageUri'] = '$primaryRegion$_baseImageUriSuffix';
   }
-  map['command'] = ['./bin/server'];
+  map['command'] = ['./build/cli/linux_x64/bundle/bin/server'];
   map['entryPoint'] = toCloudRunId(endpoint.name);
 
   return map;

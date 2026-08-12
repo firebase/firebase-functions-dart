@@ -22,7 +22,7 @@ environment:
   sdk: ^3.7.0
 
 dependencies:
-  firebase_functions: ^0.7.0-wip
+  firebase_functions: ^0.8.0-wip
   google_cloud_shelf: ^0.6.0
 
 dev_dependencies:
