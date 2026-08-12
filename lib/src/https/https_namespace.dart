@@ -23,6 +23,7 @@ import '../common/options.dart';
 import '../firebase.dart';
 import 'auth.dart';
 import 'callable.dart';
+import 'cors.dart';
 import 'options.dart';
 
 /// HTTPS triggers namespace.
@@ -53,7 +54,9 @@ class HttpsNamespace extends FunctionsNamespace {
       name,
       (request) async => handler(request),
       external: true,
-      allowedOrigins: options?.cors?.runtimeValue(),
+      // onRequest is opt-in: no CORS headers unless `cors` is set (or the
+      // emulator's enableCors debug feature is on). Matches the Node.js SDK.
+      cors: CorsConfig(option: options?.cors),
     );
   }
 
@@ -81,63 +84,72 @@ class HttpsNamespace extends FunctionsNamespace {
     @mustBeConst required String name,
     @mustBeConst CallableOptions? options = const CallableOptions(),
   }) {
-    firebase.registerFunction(name, (request) async {
-      final bodyString = await request.change().readAsString();
-      Map<String, dynamic>? body;
-      if (bodyString.isNotEmpty) {
-        try {
-          body = jsonDecode(bodyString) as Map<String, dynamic>;
-        } catch (_) {
-          // Invalid JSON - body stays null, validation will fail
+    firebase.registerFunction(
+      name,
+      (request) async {
+        final bodyString = await request.change().readAsString();
+        Map<String, dynamic>? body;
+        if (bodyString.isNotEmpty) {
+          try {
+            body = jsonDecode(bodyString) as Map<String, dynamic>;
+          } catch (_) {
+            // Invalid JSON - body stays null, validation will fail
+          }
         }
-      }
 
-      // Extract auth and app check tokens
+        // Extract auth and app check tokens
 
-      final tokens = await checkTokens(
-        request.headers,
-        adminApp: firebase.$env.skipTokenVerification
-            ? null
-            : firebase.adminApp,
-      );
+        final tokens = await checkTokens(
+          request.headers,
+          adminApp: firebase.$env.skipTokenVerification
+              ? null
+              : firebase.adminApp,
+        );
 
-      // Check for invalid auth token
-      if (tokens.result.auth == TokenStatus.invalid) {
-        throw HttpResponseException.unauthorized();
-      }
-
-      // Check for invalid or missing app check token if enforced
-      final enforceAppCheck =
-          options?.enforceAppCheck?.runtimeValue() ??
-          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
-          false;
-      if (tokens.result.app == TokenStatus.invalid) {
-        if (enforceAppCheck) {
+        // Check for invalid auth token
+        if (tokens.result.auth == TokenStatus.invalid) {
           throw HttpResponseException.unauthorized();
         }
-      }
-      if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        throw HttpResponseException.unauthorized();
-      }
 
-      final callableRequest = CallableRequest(
-        request,
-        body?['data'],
-        null,
-        auth: tokens.authData,
-        app: tokens.appCheckData,
-      );
+        // Check for invalid or missing app check token if enforced
+        final enforceAppCheck =
+            options?.enforceAppCheck?.runtimeValue() ??
+            getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+            false;
+        if (tokens.result.app == TokenStatus.invalid) {
+          if (enforceAppCheck) {
+            throw HttpResponseException.unauthorized();
+          }
+        }
+        if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
+          throw HttpResponseException.unauthorized();
+        }
 
-      return _handleCallable<Object?, T, CallableResult<T>>(
-        request,
-        callableRequest,
-        body,
-        options,
-        handler,
-        (result) => result.data,
-        (result) => result.toResponse(),
-      );
-    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
+        final callableRequest = CallableRequest(
+          request,
+          body?['data'],
+          null,
+          auth: tokens.authData,
+          app: tokens.appCheckData,
+        );
+
+        return _handleCallable<Object?, T, CallableResult<T>>(
+          request,
+          callableRequest,
+          body,
+          options,
+          handler,
+          (result) => result.data,
+          (result) => result.toResponse(),
+        );
+      },
+      // Callables default to allowing any origin, and only ever accept POST.
+      cors: CorsConfig(
+        option: options?.cors,
+        methods: callableCorsMethods,
+        enabledByDefault: true,
+      ),
+    );
   }
 
   /// Creates an HTTPS callable function with typed data.
@@ -171,58 +183,67 @@ class HttpsNamespace extends FunctionsNamespace {
     @mustBeConst required String name,
     @mustBeConst CallableOptions? options = const CallableOptions(),
   }) {
-    firebase.registerFunction(name, (request) async {
-      final body = await request.json as Map<String, dynamic>?;
+    firebase.registerFunction(
+      name,
+      (request) async {
+        final body = await request.json as Map<String, dynamic>?;
 
-      // Extract auth and app check tokens
+        // Extract auth and app check tokens
 
-      final tokens = await checkTokens(
-        request.headers,
-        adminApp: firebase.$env.skipTokenVerification
-            ? null
-            : firebase.adminApp,
-      );
+        final tokens = await checkTokens(
+          request.headers,
+          adminApp: firebase.$env.skipTokenVerification
+              ? null
+              : firebase.adminApp,
+        );
 
-      // Check for invalid auth token
-      if (tokens.result.auth == TokenStatus.invalid) {
-        throw HttpResponseException.unauthorized();
-      }
-
-      // Check for invalid or missing app check token if enforced
-      final enforceAppCheck =
-          options?.enforceAppCheck?.runtimeValue() ??
-          getGlobalOptions().enforceAppCheck?.runtimeValue() ??
-          false;
-      if (tokens.result.app == TokenStatus.invalid) {
-        if (enforceAppCheck) {
+        // Check for invalid auth token
+        if (tokens.result.auth == TokenStatus.invalid) {
           throw HttpResponseException.unauthorized();
         }
-      }
-      if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
-        throw HttpResponseException.unauthorized();
-      }
 
-      final callableRequest = CallableRequest<Input>(
-        request,
-        body?['data'],
-        fromJson,
-        auth: tokens.authData,
-        app: tokens.appCheckData,
-      );
+        // Check for invalid or missing app check token if enforced
+        final enforceAppCheck =
+            options?.enforceAppCheck?.runtimeValue() ??
+            getGlobalOptions().enforceAppCheck?.runtimeValue() ??
+            false;
+        if (tokens.result.app == TokenStatus.invalid) {
+          if (enforceAppCheck) {
+            throw HttpResponseException.unauthorized();
+          }
+        }
+        if (tokens.result.app == TokenStatus.missing && enforceAppCheck) {
+          throw HttpResponseException.unauthorized();
+        }
 
-      return _handleCallable<Input, Output, Output>(
-        request,
-        callableRequest,
-        body,
-        options,
-        handler,
-        (result) => result,
-        (result) => Response.ok(
-          jsonEncode({'result': result}),
-          headers: {'Content-Type': 'application/json'},
-        ),
-      );
-    }, allowedOrigins: options?.cors?.runtimeValue() ?? ['*']);
+        final callableRequest = CallableRequest<Input>(
+          request,
+          body?['data'],
+          fromJson,
+          auth: tokens.authData,
+          app: tokens.appCheckData,
+        );
+
+        return _handleCallable<Input, Output, Output>(
+          request,
+          callableRequest,
+          body,
+          options,
+          handler,
+          (result) => result,
+          (result) => Response.ok(
+            jsonEncode({'result': result}),
+            headers: {'Content-Type': 'application/json'},
+          ),
+        );
+      },
+      // Callables default to allowing any origin, and only ever accept POST.
+      cors: CorsConfig(
+        option: options?.cors,
+        methods: callableCorsMethods,
+        enabledByDefault: true,
+      ),
+    );
   }
 
   /// Internal handler for callable functions.

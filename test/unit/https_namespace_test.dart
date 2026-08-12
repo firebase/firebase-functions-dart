@@ -20,6 +20,7 @@ import 'dart:convert';
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/callable.dart';
+import 'package:firebase_functions/src/https/cors.dart';
 import 'package:firebase_functions/src/https/https_namespace.dart';
 import 'package:firebase_functions/src/https/options.dart';
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
@@ -568,7 +569,24 @@ void main() {
         );
 
         final func = _findFunction(firebase, 'optionsfunction')!;
-        expect(func.allowedOrigins, ['https://example.com']);
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsFixedOrigin>().having(
+            (d) => d.origin,
+            'origin',
+            'https://example.com',
+          ),
+        );
+      });
+
+      test('onRequest emits no CORS headers when no cors option given', () {
+        https.onRequest(
+          name: 'requestNoCors',
+          (request) async => Response.ok('OK'),
+        );
+
+        final func = _findFunction(firebase, 'requestnocors')!;
+        expect(func.cors!.resolve(debugCorsEnabled: false), isA<CorsOff>());
       });
 
       test('CallableOptions can be provided', () {
@@ -594,11 +612,19 @@ void main() {
           firebase,
           'callableoptionsfunctionwithorigins',
         )!;
-        expect(func.allowedOrigins, ['https://example.com']);
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsFixedOrigin>().having(
+            (d) => d.origin,
+            'origin',
+            'https://example.com',
+          ),
+        );
+        expect(func.cors!.methods, ['POST']);
       });
 
       test(
-        'onCall defaults allowedOrigins to [*] when no cors option given',
+        'onCall defaults to allowing any origin when no cors option given',
         () {
           https.onCall(
             name: 'callableNoCors',
@@ -606,23 +632,26 @@ void main() {
           );
 
           final func = _findFunction(firebase, 'callablenocors')!;
-          expect(func.allowedOrigins, ['*']);
-        },
-      );
-
-      test(
-        'onCallWithData defaults allowedOrigins to [*] when no cors option given',
-        () {
-          https.onCallWithData<_GreetRequest, String>(
-            name: 'typedNoCors',
-            fromJson: _GreetRequest.fromJson,
-            (request, response) async => 'OK',
+          expect(
+            func.cors!.resolve(debugCorsEnabled: false),
+            isA<CorsReflectAny>(),
           );
-
-          final func = _findFunction(firebase, 'typednocors')!;
-          expect(func.allowedOrigins, ['*']);
         },
       );
+
+      test('onCallWithData defaults to allowing any origin', () {
+        https.onCallWithData<_GreetRequest, String>(
+          name: 'typedNoCors',
+          fromJson: _GreetRequest.fromJson,
+          (request, response) async => 'OK',
+        );
+
+        final func = _findFunction(firebase, 'typednocors')!;
+        expect(
+          func.cors!.resolve(debugCorsEnabled: false),
+          isA<CorsReflectAny>(),
+        );
+      });
     });
   });
 }

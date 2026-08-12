@@ -13,5 +13,7 @@
 // limitations under the License.
 
 export 'callable.dart';
+export 'cors.dart'
+    show CorsPattern, corsAllowAnyOrigin, corsAnyOriginWildcard, corsDisabled;
 export 'https_namespace.dart';
 export 'options.dart';

@@ -26,6 +26,7 @@ import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
 import 'common/on_init.dart';
 import 'firebase.dart';
+import 'https/cors.dart';
 
 /// Callback type for the user's function registration code.
 typedef FunctionsRunner = FutureOr<void> Function(Firebase firebase);
@@ -87,12 +88,18 @@ Future<void> runFunctions(
   // Run user's function registration code
   await runner(firebase);
 
-  // Build request handler with middleware pipeline
+  // Build request handler with middleware pipeline.
+  //
+  // Note: the emulator's `enableCors` debug feature is deliberately *not* a
+  // blanket middleware. It is folded into each function's own CORS resolution
+  // (see CorsConfig.resolve) so that a function which explicitly disables CORS
+  // keeps it disabled under the emulator, and so that event triggers never
+  // receive CORS headers. This matches the Node.js SDK.
   var middleware = const Pipeline().middleware;
 
-  if (env.enableCors) {
-    middleware = middleware.addMiddleware(_corsMiddleware);
-  }
+  // Outermost, so it also decorates responses synthesised from a thrown
+  // exception by the layers below.
+  middleware = middleware.addMiddleware(corsResponseMiddleware);
 
   middleware = middleware.addMiddleware(
     createLoggingMiddleware(projectId: projectId),
@@ -120,9 +127,7 @@ Handler createTestHandler(Firebase firebase) {
   final env = firebase.$env;
   var middleware = const Pipeline().middleware;
 
-  if (env.enableCors) {
-    middleware = middleware.addMiddleware(_corsMiddleware);
-  }
+  middleware = middleware.addMiddleware(corsResponseMiddleware);
 
   middleware = middleware.addMiddleware(
     createLoggingMiddleware(projectId: env.projectId),
@@ -133,56 +138,60 @@ Handler createTestHandler(Firebase firebase) {
   );
 }
 
-/// CORS middleware for emulator mode.
-Handler _corsMiddleware(Handler innerHandler) => (request) {
-  // Handle preflight OPTIONS requests
-  if (request.method.toUpperCase() == 'OPTIONS') {
-    return Response(204, headers: _corsAnyOriginHeaders);
-  }
-
-  return Future.sync(() => innerHandler(request)).then((response) {
-    // Add CORS headers to all responses if enabled
-    return response.change(headers: _corsAnyOriginHeaders);
-  });
-};
-
-const _corsAnyOriginHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': '*',
-  'Access-Control-Allow-Headers': '*',
-};
-
-Response _buildOptionsCorsResponse(
-  Request request,
-  List<String> allowedOrigins,
-) => Response.ok('', headers: corsHeadersFor(request, allowedOrigins));
-
-Response _applyCorsHeaders(
-  Request request,
-  Response response,
-  List<String> allowedOrigins,
-) => response.change(headers: corsHeadersFor(request, allowedOrigins));
-
-@visibleForTesting
-Map<String, String> corsHeadersFor(
-  Request request,
-  List<String> allowedOrigins,
-) {
-  if (allowedOrigins.contains('*')) {
-    return _corsAnyOriginHeaders;
-  }
-
-  final origin = request.headers['origin'];
-  if (origin != null && allowedOrigins.contains(origin)) {
-    return {
-      'Access-Control-Allow-Origin': origin,
-      'Access-Control-Allow-Methods': '*',
-      'Access-Control-Allow-Headers': '*',
-    };
-  }
-
-  return const {};
+/// Per-request slot holding the CORS decision made during routing.
+///
+/// Routing happens deep inside the pipeline, but the headers must be attached
+/// at the very outside so that a response synthesised from a thrown exception
+/// still carries them — otherwise a callable rejecting a bad token returns a
+/// bare 401 and the browser reports an opaque CORS failure instead of the real
+/// status. The router writes here; [corsResponseMiddleware] reads it.
+final class _CorsSlot {
+  CorsDecision decision = const CorsOff();
+  List<String> methods = defaultCorsMethods;
 }
+
+const _corsSlotKey = #firebaseFunctionsCorsSlot;
+
+/// Records [function]'s CORS decision for this request.
+///
+/// Returns whether CORS is enabled, so callers can decide to answer a
+/// preflight.
+bool _recordCorsDecision(
+  FirebaseFunctionDeclaration function,
+  FirebaseEnv env,
+) {
+  final cors = function.cors;
+  if (cors == null) return false;
+
+  final decision = cors.resolve(debugCorsEnabled: env.enableCors);
+  if (Zone.current[_corsSlotKey] case final _CorsSlot slot) {
+    slot
+      ..decision = decision
+      ..methods = cors.methods;
+  }
+  return decision is! CorsOff;
+}
+
+/// Attaches CORS headers to every response leaving the pipeline.
+///
+/// Must be the outermost middleware: it has to see responses produced by the
+/// error-handling layers below it, not just those the router returns normally.
+@visibleForTesting
+Handler corsResponseMiddleware(Handler innerHandler) => (request) async {
+  final slot = _CorsSlot();
+  final response = await runZoned(
+    () async => innerHandler(request),
+    zoneValues: {_corsSlotKey: slot},
+  );
+
+  return applyCorsHeaders(
+    request,
+    response,
+    slot.decision,
+    isPreflight: request.method.toUpperCase() == 'OPTIONS',
+    methods: slot.methods,
+  );
+};
 
 /// Routes incoming requests to the appropriate function handler.
 FutureOr<Response> _routeRequest(
@@ -217,7 +226,7 @@ FutureOr<Response> _routeRequest(
   }
 
   // Shared process mode (development): Route by path
-  return _routeByPath(request, functions, requestPath);
+  return _routeByPath(request, functions, requestPath, env);
 }
 
 /// Routes request to the function specified by FUNCTION_TARGET.
@@ -249,10 +258,16 @@ FutureOr<Response> _routeToTargetFunction(
   // served via HTTP in a single process, so the signature type distinction
   // from the Node.js model does not apply here.
 
-  // Validate HTTP method for event functions
-  if (request.method.toUpperCase() == 'OPTIONS' &&
-      targetFunction.allowedOrigins != null) {
-    return _buildOptionsCorsResponse(request, targetFunction.allowedOrigins!);
+  // Resolve CORS once per request, matching the Node.js SDK, and record it for
+  // corsResponseMiddleware to apply. Event triggers have no CORS config, so
+  // nothing is recorded for them.
+  final corsEnabled = _recordCorsDecision(targetFunction, env);
+
+  // Answer the preflight without invoking the handler (and without running the
+  // callable auth checks, which a preflight cannot satisfy). The middleware
+  // attaches the headers on the way out.
+  if (request.method.toUpperCase() == 'OPTIONS' && corsEnabled) {
+    return Response(204);
   }
 
   if (!targetFunction.external && request.method.toUpperCase() != 'POST') {
@@ -264,17 +279,14 @@ FutureOr<Response> _routeToTargetFunction(
   }
 
   final wrappedHandler = withInit(targetFunction.handler);
-  final response = await wrappedHandler(request);
-  if (targetFunction.allowedOrigins != null) {
-    return _applyCorsHeaders(request, response, targetFunction.allowedOrigins!);
-  }
-  return response;
+  return wrappedHandler(request);
 }
 
 FutureOr<Response> _routeByPath(
   Request request,
   List<FirebaseFunctionDeclaration> functions,
   String requestPath,
+  FirebaseEnv env,
 ) async {
   // Use a local variable for the potentially reconstructed request
   var currentRequest = request;
@@ -336,12 +348,15 @@ FutureOr<Response> _routeByPath(
       continue;
     }
 
-    if (currentRequest.method.toUpperCase() == 'OPTIONS' &&
-        function.allowedOrigins != null) {
-      return _buildOptionsCorsResponse(
-        currentRequest,
-        function.allowedOrigins!,
-      );
+    // Resolve CORS once per request, matching the Node.js SDK, and record it
+    // for corsResponseMiddleware to apply.
+    final corsEnabled = _recordCorsDecision(function, env);
+
+    // Answer the preflight without invoking the handler (and without running
+    // the callable auth checks, which a preflight cannot satisfy). The
+    // middleware attaches the headers on the way out.
+    if (currentRequest.method.toUpperCase() == 'OPTIONS' && corsEnabled) {
+      return Response(204);
     }
 
     if (!function.external && currentRequest.method.toUpperCase() != 'POST') {
@@ -353,15 +368,7 @@ FutureOr<Response> _routeByPath(
     final handlerRequest = _withOriginalPath(currentRequest, originalPath);
 
     final wrappedHandler = withInit(function.handler);
-    final response = await wrappedHandler(handlerRequest);
-    if (function.allowedOrigins != null) {
-      return _applyCorsHeaders(
-        handlerRequest,
-        response,
-        function.allowedOrigins!,
-      );
-    }
-    return response;
+    return wrappedHandler(handlerRequest);
   }
 
   // No matching function found.

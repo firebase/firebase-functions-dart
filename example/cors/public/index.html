@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CORS behaviour check</title>
+<style>
+  :root {
+    --bg: #fbfbfd; --fg: #16161a; --muted: #6b6b76; --line: #e3e3e9;
+    --card: #ffffff; --pass: #0a7d4a; --fail: #b3261e; --skip: #8a6d0b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131317; --fg: #ececf1; --muted: #9a9aa6; --line: #2b2b33;
+      --card: #1b1b21; --pass: #4ade80; --fail: #f87171; --skip: #fbbf24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  main { max-width: 60rem; margin: 0 auto; }
+  h1 { font-size: 1.4rem; margin: 0 0 .35rem; }
+  p.lede { color: var(--muted); margin: 0 0 1.5rem; }
+  .bar { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center;
+         padding: 1rem; background: var(--card); border: 1px solid var(--line);
+         border-radius: 10px; margin-bottom: 1.25rem; }
+  label { font-weight: 600; }
+  input {
+    flex: 1 1 22rem; min-width: 0; padding: .5rem .65rem; font: inherit;
+    color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 7px;
+  }
+  button {
+    padding: .5rem 1rem; font: inherit; font-weight: 600; cursor: pointer;
+    color: var(--bg); background: var(--fg);
+    border: 0; border-radius: 7px;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .origin { color: var(--muted); font-size: .85rem; width: 100%; }
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); }
+  th, td { padding: .6rem .75rem; text-align: left; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  tr:last-child td { border-bottom: 0; }
+  td.fn { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; white-space: nowrap; }
+  .verdict { font-weight: 700; white-space: nowrap; }
+  .pass { color: var(--pass); } .fail { color: var(--fail); } .skip { color: var(--skip); }
+  .note { color: var(--muted); font-size: .88rem; }
+  footer { margin-top: 1.5rem; color: var(--muted); font-size: .88rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+         background: color-mix(in srgb, var(--fg) 8%, transparent);
+         padding: .1em .35em; border-radius: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>CORS behaviour check</h1>
+  <p class="lede">
+    Each row makes a real cross-origin request. “Allowed” means the browser let
+    the response through; “Blocked” means it enforced CORS and refused.
+  </p>
+
+  <div class="bar">
+    <label for="base">Base URL</label>
+    <input id="base" placeholder="https://us-central1-PROJECT.cloudfunctions.net">
+    <button id="run">Run all</button>
+    <span class="origin">This page's origin: <code id="origin"></code></span>
+  </div>
+
+  <div class="scroll">
+    <table>
+      <thead>
+        <tr><th>Function</th><th>Expected</th><th>Result</th><th>Detail</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    The browser hides CORS response headers from JavaScript, so this page can
+    only report allowed vs blocked. To see the actual header values, run
+    <code>./check-headers.sh &lt;base-url&gt;</code> or watch the Network tab.
+  </footer>
+</main>
+
+<script>
+const ORIGIN = location.origin;
+document.getElementById('origin').textContent = ORIGIN;
+
+// `trusted` marks cases whose expectation depends on this page being served
+// from the origin the functions were configured to trust.
+const CASES = [
+  { fn: 'corsoff',          expect: 'blocked', why: 'no cors option (but allowed under the emulator)' },
+  { fn: 'corsoptout',       expect: 'blocked', why: 'explicitly disabled, even under the emulator' },
+  { fn: 'corsreflectany',   expect: 'allowed', why: 'reflects any origin' },
+  { fn: 'corswildcard',     expect: 'allowed', why: 'literal *' },
+  { fn: 'corssingleorigin', expect: 'trusted', why: 'static header, only the trusted origin passes' },
+  { fn: 'corsallowlist',    expect: 'trusted', why: 'dynamic match against the allow-list' },
+  { fn: 'corspattern',      expect: 'trusted', why: 'regex ^http://localhost:\\d+$' },
+  { fn: 'corsthrows401',    expect: 'allowed', why: 'must surface 401, not a CORS error', status: 401 },
+  { fn: 'corsthrows500',    expect: 'allowed', why: 'must surface 500, not a CORS error', status: 500 },
+  { fn: 'corscallable',     expect: 'allowed', why: 'callable, preflighted by Authorization', callable: true },
+];
+
+const rowsEl = document.getElementById('rows');
+const runBtn = document.getElementById('run');
+const baseEl = document.getElementById('base');
+
+const saved = localStorage.getItem('corsDemoBase');
+if (saved) baseEl.value = saved;
+
+function render(results) {
+  rowsEl.replaceChildren(...results.map(r => {
+    const tr = document.createElement('tr');
+    const cls = r.verdict === 'PASS' ? 'pass' : r.verdict === 'FAIL' ? 'fail' : 'skip';
+    tr.innerHTML =
+      `<td class="fn">${r.fn}</td>` +
+      `<td class="note">${r.why}</td>` +
+      `<td class="verdict ${cls}">${r.verdict}</td>` +
+      `<td class="note">${r.detail}</td>`;
+    return tr;
+  }));
+}
+
+async function probe(base, c) {
+  const url = `${base.replace(/\/$/, '')}/${c.fn}`;
+  const init = c.callable
+    ? { method: 'POST',
+        // Authorization forces a preflight, which is the case a wildcard
+        // Access-Control-Allow-Headers fails to authorise.
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer demo' },
+        body: JSON.stringify({ data: {} }) }
+    : { method: 'GET' };
+
+  try {
+    const res = await fetch(url, init);
+    return { allowed: true, status: res.status };
+  } catch (e) {
+    // A CORS refusal surfaces as an opaque TypeError, indistinguishable from
+    // a network failure. That ambiguity is why the curl script exists.
+    return { allowed: false, error: String(e.message || e) };
+  }
+}
+
+function judge(c, out) {
+  const expectAllowed = c.expect === 'allowed' || c.expect === 'trusted';
+
+  if (!out.allowed) {
+    return expectAllowed
+      ? { verdict: 'FAIL', detail: `blocked: ${out.error}` }
+      : { verdict: 'PASS', detail: 'blocked, as expected' };
+  }
+  if (!expectAllowed) {
+    return { verdict: 'FAIL', detail: `allowed (status ${out.status}), expected blocked` };
+  }
+  if (c.status && out.status !== c.status) {
+    return { verdict: 'FAIL', detail: `got ${out.status}, expected ${c.status}` };
+  }
+  return { verdict: 'PASS', detail: `allowed, status ${out.status}` };
+}
+
+runBtn.addEventListener('click', async () => {
+  const base = baseEl.value.trim();
+  if (!base) { baseEl.focus(); return; }
+  localStorage.setItem('corsDemoBase', base);
+
+  runBtn.disabled = true;
+  runBtn.textContent = 'Running…';
+  const results = CASES.map(c => ({ ...c, verdict: '…', detail: '' }));
+  render(results);
+
+  for (let i = 0; i < CASES.length; i++) {
+    const c = CASES[i];
+    const out = await probe(base, c);
+    let r = judge(c, out);
+    if (c.expect === 'trusted' && r.verdict === 'FAIL') {
+      r = { verdict: 'CHECK', detail: `${r.detail} — expected only from the trusted origin` };
+    }
+    results[i] = { ...c, ...r };
+    render(results);
+  }
+
+  runBtn.disabled = false;
+  runBtn.textContent = 'Run all';
+});
+
+render(CASES.map(c => ({ ...c, verdict: '–', detail: 'not run yet' })));
+</script>
+</body>
+</html>
