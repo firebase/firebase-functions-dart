@@ -31,18 +31,10 @@ permissions:
   contents: read
 
 jobs:
-  # Checks that firebase_functions can still be resolved inside a pub
-  # workspace alongside a Flutter app on current Flutter stable.
-  # `continue-on-error` is set because this is currently expected to fail:
-  # see https://github.com/firebase/firebase-functions-dart/issues/236
-  # (google_cloud_shelf/google_cloud_logging pin meta ^1.18.2, which is
-  # newer than what Flutter stable bundles). Remove it once that's resolved
-  # upstream so this becomes a blocking regression check.
   flutter-workspace-compat:
     name: Flutter Workspace Compatibility
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    continue-on-error: true
 
     steps:
       - name: Checkout repository
