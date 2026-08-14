@@ -1,0 +1,63 @@
+# Copyright 2026 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Flutter Compatibility
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0" # weekly
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Checks that firebase_functions can still be resolved inside a pub
+  # workspace alongside a Flutter app on current Flutter stable.
+  # `continue-on-error` is set because this is currently expected to fail:
+  # see https://github.com/firebase/firebase-functions-dart/issues/236
+  # (google_cloud_shelf/google_cloud_logging pin meta ^1.18.2, which is
+  # newer than what Flutter stable bundles). Remove it once that's resolved
+  # upstream so this becomes a blocking regression check.
+  flutter-workspace-compat:
+    name: Flutter Workspace Compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a
+        with:
+          persist-credentials: false
+
+      - name: Setup Flutter SDK
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 "$HOME/flutter"
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+
+      - name: Print Flutter version
+        run: flutter --version
+
+      - name: Resolve dependencies in Flutter + firebase_functions workspace
+        working-directory: example/flutter_test
+        run: flutter pub get
