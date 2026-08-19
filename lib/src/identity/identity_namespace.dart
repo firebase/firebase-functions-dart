@@ -337,7 +337,7 @@ class IdentityNamespace extends FunctionsNamespace {
           throw HttpResponseException.badRequest(
             message:
                 'The customClaims payload should not exceed $claimsMaxPayloadSize '
-                'characters.',
+                'bytes.',
           );
         }
       }
@@ -360,7 +360,7 @@ class IdentityNamespace extends FunctionsNamespace {
           throw HttpResponseException.badRequest(
             message:
                 'The sessionClaims payload should not exceed $claimsMaxPayloadSize '
-                'characters.',
+                'bytes.',
           );
         }
 
@@ -371,7 +371,7 @@ class IdentityNamespace extends FunctionsNamespace {
           throw HttpResponseException.badRequest(
             message:
                 'The customClaims and sessionClaims payloads should not exceed '
-                '$claimsMaxPayloadSize characters combined.',
+                '$claimsMaxPayloadSize bytes combined.',
           );
         }
       }

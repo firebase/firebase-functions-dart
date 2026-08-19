@@ -85,6 +85,15 @@ void main() {
         return await func.handler(req);
       }
 
+      test('succeeds for valid response', () async {
+        identity.beforeUserCreated((ev) => const BeforeCreateResponse());
+
+        expect(
+          (await handle(createEvent())).readAsString().then(json.decode),
+          completes,
+        );
+      });
+
       test('fails for invalid custom claims size', () async {
         var i = 0;
         identity.beforeUserCreated((ev) {
@@ -106,10 +115,56 @@ void main() {
         return await func.handler(req);
       }
 
+      test('succeeds for valid response', () async {
+        identity.beforeUserSignedIn((ev) => const BeforeSignInResponse());
+
+        expect(
+          (await handle(createEvent())).readAsString().then(json.decode),
+          completes,
+        );
+      });
+
       test('fails for invalid custom claims size', () async {
         var i = 0;
         identity.beforeUserSignedIn((ev) {
           return BeforeSignInResponse(customClaims: tooLargeCustomClaims[i]);
+        });
+        for (final l = tooLargeCustomClaims.length; i < l; i++) {
+          await expectLater(
+            handle(createEvent()),
+            throwsA(isA<HttpResponseException>()),
+          );
+        }
+      });
+
+      test('fails for invalid session claims size', () async {
+        var i = 0;
+        identity.beforeUserSignedIn((ev) {
+          return BeforeSignInResponse(sessionClaims: tooLargeCustomClaims[i]);
+        });
+        for (final l = tooLargeCustomClaims.length; i < l; i++) {
+          await expectLater(
+            handle(createEvent()),
+            throwsA(isA<HttpResponseException>()),
+          );
+        }
+      });
+
+      test('fails for combined claims size', () async {
+        var i = 0;
+        identity.beforeUserSignedIn((ev) {
+          final custom = <String, String>{};
+          final session = <String, String>{};
+          tooLargeCustomClaims[i].forEach((key, value) {
+            final length = value.length ~/ 2;
+            custom[key] = value.substring(0, length);
+            session['$key-2'] = value.substring(length);
+          });
+
+          return BeforeSignInResponse(
+            customClaims: custom,
+            sessionClaims: session,
+          );
         });
         for (final l = tooLargeCustomClaims.length; i < l; i++) {
           await expectLater(
