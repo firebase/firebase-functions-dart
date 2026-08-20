@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// @dart=3.9
+// The package declares `^3.13.0`; this per-file override must not change how
+// the project is built.
+
 import 'package:firebase_functions/firebase_functions.dart';
 
 void main(List<String> args) async {
