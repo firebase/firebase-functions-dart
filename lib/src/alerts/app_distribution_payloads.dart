@@ -45,7 +45,8 @@ class NewTesterDevicePayload {
   final String testerDeviceIdentifier;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.AppDistroNewTesterIosDevicePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.AppDistroNewTesterIosDevicePayload',
     'testerName': testerName,
     'testerEmail': testerEmail,
     'testerDeviceModelName': testerDeviceModelName,
@@ -100,7 +101,8 @@ class InAppFeedbackPayload {
   final String? screenshotUri;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.AppDistroInAppFeedbackPayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.AppDistroInAppFeedbackPayload',
     'feedbackReport': feedbackReport,
     'feedbackConsoleUri': feedbackConsoleUri,
     if (testerName != null) 'testerName': testerName,

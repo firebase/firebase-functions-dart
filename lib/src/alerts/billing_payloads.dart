@@ -40,7 +40,8 @@ class PlanUpdatePayload {
   final String notificationType;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.BillingPlanUpdatePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.BillingPlanUpdatePayload',
     'billingPlan': billingPlan,
     'principalEmail': principalEmail,
     'notificationType': notificationType,
@@ -67,7 +68,8 @@ class PlanAutomatedUpdatePayload {
   final String notificationType;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.BillingPlanAutomatedUpdatePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.BillingPlanAutomatedUpdatePayload',
     'billingPlan': billingPlan,
     'notificationType': notificationType,
   };

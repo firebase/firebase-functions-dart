@@ -92,25 +92,24 @@ class EmulatorHelper {
     _readyCompleter = Completer<void>();
 
     // Capture output for debugging and detect readiness
-    _process!.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) {
-          print('[EMULATOR] $line');
-          _outputLines.add(line);
+    _process!.stdout.transform(utf8.decoder).transform(const LineSplitter()).listen((
+      line,
+    ) {
+      print('[EMULATOR] $line');
+      _outputLines.add(line);
 
-          // Detect when emulator is ready
-          // We need to wait for functions to be initialized, not just the emulator hub
-          // Look for "http function initialized" which indicates triggers are registered
-          if (line.contains('http function initialized') ||
-              line.contains('All emulators ready') ||
-              line.contains('All emulators started') ||
-              line.contains('It is now safe to connect')) {
-            if (!_readyCompleter!.isCompleted) {
-              _readyCompleter!.complete();
-            }
-          }
-        });
+      // Detect when emulator is ready
+      // We need to wait for functions to be initialized, not just the emulator hub
+      // Look for "http function initialized" which indicates triggers are registered
+      if (line.contains('http function initialized') ||
+          line.contains('All emulators ready') ||
+          line.contains('All emulators started') ||
+          line.contains('It is now safe to connect')) {
+        if (!_readyCompleter!.isCompleted) {
+          _readyCompleter!.complete();
+        }
+      }
+    });
 
     _process!.stderr
         .transform(utf8.decoder)

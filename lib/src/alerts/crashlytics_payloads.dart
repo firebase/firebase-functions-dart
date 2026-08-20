@@ -64,7 +64,8 @@ class NewFatalIssuePayload {
   final Issue issue;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewFatalIssuePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewFatalIssuePayload',
     'issue': issue.toJson(),
   };
 }
@@ -82,7 +83,8 @@ class NewNonfatalIssuePayload {
   final Issue issue;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewNonfatalIssuePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewNonfatalIssuePayload',
     'issue': issue.toJson(),
   };
 }
@@ -113,7 +115,8 @@ class RegressionAlertPayload {
   final DateTime resolveTime;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsRegressionAlertPayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsRegressionAlertPayload',
     'type': type,
     'issue': issue.toJson(),
     'resolveTime': resolveTime.toIso8601String(),
@@ -182,7 +185,8 @@ class StabilityDigestPayload {
   final List<TrendingIssueDetails> trendingIssues;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsStabilityDigestPayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsStabilityDigestPayload',
     'digestDate': digestDate.toIso8601String(),
     'trendingIssues': trendingIssues.map((e) => e.toJson()).toList(),
   };
@@ -226,7 +230,8 @@ class VelocityAlertPayload {
   final String firstVersion;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsVelocityAlertPayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsVelocityAlertPayload',
     'issue': issue.toJson(),
     'createTime': createTime.toIso8601String(),
     'crashCount': crashCount,
@@ -248,7 +253,8 @@ class NewAnrIssuePayload {
   final Issue issue;
 
   Map<String, dynamic> toJson() => {
-    '@type': 'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewAnrIssuePayload',
+    '@type':
+        'type.googleapis.com/google.events.firebase.firebasealerts.v1.CrashlyticsNewAnrIssuePayload',
     'issue': issue.toJson(),
   };
 }

@@ -67,8 +67,9 @@ void main() {
       }
 
       // Read Dart-generated YAML
-      final dartYaml = File('test/fixtures/dart_reference/functions.yaml')
-          .readAsStringSync();
+      final dartYaml = File(
+        'test/fixtures/dart_reference/functions.yaml',
+      ).readAsStringSync();
       final dartParsed = loadYaml(dartYaml);
       dartManifest = _yamlToJson(dartParsed) as Map<String, dynamic>;
 
@@ -88,8 +89,9 @@ void main() {
     });
 
     test('should have a comment at top', () {
-      final dartYaml = File('test/fixtures/dart_reference/functions.yaml')
-          .readAsStringSync();
+      final dartYaml = File(
+        'test/fixtures/dart_reference/functions.yaml',
+      ).readAsStringSync();
       expect(dartYaml, startsWith('#'));
     });
 
@@ -358,7 +360,8 @@ void main() {
       expect(
         dartEndpoints.keys,
         hasLength(58),
-        reason: 'Should discover 58 functions (7 Callable + 7 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options + 1 Secrets + 1 echoPath)',
+        reason:
+            'Should discover 58 functions (7 Callable + 7 HTTPS + 1 Pub/Sub + 5 Firestore + 4 Firestore WithAuthContext + 5 Database + 3 Alerts + 4 Identity + 1 Remote Config + 4 Storage + 2 Eventarc + 2 Scheduler + 2 Tasks + 1 Test Lab + 5 Options + 2 Variable Options + 1 Cross-file Options + 1 Secrets + 1 echoPath)',
       );
       expect(
         nodejsEndpoints.keys,

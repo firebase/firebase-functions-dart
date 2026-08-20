@@ -158,9 +158,9 @@ void main() {
         );
 
         expect(response.statusCode, 200);
-        final result = await client.parseCallableResponse(
-          response,
-        ) as Map<String, dynamic>;
+        final result =
+            await client.parseCallableResponse(response)
+                as Map<String, dynamic>;
         expect(result['authed'], isTrue);
         expect(result['uid'], 'caller-uid');
       },
@@ -175,9 +175,9 @@ void main() {
         );
 
         expect(response.statusCode, 200);
-        final result = await client.parseCallableResponse(
-          response,
-        ) as Map<String, dynamic>;
+        final result =
+            await client.parseCallableResponse(response)
+                as Map<String, dynamic>;
         expect(result['authed'], isFalse);
         expect(result['uid'], isNull);
       },

@@ -152,7 +152,8 @@ void main() {
 
       test('parses document path correctly', () {
         final docEventData = _buildDocumentEventData(
-          name: 'projects/test-project/databases/(default)/documents/users/user123',
+          name:
+              'projects/test-project/databases/(default)/documents/users/user123',
           fields: [_buildField('name', _buildStringValue('Test'))],
         );
 
