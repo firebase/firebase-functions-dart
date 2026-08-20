@@ -27,7 +27,6 @@ workspace:
   - example/hosting
   - example/https
   - example/logging
-  - example/sqlite3
   - example/firestore
   - example/pubsub
   - example/database

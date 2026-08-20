@@ -90,7 +90,16 @@ jobs:
         run: dart --version
 
       - name: Install dependencies
-        run: dart pub upgrade
+        run: |
+          dart pub upgrade
+          # Non-workspace packages are not covered above, but the
+          # repository-wide analyze below still reads their sources.
+          find example -type f -name pubspec.yaml -not -path '*/.*' -exec dirname {} \; | while read -r dir; do
+            if ! grep -q '^resolution: workspace' "$dir/pubspec.yaml"; then
+              echo "Resolving standalone package $dir..."
+              (cd "$dir" && dart pub upgrade)
+            fi
+          done
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
