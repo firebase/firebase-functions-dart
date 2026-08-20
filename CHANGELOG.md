@@ -10,9 +10,10 @@
 - **BREAKING:** `Cors` is now `Option<List<Object>>`, accepting exact origins or
   `CorsPattern` regexes, with `corsAllowAnyOrigin`, `corsAnyOriginWildcard` and
   `corsDisabled` for the `cors: true`/`'*'`/`false` equivalents.
-- **BREAKING:** Bump minimum Dart SDK to `^3.13.0` and update the generated
-  manifest `command` to match `dart build cli`'s output path, fixing deploys
-  for functions with native build-hook dependencies (e.g. `sqlite3`).
+- Support dependencies with native build hooks (e.g. `sqlite3`): projects
+  declaring an SDK constraint of `^3.13.0` or later now generate a manifest
+  `command` pointing at `dart build cli`'s bundle. Projects below that keep
+  building with `dart compile exe` as before.
 
 ## 0.7.0
 

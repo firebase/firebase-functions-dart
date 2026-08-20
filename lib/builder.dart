@@ -28,6 +28,7 @@ import 'package:build/build.dart';
 import 'package:glob/glob.dart';
 import 'package:source_gen/source_gen.dart';
 
+import 'src/builder/features.dart';
 import 'src/builder/manifest.dart';
 import 'src/builder/spec.dart';
 
@@ -58,6 +59,10 @@ class _SpecBuilder implements Builder {
     final sharedOptionsVars = <String, InstanceCreationExpression>{};
     final astCache = <AssetId, CompilationUnit>{};
 
+    // Unknown until the first library of this package resolves.
+    var features = const DartVersionFeatures.unknown();
+    var featuresDetected = false;
+
     for (final asset in assets) {
       if (asset.package != buildStep.inputId.package) continue;
       LibraryElement library;
@@ -65,6 +70,13 @@ class _SpecBuilder implements Builder {
         library = await resolver.libraryFor(asset, allowSyntaxErrors: true);
       } catch (e) {
         continue;
+      }
+      if (!featuresDetected) {
+        // Deliberately `package` rather than `effective`: a per-file
+        // `// @dart=` override must not change how the whole project is built.
+        final version = library.languageVersion.package;
+        features = DartVersionFeatures(version.major, version.minor);
+        featuresDetected = true;
       }
       final fragment = library.firstFragment;
       final astNode = await resolver.astNodeFor(fragment, resolve: true);
@@ -104,7 +116,11 @@ class _SpecBuilder implements Builder {
     }
 
     // Generate YAML from collected data
-    final yamlContent = generateManifestYaml(allParams, allEndpoints);
+    final yamlContent = generateManifestYaml(
+      allParams,
+      allEndpoints,
+      nativeAssetsAvailable: features.isNativeAssetsAvailable,
+    );
 
     // Write the YAML file
     await buildStep.writeAsString(
