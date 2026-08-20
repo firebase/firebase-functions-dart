@@ -160,3 +160,40 @@ void main() {
 }
 ```
 
+
+## Native Dependencies (Build Hooks)
+
+Some packages ship a [build hook](https://dart.dev/interop/c-interop) that
+compiles a native library at build time — `sqlite3` is a common example. These
+packages cannot be built with `dart compile exe`, which is what deploying a
+Dart functions project normally uses:
+
+```
+'dart compile' does not support build hooks, use 'dart build' instead.
+Packages with build hooks: sqlite3.
+```
+
+This applies even when the package is only a transitive dependency, and even
+when your own code never imports it.
+
+To deploy such a project, raise the SDK constraint in your functions
+`pubspec.yaml` to `^3.13.0` or later:
+
+```yaml
+environment:
+  sdk: ^3.13.0
+```
+
+The Firebase CLI then builds with `dart build cli`, which runs build hooks
+while cross-compiling for Cloud Run. Dart 3.13 is required because that is the
+release where `dart build cli` gained the `--target-os` and `--target-arch`
+flags.
+
+Projects that declare a lower constraint keep building with `dart compile exe`
+exactly as before, so this is opt-in — you only need Dart 3.13 if you actually
+depend on a package with a build hook. The decision is made from the constraint
+your project declares, not from the Dart SDK installed on the machine running
+the deploy, so a project builds the same way everywhere.
+
+See [example/sqlite3](https://github.com/firebase/firebase-functions-dart/tree/main/example/sqlite3)
+for a working project.
