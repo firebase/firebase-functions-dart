@@ -26,8 +26,9 @@ environment:
 ```
 
 Dart 3.13 is the release where `dart build cli` gained `--target-os` and
-`--target-arch`. Projects below that constraint keep using `dart compile exe`,
-so nothing changes for functions without native dependencies.
+`--target-arch`. Projects below that constraint keep using `dart compile exe`.
+Any project declaring `^3.13.0` takes the bundle path, whether or not it has
+native dependencies, and needs firebase-tools 15.28.1 or later to deploy.
 
 See [Native Dependencies](../../doc/config.md#native-dependencies-build-hooks)
 for the full explanation.
