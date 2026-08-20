@@ -27,6 +27,7 @@ workspace:
   - example/hosting
   - example/https
   - example/logging
+  - example/sqlite3
   - example/firestore
   - example/pubsub
   - example/database
@@ -40,6 +41,7 @@ workspace:
   - example/remoteconfig
   - example/firestore_test
   - test/fixtures/dart_reference
+  - test/fixtures/dart_native_reference
 
 dependencies:
   analyzer: '>=13.0.0 <15.0.0'

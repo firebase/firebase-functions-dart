@@ -45,16 +45,6 @@ sqlite3 3.53.4, items: 3
 
 ## Running locally
 
-Unlike the other examples, this one is not part of the repository's pub
-workspace — its `^3.13.0` constraint would otherwise force every contributor
-onto Dart 3.13. Resolve it on its own first:
-
-```bash
-dart pub get
-```
-
-Then:
-
 ```bash
 FIREBASE_PROJECT=demo-test PORT=8080 dart run bin/server.dart
 ```

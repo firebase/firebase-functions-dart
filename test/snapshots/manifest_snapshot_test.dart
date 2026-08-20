@@ -2052,23 +2052,12 @@ void main() {
 
   group('native build hook support', () {
     // Declares `^3.13.0`, covering the `dart build cli` path that the
-    // `dart_reference` fixture cannot. Resolves standalone, see its pubspec.
+    // `dart_reference` fixture cannot.
     const fixture = 'test/fixtures/dart_native_reference';
     late Map<String, dynamic> manifest;
 
     setUpAll(() async {
       print('Generating native-assets Dart manifest via build_runner...');
-      final pubGet = await Process.run(Platform.resolvedExecutable, const [
-        'pub',
-        'get',
-      ], workingDirectory: fixture);
-      if (pubGet.exitCode != 0) {
-        throw Exception(
-          'dart pub get failed in $fixture: '
-          '${pubGet.stderr}\n${pubGet.stdout}',
-        );
-      }
-
       final build = await Process.run(Platform.resolvedExecutable, const [
         'run',
         'build_runner',

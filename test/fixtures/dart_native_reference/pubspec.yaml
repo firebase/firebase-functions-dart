@@ -18,8 +18,7 @@ description: >-
   generated manifest is expected to target the dart build cli bundle.
 publish_to: none
 
-# Not a workspace member: a `^3.13.0` constraint there would block
-# `dart pub get` for the whole repository on older SDKs.
+resolution: workspace
 
 environment:
   sdk: ^3.13.0
@@ -29,9 +28,4 @@ dependencies:
 
 dev_dependencies:
   build_runner: ^2.10.5
-  dart_flutter_team_lints: ^3.5.2
   lints: ^6.0.0
-
-dependency_overrides:
-  firebase_functions:
-    path: ../../..
