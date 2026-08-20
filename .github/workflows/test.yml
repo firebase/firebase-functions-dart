@@ -94,7 +94,7 @@ jobs:
           dart pub upgrade
           # Non-workspace packages are not covered above, but the
           # repository-wide analyze below still reads their sources.
-          find example test/fixtures -type f -name pubspec.yaml -not -path '*/.*' -exec dirname {} \; | while read -r dir; do
+          find example test/fixtures -type f -name pubspec.yaml -not -path '*/.*' -not -path '*/flutter_test/*' -exec dirname {} \; | while read -r dir; do
             if ! grep -q '^resolution: workspace' "$dir/pubspec.yaml"; then
               echo "Resolving standalone package $dir..."
               (cd "$dir" && dart pub upgrade)
