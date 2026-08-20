@@ -59,9 +59,8 @@ class _SpecBuilder implements Builder {
     final sharedOptionsVars = <String, InstanceCreationExpression>{};
     final astCache = <AssetId, CompilationUnit>{};
 
-    // Unknown until the first library of this package resolves.
+    // Unknown until a library of this package resolves.
     var features = const DartVersionFeatures.unknown();
-    var featuresDetected = false;
 
     for (final asset in assets) {
       if (asset.package != buildStep.inputId.package) continue;
@@ -71,13 +70,10 @@ class _SpecBuilder implements Builder {
       } catch (e) {
         continue;
       }
-      if (!featuresDetected) {
-        // Deliberately `package` rather than `effective`: a per-file
-        // `// @dart=` override must not change how the whole project is built.
-        final version = library.languageVersion.package;
-        features = DartVersionFeatures(version.major, version.minor);
-        featuresDetected = true;
-      }
+      // Deliberately `package` rather than `effective`: a per-file
+      // `// @dart=` override must not change how the whole project is built.
+      final version = library.languageVersion.package;
+      features = DartVersionFeatures(version.major, version.minor);
       final fragment = library.firstFragment;
       final astNode = await resolver.astNodeFor(fragment, resolve: true);
       if (astNode is! CompilationUnit) continue;
