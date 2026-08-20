@@ -400,8 +400,6 @@ void main() {
       expect(nodejsFunc['platform'], equals('gcfv2'));
       expect(dartFunc['callableTrigger'], isNotNull);
       expect(nodejsFunc['callableTrigger'], isNotNull);
-      // The fixture declares an SDK constraint below 3.13, so it builds with
-      // `dart compile exe` rather than `dart build cli`.
       expect(dartFunc['command'], equals(['./bin/server']));
       expect(dartFunc['baseImageUri'], contains('-docker.pkg.dev/'));
 
@@ -2049,6 +2047,52 @@ void main() {
       );
       expect(nodejsApiConfig, isNotNull);
       expect((nodejsApiConfig as Map)['secret'], equals('API_CONFIG'));
+    });
+  });
+
+  group('native build hook support', () {
+    // Declares `^3.13.0`, covering the `dart build cli` path that the
+    // `dart_reference` fixture cannot. Resolves standalone, see its pubspec.
+    const fixture = 'test/fixtures/dart_native_reference';
+    late Map<String, dynamic> manifest;
+
+    setUpAll(() async {
+      print('Generating native-assets Dart manifest via build_runner...');
+      final pubGet = await Process.run(Platform.resolvedExecutable, const [
+        'pub',
+        'get',
+      ], workingDirectory: fixture);
+      if (pubGet.exitCode != 0) {
+        throw Exception(
+          'dart pub get failed in $fixture: '
+          '${pubGet.stderr}\n${pubGet.stdout}',
+        );
+      }
+
+      final build = await Process.run(Platform.resolvedExecutable, const [
+        'run',
+        'build_runner',
+        'build',
+        '--delete-conflicting-outputs',
+      ], workingDirectory: fixture);
+      if (build.exitCode != 0) {
+        throw Exception(
+          'build_runner failed in $fixture: '
+          '${build.stderr}\n${build.stdout}',
+        );
+      }
+
+      final yaml = File('$fixture/functions.yaml').readAsStringSync();
+      manifest = _yamlToJson(loadYaml(yaml)) as Map<String, dynamic>;
+    });
+
+    test('targets the dart build cli bundle', () {
+      final endpoint = _getEndpoint(manifest, 'nativeDemo');
+      expect(endpoint, isNotNull);
+      expect(
+        endpoint!['command'],
+        equals(['./build/cli/linux_x64/bundle/bin/server']),
+      );
     });
   });
 }
