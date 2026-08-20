@@ -16,7 +16,6 @@
 library;
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:meta/meta.dart';
@@ -249,7 +248,7 @@ class IdentityNamespace extends FunctionsNamespace {
       final result = generateResponsePayload(response);
 
       return Response.ok(
-        jsonEncode(result.toJson()),
+        encodeJsonBytes(result.toJson()),
         headers: {'Content-Type': 'application/json'},
       );
     });
@@ -334,11 +333,11 @@ class IdentityNamespace extends FunctionsNamespace {
                 'and cannot be specified.',
           );
         }
-        if (jsonEncode(customClaims).length > claimsMaxPayloadSize) {
+        if (encodeJsonBytes(customClaims).length > claimsMaxPayloadSize) {
           throw HttpResponseException.badRequest(
             message:
                 'The customClaims payload should not exceed $claimsMaxPayloadSize '
-                'characters.',
+                'bytes.',
           );
         }
       }
@@ -357,22 +356,22 @@ class IdentityNamespace extends FunctionsNamespace {
                 'and cannot be specified.',
           );
         }
-        if (jsonEncode(sessionClaims).length > claimsMaxPayloadSize) {
+        if (encodeJsonBytes(sessionClaims).length > claimsMaxPayloadSize) {
           throw HttpResponseException.badRequest(
             message:
                 'The sessionClaims payload should not exceed $claimsMaxPayloadSize '
-                'characters.',
+                'bytes.',
           );
         }
 
         // Check combined size
         final customClaims = authResponse.customClaims ?? {};
         final combinedClaims = {...customClaims, ...sessionClaims};
-        if (jsonEncode(combinedClaims).length > claimsMaxPayloadSize) {
+        if (encodeJsonBytes(combinedClaims).length > claimsMaxPayloadSize) {
           throw HttpResponseException.badRequest(
             message:
                 'The customClaims and sessionClaims payloads should not exceed '
-                '$claimsMaxPayloadSize characters combined.',
+                '$claimsMaxPayloadSize bytes combined.',
           );
         }
       }

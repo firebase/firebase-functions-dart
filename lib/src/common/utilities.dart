@@ -30,3 +30,9 @@ Future<Map<String, dynamic>> readAsJsonMap(Request request) async {
 }
 
 final _converter = const Utf8Decoder().fuse(const JsonDecoder());
+
+final _encoder = JsonUtf8Encoder();
+
+List<int> encodeJsonBytes(Object? obj) {
+  return _encoder.convert(obj);
+}

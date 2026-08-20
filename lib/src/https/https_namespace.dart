@@ -20,6 +20,7 @@ import 'package:meta/meta.dart';
 import 'package:shelf/shelf.dart';
 
 import '../common/options.dart';
+import '../common/utilities.dart';
 import '../firebase.dart';
 import 'auth.dart';
 import 'callable.dart';
@@ -232,7 +233,7 @@ class HttpsNamespace extends FunctionsNamespace {
           handler,
           (result) => result,
           (result) => Response.ok(
-            jsonEncode({'result': result}),
+            encodeJsonBytes({'result': result}),
             headers: {'Content-Type': 'application/json'},
           ),
         );

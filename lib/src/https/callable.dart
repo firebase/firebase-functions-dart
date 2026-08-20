@@ -21,6 +21,7 @@ import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:shelf/shelf.dart';
 
 import '../../logger.dart' as logger;
+import '../common/utilities.dart';
 
 /// JSON decoder function type.
 typedef JsonDecoder<T extends Object?> = T Function(Map<String, dynamic>);
@@ -44,7 +45,7 @@ class CallableResult<T extends Object> {
 
   /// Converts this result to a Shelf Response.
   Response toResponse() => Response.ok(
-    jsonEncode({'result': data}),
+    encodeJsonBytes({'result': data}),
     headers: {HttpHeaders.contentTypeHeader: 'application/json'},
   );
 }
@@ -365,7 +366,7 @@ class CallableResponse<T extends Object> {
 
   /// Encodes data as SSE format.
   List<int> _encodeSSE(Map<String, dynamic> data) {
-    final jsonBytes = json.fuse(utf8).encode(data);
+    final jsonBytes = encodeJsonBytes(data);
     return (BytesBuilder(copy: false)
           ..add(_dataPrefix)
           ..add(jsonBytes)

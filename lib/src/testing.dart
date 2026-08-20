@@ -24,6 +24,7 @@ import 'package:shelf/shelf.dart';
 
 import 'common/cloud_run_id.dart';
 import 'common/environment.dart';
+import 'common/utilities.dart';
 import 'firebase.dart';
 // ignore: invalid_use_of_visible_for_testing_member
 import 'server.dart' show FunctionsRunner, createTestHandler;
@@ -114,7 +115,7 @@ class FunctionsTestClient {
     final request = Request(
       'POST',
       Uri.parse('http://localhost/${toCloudRunId(name)}'),
-      body: jsonEncode({'data': data}),
+      body: encodeJsonBytes({'data': data}),
       headers: headers,
     );
     return _invoke(toCloudRunId(name), request);
