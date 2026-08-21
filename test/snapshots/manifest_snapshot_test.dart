@@ -2049,6 +2049,41 @@ void main() {
       expect((nodejsApiConfig as Map)['secret'], equals('API_CONFIG'));
     });
   });
+
+  group('native build hook support', () {
+    // Declares `^3.13.0`, covering the `dart build cli` path that the
+    // `dart_reference` fixture cannot.
+    const fixture = 'test/fixtures/dart_native_reference';
+    late Map<String, dynamic> manifest;
+
+    setUpAll(() async {
+      print('Generating native-assets Dart manifest via build_runner...');
+      final build = await Process.run(Platform.resolvedExecutable, const [
+        'run',
+        'build_runner',
+        'build',
+        '--delete-conflicting-outputs',
+      ], workingDirectory: fixture);
+      if (build.exitCode != 0) {
+        throw Exception(
+          'build_runner failed in $fixture: '
+          '${build.stderr}\n${build.stdout}',
+        );
+      }
+
+      final yaml = File('$fixture/functions.yaml').readAsStringSync();
+      manifest = _yamlToJson(loadYaml(yaml)) as Map<String, dynamic>;
+    });
+
+    test('targets the dart build cli bundle', () {
+      final endpoint = _getEndpoint(manifest, 'nativeDemo');
+      expect(endpoint, isNotNull);
+      expect(
+        endpoint!['command'],
+        equals(['./build/cli/linux_x64/bundle/bin/server']),
+      );
+    });
+  });
 }
 
 /// Gets an endpoint from the manifest.

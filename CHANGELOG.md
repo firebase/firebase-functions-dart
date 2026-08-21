@@ -10,6 +10,11 @@
 - **BREAKING:** `Cors` is now `Option<List<Object>>`, accepting exact origins or
   `CorsPattern` regexes, with `corsAllowAnyOrigin`, `corsAnyOriginWildcard` and
   `corsDisabled` for the `cors: true`/`'*'`/`false` equivalents.
+- Support dependencies with native build hooks (e.g. `sqlite3`): projects
+  declaring an SDK constraint of `^3.13.0` or later now generate a manifest
+  `command` pointing at `dart build cli`'s bundle, and require firebase-tools
+  15.28.1 or later to deploy. Projects below that constraint keep building with
+  `dart compile exe` as before.
 
 ## 0.7.0
 

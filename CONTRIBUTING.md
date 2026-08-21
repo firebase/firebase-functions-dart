@@ -16,7 +16,8 @@ All submissions, including submissions by project members, require review. We us
 
 ### Prerequisites
 
-- **Dart SDK** >= 3.9.0
+- **Dart SDK** >= 3.13.0 (required by `example/sqlite3`; the published package
+  itself supports `^3.11.0`)
 - **Node.js** v22 (required for snapshot tests and the Firebase Emulator)
 - **Java 21+** (required for the Firestore emulator)
 

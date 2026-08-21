@@ -99,11 +99,10 @@ jobs:
       - name: Analyze all packages
         run: |
           dart analyze --fatal-infos
-          find example -type f -name pubspec.yaml -not -path '*/.*' -not -path '*/flutter_test/*' -exec dirname {} \; | while read -r dir; do
+          find example test/fixtures -type f -name pubspec.yaml -not -path '*/.*' -not -path '*/flutter_test/*' -exec dirname {} \; | while read -r dir; do
             echo "Analyzing $dir..."
             dart analyze --fatal-infos "$dir"
           done
-          dart analyze --fatal-infos test/fixtures/dart_reference
 
       - name: Run unit tests
         run: dart test --exclude-tags=snapshot,integration,e2e
