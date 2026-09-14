@@ -15,7 +15,7 @@
   `command` pointing at `dart build cli`'s bundle, and require firebase-tools
   15.28.1 or later to deploy. Projects below that constraint keep building with
   `dart compile exe` as before.
-- Require `firebase_admin_sdk: ^0.5.5` and `google_cloud_firestore: ^0.5.4`.
+- Require `firebase_admin_sdk: ^0.5.4` and `google_cloud_firestore: ^0.5.3`.
 
 ## 0.7.0
 
