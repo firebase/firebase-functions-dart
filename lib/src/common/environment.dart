@@ -63,23 +63,55 @@ class FirebaseEnv {
     return false;
   }
 
+  /// Returns the parsed `FIREBASE_CONFIG` environment variable, or `null` if
+  /// not set or invalid.
+  ///
+  /// If `FIREBASE_CONFIG` starts with `{`, it is parsed as an inline JSON
+  /// object. Otherwise, it is treated as a file path and read from disk.
+  Map<String, dynamic>? get firebaseConfig {
+    final config = environment['FIREBASE_CONFIG'];
+    if (config == null || config.isEmpty) return null;
+
+    try {
+      final contents = config.startsWith('{')
+          ? config
+          : File(config).readAsStringSync();
+      if (jsonDecode(contents) case final Map<String, dynamic> map) {
+        return map;
+      }
+    } on FormatException {
+      // ignore
+    } on FileSystemException {
+      // ignore
+    }
+    return null;
+  }
+
   /// Returns the current Firebase project ID.
   ///
-  /// Checks standard environment variables in order:
-  /// 1. FIREBASE_PROJECT
-  /// 2. GCLOUD_PROJECT
-  /// 3. GOOGLE_CLOUD_PROJECT
-  /// 4. GCP_PROJECT
+  /// Checks `FIREBASE_CONFIG` (`projectId` field, from inline JSON or a JSON
+  /// file path) first, then falls back to standard environment variables in
+  /// order:
+  /// 1. `FIREBASE_PROJECT`
+  /// 2. `GCLOUD_PROJECT`
+  /// 3. `GOOGLE_CLOUD_PROJECT`
+  /// 4. `GCP_PROJECT`
   ///
   /// If none are set, throws [StateError].
   String get projectId {
+    if (firebaseConfig?['projectId'] case final String value
+        when value.isNotEmpty) {
+      return value;
+    }
+
     for (final option in _projectIdEnvKeyOptions) {
       final value = environment[option];
       if (value != null && value.isNotEmpty) return value;
     }
 
     throw StateError(
-      'No project ID found in environment. Checked: ${_projectIdEnvKeyOptions.join(', ')}',
+      'No project ID found in environment. '
+      'Checked: FIREBASE_CONFIG, ${_projectIdEnvKeyOptions.join(', ')}',
     );
   }
 
