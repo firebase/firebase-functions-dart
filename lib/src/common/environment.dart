@@ -22,8 +22,20 @@ import 'package:meta/meta.dart';
 class FirebaseEnv {
   FirebaseEnv() : environment = mockEnvironment ?? Platform.environment;
 
+  static Map<String, String>? _mockEnvironment;
+
   @internal
-  static Map<String, String>? mockEnvironment;
+  static Map<String, String>? get mockEnvironment => _mockEnvironment;
+
+  @internal
+  static set mockEnvironment(Map<String, String>? value) {
+    _mockEnvironment = value;
+    _lastConfigRaw = null;
+    _cachedConfig = null;
+  }
+
+  static String? _lastConfigRaw;
+  static Map<String, dynamic>? _cachedConfig;
 
   final Map<String, String> environment;
 
@@ -72,12 +84,19 @@ class FirebaseEnv {
     final config = environment['FIREBASE_CONFIG'];
     if (config == null || config.isEmpty) return null;
 
+    if (config == _lastConfigRaw) {
+      return _cachedConfig;
+    }
+
     try {
       final contents = config.startsWith('{')
           ? config
           : File(config).readAsStringSync();
       if (jsonDecode(contents) case final Map<String, dynamic> map) {
-        return map;
+        final unmodifiable = Map<String, dynamic>.unmodifiable(map);
+        _lastConfigRaw = config;
+        _cachedConfig = unmodifiable;
+        return unmodifiable;
       }
     } on FormatException {
       // ignore
