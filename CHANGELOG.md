@@ -1,3 +1,12 @@
+## 0.9.0-wip
+
+- **BREAKING:** Param classes (`Param`, `SecretParam`, `JsonSecretParam`,
+  `StringParam`, `IntParam`, `DoubleParam`, `BooleanParam`, `ListParam` and
+  `EnumListParam`) can no longer be constructed, subclassed or implemented; use
+  `define*()`, e.g. `defineSecret('API_KEY')`. Directly constructed params were
+  missing from the manifest's `params:` and deployed under a name guessed from
+  the variable.
+
 ## 0.8.0
 
 - Fix `extractAuthToken` dropping custom claims from `AuthData.token` for

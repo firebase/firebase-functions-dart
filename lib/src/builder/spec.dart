@@ -651,7 +651,7 @@ Expression resolveConstInitializer(
     resolved = initializer;
   }
   if (constructorArguments(resolved) == null) return expression;
-  // Only const-constructed params reach here, and define*() is required.
+  // define*() params are never const, so a const .param() can't be named.
   final isParam = switch (resolved) {
     InstanceCreationExpression(:final constructorName) =>
       constructorName.name?.name == 'param',

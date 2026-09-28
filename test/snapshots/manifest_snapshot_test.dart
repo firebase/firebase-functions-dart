@@ -2201,11 +2201,6 @@ void main() {
         );
       });
 
-      test('does not guess names for const-constructed params', () {
-        final endpoint = _getEndpoint(manifest, 'constParamOption')!;
-        expect(endpoint['availableMemoryMb'], isNull);
-      });
-
       test('maps a custom const MemoryOption like the runtime does', () {
         final endpoint = _getEndpoint(manifest, 'constCustomMemory')!;
         expect(endpoint['availableMemoryMb'], equals(32768));

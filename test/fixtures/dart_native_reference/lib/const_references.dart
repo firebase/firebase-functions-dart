@@ -27,8 +27,7 @@ const constRegion = SupportedRegion.europeWest2;
 const constMemory = MemoryOption.gb2;
 const constCpu = 2.0;
 const constCustomMemory = MemoryOption(3000);
-const constIntParam = IntParam('CONST_MEM', null);
-const constParamMemory = Memory.param(constIntParam);
+
 const constTimeZone = 'Europe/London';
 const constRetryCount = 4;
 const constMaxAttempts = 6;
@@ -80,12 +79,6 @@ void registerConstReferenceFunctions(Firebase firebase) {
     name: 'constOptionObjectTasks',
     (request) async {},
     options: const TaskQueueOptions(retryConfig: constTaskRetryConfig),
-  );
-
-  firebase.https.onRequest(
-    name: 'constParamOption',
-    (request) async => Response.ok('ok'),
-    options: const HttpsOptions(memory: constParamMemory),
   );
 
   firebase.https.onRequest(
