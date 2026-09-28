@@ -192,6 +192,66 @@ void main() {
         containsPair('serviceAccount', 'super-account@'),
       );
     });
+
+    test('extracts invoker from Invoker dot shorthand', () {
+      final options = _parseHttpsOptions('''
+void main() {
+  const options = const HttpsOptions(
+    invoker: .public(),
+  );
+}
+''');
+
+      final endpoint = EndpointSpec(
+        name: 'helloWorld',
+        type: 'https',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), containsPair('invoker', ['public']));
+    });
+
+    test('extracts dot shorthand factories like qualified factories', () {
+      Map<String, dynamic> extract({required bool shorthand}) {
+        String on(String type) => shorthand ? '.' : '$type.';
+
+        final options = _parseHttpsOptions('''
+void main() {
+  final options = new HttpsOptions(
+    memory: ${on('Memory')}param(memoryParam),
+    cpu: ${on('Cpu')}gcfGen1(),
+    concurrency: ${on('Concurrency')}reset(),
+    minInstances: ${on('Instances')}param(minInstancesParam),
+    invoker: ${on('Invoker')}private(),
+  );
+}
+''');
+
+        return EndpointSpec(
+          name: 'helloWorld',
+          type: 'https',
+          options: options,
+          variableToParamName: {
+            'memoryParam': 'MEMORY',
+            'minInstancesParam': 'MIN_INSTANCES',
+          },
+        ).extractOptions();
+      }
+
+      final shorthand = extract(shorthand: true);
+
+      expect(
+        shorthand,
+        containsPair('availableMemoryMb', '{{ params.MEMORY }}'),
+      );
+      expect(shorthand, containsPair('cpu', 'gcf_gen1'));
+      expect(shorthand, containsPair('invoker', ['private']));
+      expect(
+        shorthand,
+        containsPair('minInstances', '{{ params.MIN_INSTANCES }}'),
+      );
+      expect(shorthand, equals(extract(shorthand: false)));
+    });
   });
 }
 

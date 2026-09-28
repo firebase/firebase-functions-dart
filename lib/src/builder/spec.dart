@@ -560,6 +560,9 @@ class EndpointSpec {
     InstanceCreationExpression(:final argumentList) => argumentList.arguments,
     FunctionExpressionInvocation(:final argumentList) => argumentList.arguments,
     MethodInvocation(:final argumentList) => argumentList.arguments,
+    DotShorthandConstructorInvocation(:final argumentList) =>
+      argumentList.arguments,
+    DotShorthandInvocation(:final argumentList) => argumentList.arguments,
     _ => null,
   };
 
@@ -567,6 +570,11 @@ class EndpointSpec {
     InstanceCreationExpression(:final constructorName) =>
       constructorName.name?.name,
     MethodInvocation(:final methodName) => methodName.name,
+    // Dot shorthand: `.public()` resolves to a constructor invocation, while
+    // unresolved ASTs represent it as a member invocation.
+    DotShorthandConstructorInvocation(:final constructorName) =>
+      constructorName.name,
+    DotShorthandInvocation(:final memberName) => memberName.name,
     _ => null,
   };
 
