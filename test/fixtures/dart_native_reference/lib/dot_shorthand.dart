@@ -14,11 +14,7 @@
 
 // ignore_for_file: experimental_member_use
 
-// Options written with dot shorthand. The manifest must match the qualified
-// forms, see https://github.com/firebase/firebase-functions-dart/issues/251.
-//
-// The Dart 3.13 analyzer wrongly reports `const .new(...)` passed to a
-// `@mustBeConst` parameter as non-constant, hence the line-level ignores.
+// Dot shorthand options. Ignores below work around a Dart 3.13 analyzer bug.
 
 import 'package:firebase_functions/firebase_functions.dart';
 

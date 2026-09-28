@@ -2051,8 +2051,8 @@ void main() {
   });
 
   group('Dart 3.13 fixture', () {
-    // Declares `^3.13.0`, covering the `dart build cli` path and dot shorthand
-    // syntax that the `dart_reference` fixture cannot.
+    // Declares `^3.13.0`, covering the `dart build cli` path that the
+    // `dart_reference` fixture cannot.
     const fixture = 'test/fixtures/dart_native_reference';
     late Map<String, dynamic> manifest;
 
@@ -2147,6 +2147,49 @@ void main() {
             'type': 'int',
             'default': 1,
           }),
+        );
+      });
+    });
+
+    group('const references', () {
+      test('extracts https options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferences')!;
+        expect(endpoint['timeoutSeconds'], equals(45));
+        expect(endpoint['serviceAccountEmail'], equals('const-account@'));
+        expect(endpoint['labels'], equals({'team': 'platform'}));
+        expect(endpoint['region'], equals(['europe-west2']));
+        expect(endpoint['availableMemoryMb'], equals(2048));
+        expect(endpoint['cpu'], equals(2));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['a@example.com', 'b@example.com'],
+          }),
+        );
+      });
+
+      test('maps a custom const MemoryOption like the runtime does', () {
+        final endpoint = _getEndpoint(manifest, 'constCustomMemory')!;
+        expect(endpoint['availableMemoryMb'], equals(32768));
+      });
+
+      test('extracts scheduler options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_3')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 3 * * *',
+            'timeZone': 'Europe/London',
+            'retryConfig': {'retryCount': 4},
+          }),
+        );
+      });
+
+      test('extracts task queue options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferenceTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 6}),
         );
       });
     });

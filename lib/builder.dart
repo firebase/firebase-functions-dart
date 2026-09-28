@@ -912,18 +912,13 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (arg is! SetOrMapLiteral || !arg.isMap) return null;
+    final value = constValue(arg);
+    if (value is! Map<Object?, Object?>) return null;
 
-    final map = <String, String>{};
-    for (final element in arg.elements) {
-      if (element is MapLiteralEntry) {
-        final key = element.key;
-        final value = element.value;
-        if (key is StringLiteral && value is StringLiteral) {
-          map[key.stringValue!] = value.stringValue!;
-        }
-      }
-    }
+    final map = <String, String>{
+      for (final MapEntry(:key, :value) in value.entries)
+        if (key is String && value is String) key: value,
+    };
 
     return map.isEmpty ? null : map;
   }
@@ -990,10 +985,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
     // TimeZone('America/New_York') or .new('America/New_York')
     final args = constructorArguments(timeZoneArg)?.arguments;
-    if (args?.firstOrNull case final StringLiteral firstArg) {
-      return firstArg.stringValue;
-    }
-    return null;
+    final value = constValue(args?.firstOrNull);
+    return value is String ? value : null;
   }
 
   /// Extracts RetryConfig from ScheduleOptions.
@@ -1025,12 +1018,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   /// Extracts a value from a retry config option.
   dynamic _extractRetryConfigValue(Expression expression) {
     final args = constructorArguments(expression)?.arguments;
-    if (args != null && args.isNotEmpty) {
-      final first = args.first;
-      if (first is IntegerLiteral) return first.value;
-      if (first is DoubleLiteral) return first.value;
-    }
-    return null;
+    final value = constValue(args?.firstOrNull);
+    return value is num ? value : null;
   }
 
   /// Extracts a boolean field from constructor arguments.
@@ -1041,10 +1030,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (arg is BooleanLiteral) {
-      return arg.value;
-    }
-    return null;
+    final value = constValue(arg);
+    return value is bool ? value : null;
   }
 
   /// Extracts alert type value from an expression.
@@ -1169,7 +1156,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
     if (defaultValueArg == null) return null;
 
-    return _extractConstValue(defaultValueArg);
+    return constValue(defaultValueArg);
   }
 
   /// Extracts a string field from options.
@@ -1215,52 +1202,6 @@ extension on MethodInvocation {
 /// Extracts a string literal or constant value.
 String? _extractStringLiteral(Expression? expression) {
   if (expression == null) return null;
-  final value = _extractConstValue(expression);
+  final value = constValue(expression);
   return value is String ? value : null;
-}
-
-/// Extracts a constant value from an expression.
-Object? _extractConstValue(Expression expression) {
-  final literal = switch (expression) {
-    StringLiteral() => expression.stringValue,
-    IntegerLiteral() => expression.value,
-    DoubleLiteral() => expression.value,
-    BooleanLiteral() => expression.value,
-    ListLiteral() =>
-      expression.elements
-          .whereType<Expression>()
-          .map(_extractConstValue)
-          .whereType<Object>()
-          .toList(),
-    _ => null,
-  };
-
-  if (literal != null) return literal;
-
-  // Try to evaluate as constant if it's an identifier or property access
-  Element? element;
-  if (expression is SimpleIdentifier) {
-    element = expression.element;
-  } else if (expression is PrefixedIdentifier) {
-    element = expression.element;
-  } else if (expression is PropertyAccess) {
-    element = expression.propertyName.element;
-  }
-
-  if (element is PropertyAccessorElement) {
-    element = element.variable;
-  }
-
-  if (element is VariableElement && element.isConst) {
-    final constant = element.computeConstantValue();
-    if (constant != null) {
-      final reader = ConstantReader(constant);
-      if (reader.isString) return reader.stringValue;
-      if (reader.isInt) return reader.intValue;
-      if (reader.isDouble) return reader.doubleValue;
-      if (reader.isBool) return reader.boolValue;
-    }
-  }
-
-  return null;
 }
