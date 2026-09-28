@@ -57,6 +57,7 @@ class _SpecBuilder implements Builder {
     // This enables cross-file resolution — e.g. options declared in
     // shared_options.dart can be referenced in server.dart.
     final sharedOptionsVars = <String, ArgumentList>{};
+    final constInitializers = <VariableElement, Expression>{};
     final astCache = <AssetId, CompilationUnit>{};
 
     // Unknown until a library of this package resolves.
@@ -78,7 +79,9 @@ class _SpecBuilder implements Builder {
       final astNode = await resolver.astNodeFor(fragment, resolve: true);
       if (astNode is! CompilationUnit) continue;
       astCache[asset] = astNode;
-      astNode.accept(_OptionsVariableCollector(sharedOptionsVars));
+      astNode
+        ..accept(_OptionsVariableCollector(sharedOptionsVars))
+        ..accept(_ConstInitializerCollector(constInitializers));
     }
 
     final globalOptionsCollector = _GlobalOptionsCollector(sharedOptionsVars);
@@ -93,6 +96,7 @@ class _SpecBuilder implements Builder {
       final visitor = _FirebaseFunctionsVisitor(
         sharedOptionsVars,
         globalOptions: globalOptions,
+        constInitializers: constInitializers,
       );
       entry.value.accept(visitor);
       allParams.addAll(visitor.params);
@@ -164,6 +168,23 @@ class _OptionsVariableCollector extends RecursiveAstVisitor<void> {
   }
 }
 
+/// Collects the initializers of all `const` variables, keyed by element.
+class _ConstInitializerCollector extends RecursiveAstVisitor<void> {
+  _ConstInitializerCollector(this.constInitializers);
+
+  final Map<VariableElement, Expression> constInitializers;
+
+  @override
+  void visitVariableDeclaration(VariableDeclaration node) {
+    final element = node.declaredFragment?.element;
+    final initializer = node.initializer;
+    if (node.isConst && element != null && initializer != null) {
+      constInitializers[element] = initializer;
+    }
+    super.visitVariableDeclaration(node);
+  }
+}
+
 /// Collects the expression passed to `setGlobalOptions(...)`.
 class _GlobalOptionsCollector extends RecursiveAstVisitor<void> {
   _GlobalOptionsCollector(this.variableToOptionsExpr);
@@ -190,7 +211,9 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   _FirebaseFunctionsVisitor(
     Map<String, ArgumentList>? sharedOptionsVars, {
     ArgumentList? globalOptions,
-  }) : _globalOptionsExpr = globalOptions {
+    Map<VariableElement, Expression> constInitializers = const {},
+  }) : _globalOptionsExpr = globalOptions,
+       _constInitializers = constInitializers {
     if (sharedOptionsVars != null) {
       _variableToOptionsExpr.addAll(sharedOptionsVars);
     }
@@ -314,6 +337,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   final Map<String, EndpointSpec> endpoints = {};
   late final List<_Namespace> namespaces;
   final ArgumentList? _globalOptionsExpr;
+  final Map<VariableElement, Expression> _constInitializers;
 
   /// Maps variable names to their actual parameter names.
   /// e.g., 'minInstances' -> 'MIN_INSTANCES'
@@ -487,6 +511,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: node.findOptionsArg(_variableToOptionsExpr),
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -507,6 +532,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: node.findOptionsArg(_variableToOptionsExpr),
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -545,6 +571,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -581,6 +608,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -615,6 +643,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -695,6 +724,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: node.findOptionsArg(_variableToOptionsExpr),
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -716,6 +746,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: node.findOptionsArg(_variableToOptionsExpr),
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -743,6 +774,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -784,6 +816,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -824,6 +857,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -851,6 +885,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -883,6 +918,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: optionsArg,
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -898,6 +934,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       globalOptions: _globalOptionsExpr,
       options: node.findOptionsArg(_variableToOptionsExpr),
       variableToParamName: _variableToParamName,
+      constInitializers: _constInitializers,
     );
   }
 
@@ -931,7 +968,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    final retryConfigArgs = constructorArguments(retryConfigArg);
+    final retryConfigArgs = constructorArguments(_resolveConst(retryConfigArg));
     if (retryConfigArgs == null) return null;
 
     final config = <String, dynamic>{};
@@ -957,7 +994,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    final rateLimitsArgs = constructorArguments(rateLimitsArg);
+    final rateLimitsArgs = constructorArguments(_resolveConst(rateLimitsArg));
     if (rateLimitsArgs == null) return null;
 
     final config = <String, dynamic>{};
@@ -975,6 +1012,10 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     return config.isEmpty ? null : config;
   }
 
+  Expression? _resolveConst(Expression? expression) => expression == null
+      ? null
+      : resolveConstInitializer(expression, _constInitializers);
+
   /// Extracts timeZone from ScheduleOptions.
   String? _extractSchedulerTimeZone(ArgumentList node) {
     final timeZoneArg = node.arguments
@@ -984,7 +1025,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .firstOrNull;
 
     // TimeZone('America/New_York') or .new('America/New_York')
-    final args = constructorArguments(timeZoneArg)?.arguments;
+    final args = constructorArguments(_resolveConst(timeZoneArg))?.arguments;
     final value = constValue(args?.firstOrNull);
     return value is String ? value : null;
   }
@@ -997,7 +1038,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    final retryConfigArgs = constructorArguments(retryConfigArg);
+    final retryConfigArgs = constructorArguments(_resolveConst(retryConfigArg));
     if (retryConfigArgs == null) return null;
 
     final config = <String, dynamic>{};
@@ -1017,7 +1058,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
   /// Extracts a value from a retry config option.
   dynamic _extractRetryConfigValue(Expression expression) {
-    final args = constructorArguments(expression)?.arguments;
+    final args = constructorArguments(_resolveConst(expression))?.arguments;
     final value = constValue(args?.firstOrNull);
     return value is num ? value : null;
   }

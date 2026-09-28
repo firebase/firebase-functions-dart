@@ -76,6 +76,7 @@ class EndpointSpec {
     this.globalOptions,
     this.options,
     this.variableToParamName = const {},
+    this.constInitializers = const {},
   });
   final String name;
   // 'https', 'callable', 'pubsub', 'firestore', 'database', 'alert', 'blocking', 'scheduler', 'storage', 'taskQueue'
@@ -112,6 +113,9 @@ class EndpointSpec {
   final ArgumentList? options;
   final Map<String, String> variableToParamName;
 
+  /// Initializers of `const` variables, used to resolve option references.
+  final Map<VariableElement, Expression> constInitializers;
+
   /// Extracts options configuration from the AST.
   Map<String, dynamic> extractOptions() {
     final result = _extractOptions(globalOptions);
@@ -139,7 +143,10 @@ class EndpointSpec {
       if (arg is! NamedArgument) continue;
 
       final name = arg.name.lexeme;
-      final expr = arg.argumentExpression;
+      final expr = resolveConstInitializer(
+        arg.argumentExpression,
+        constInitializers,
+      );
 
       // Helper to reduce boilerplate: only adds to map if value exists
       void add(String key, dynamic Function(Expression expr) func) {
@@ -626,6 +633,33 @@ Object? constValue(Argument? expression) {
 
   return literal ??
       _dartObjectValue(_constVariable(expression)?.computeConstantValue());
+}
+
+/// Follows references to `const` variables holding an option object, e.g.
+/// `region: myRegion`, back to the constructor call they were initialized with.
+///
+/// Other consts, such as maps and lists, are left for [constValue] to evaluate.
+Expression resolveConstInitializer(
+  Expression expression,
+  Map<VariableElement, Expression> constInitializers,
+) {
+  var resolved = expression;
+  // Bounded, since const initializers can chain but never cycle.
+  for (var i = 0; i < 16; i++) {
+    final initializer = constInitializers[_constVariable(resolved)];
+    if (initializer == null) break;
+    resolved = initializer;
+  }
+  if (constructorArguments(resolved) == null) return expression;
+  // Only const-constructed params reach here, and define*() is required.
+  final isParam = switch (resolved) {
+    InstanceCreationExpression(:final constructorName) =>
+      constructorName.name?.name == 'param',
+    DotShorthandConstructorInvocation(:final constructorName) =>
+      constructorName.name == 'param',
+    _ => false,
+  };
+  return isParam ? expression : resolved;
 }
 
 /// Returns the enum value name of a `const` variable holding an enum value.

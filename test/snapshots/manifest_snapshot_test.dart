@@ -2156,7 +2156,7 @@ void main() {
         final endpoint = _getEndpoint(manifest, 'constReferences')!;
         expect(endpoint['timeoutSeconds'], equals(45));
         expect(endpoint['serviceAccountEmail'], equals('const-account@'));
-        expect(endpoint['labels'], equals({'team': 'platform'}));
+        expect(endpoint['labels'], equals({'team': 'platform', 'env': 'prod'}));
         expect(endpoint['region'], equals(['europe-west2']));
         expect(endpoint['availableMemoryMb'], equals(2048));
         expect(endpoint['cpu'], equals(2));
@@ -2166,6 +2166,44 @@ void main() {
             'invoker': ['a@example.com', 'b@example.com'],
           }),
         );
+      });
+
+      test('extracts option objects held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjects')!;
+        expect(endpoint['region'], equals(['asia-east1']));
+        expect(endpoint['availableMemoryMb'], equals(4096));
+        expect(endpoint['timeoutSeconds'], equals(90));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts scheduler configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_4')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 4 * * *',
+            'timeZone': 'Asia/Tokyo',
+            'retryConfig': {'retryCount': 2},
+          }),
+        );
+      });
+
+      test('extracts task queue configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjectTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 7}),
+        );
+      });
+
+      test('does not guess names for const-constructed params', () {
+        final endpoint = _getEndpoint(manifest, 'constParamOption')!;
+        expect(endpoint['availableMemoryMb'], isNull);
       });
 
       test('maps a custom const MemoryOption like the runtime does', () {
