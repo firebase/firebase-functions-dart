@@ -211,6 +211,25 @@ void main() {
       expect(endpoint.extractOptions(), containsPair('invoker', ['public']));
     });
 
+    test('extracts invoker from const dot shorthand constructor', () {
+      // `const` parses as the node that resolved build_runner ASTs produce.
+      final options = _parseHttpsOptions('''
+void main() {
+  final options = new HttpsOptions(
+    invoker: const .public(),
+  );
+}
+''');
+
+      final endpoint = EndpointSpec(
+        name: 'helloWorld',
+        type: 'https',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), containsPair('invoker', ['public']));
+    });
+
     test('extracts dot shorthand factories like qualified factories', () {
       Map<String, dynamic> extract({required bool shorthand}) {
         String on(String type) => shorthand ? '.' : '$type.';

@@ -570,8 +570,7 @@ class EndpointSpec {
     InstanceCreationExpression(:final constructorName) =>
       constructorName.name?.name,
     MethodInvocation(:final methodName) => methodName.name,
-    // Dot shorthand: `.public()` resolves to a constructor invocation, while
-    // unresolved ASTs represent it as a member invocation.
+    // Dot shorthand: resolved as a constructor, unresolved as a member call.
     DotShorthandConstructorInvocation(:final constructorName) =>
       constructorName.name,
     DotShorthandInvocation(:final memberName) => memberName.name,
