@@ -274,11 +274,11 @@ void main() {
   });
 }
 
-InstanceCreationExpression _parseHttpsOptions(String content) {
+ArgumentList _parseHttpsOptions(String content) {
   return _parseOptions(content, 'HttpsOptions');
 }
 
-InstanceCreationExpression _parseOptions(String content, String typeName) {
+ArgumentList _parseOptions(String content, String typeName) {
   final result = parseString(content: content);
   final visitor = _InstanceCreationVisitor(typeName);
 
@@ -286,7 +286,7 @@ InstanceCreationExpression _parseOptions(String content, String typeName) {
 
   final node = visitor.node;
   expect(node, isNotNull);
-  return node!;
+  return node!.argumentList;
 }
 
 final class _InstanceCreationVisitor extends RecursiveAstVisitor<void> {

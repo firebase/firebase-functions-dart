@@ -2050,9 +2050,9 @@ void main() {
     });
   });
 
-  group('native build hook support', () {
-    // Declares `^3.13.0`, covering the `dart build cli` path that the
-    // `dart_reference` fixture cannot.
+  group('Dart 3.13 fixture', () {
+    // Declares `^3.13.0`, covering the `dart build cli` path and dot shorthand
+    // syntax that the `dart_reference` fixture cannot.
     const fixture = 'test/fixtures/dart_native_reference';
     late Map<String, dynamic> manifest;
 
@@ -2082,6 +2082,73 @@ void main() {
         endpoint!['command'],
         equals(['./build/cli/linux_x64/bundle/bin/server']),
       );
+    });
+
+    group('dot shorthand options', () {
+      test('applies setGlobalOptions(const .new(...))', () {
+        expect(_getEndpoint(manifest, 'nativeDemo')!['concurrency'], equals(7));
+      });
+
+      test('extracts inline options: const .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandInline')!;
+        expect(endpoint['availableMemoryMb'], equals(1024));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['private'],
+          }),
+        );
+      });
+
+      test('extracts options from a variable initialized with .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandVariable')!;
+        expect(endpoint['cpu'], equals('gcf_gen1'));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts options from a local variable initialized with .new', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandLocal')!;
+        expect(endpoint['timeoutSeconds'], equals(30));
+      });
+
+      test('extracts scheduler timeZone and retryConfig', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_0')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 0 * * *',
+            'timeZone': 'America/New_York',
+            'retryConfig': {'retryCount': 3, 'maxRetrySeconds': 60},
+          }),
+        );
+      });
+
+      test('extracts task queue retryConfig and rateLimits', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandTasks')!;
+        expect(
+          endpoint['taskQueueTrigger'],
+          equals({
+            'retryConfig': {'maxAttempts': 5},
+            'rateLimits': {'maxConcurrentDispatches': 10},
+          }),
+        );
+      });
+
+      test('extracts param options', () {
+        expect(
+          _getParam(manifest, 'SHORTHAND_MIN_INSTANCES'),
+          equals({
+            'name': 'SHORTHAND_MIN_INSTANCES',
+            'type': 'int',
+            'default': 1,
+          }),
+        );
+      });
     });
   });
 }

@@ -103,8 +103,11 @@ class EndpointSpec {
   final String? eventarcEventType; // For Eventarc: custom event type
   final String? eventarcChannel; // For Eventarc: channel ID
   final Map<String, String>? eventarcFilters; // For Eventarc: event filters
-  final InstanceCreationExpression? globalOptions;
-  final InstanceCreationExpression? options;
+  /// Arguments of the `setGlobalOptions(...)` options constructor.
+  final ArgumentList? globalOptions;
+
+  /// Arguments of the endpoint's options constructor.
+  final ArgumentList? options;
   final Map<String, String> variableToParamName;
 
   /// Extracts options configuration from the AST.
@@ -125,12 +128,12 @@ class EndpointSpec {
 
   static const Object _resetOption = Object();
 
-  Map<String, dynamic> _extractOptions(InstanceCreationExpression? options) {
+  Map<String, dynamic> _extractOptions(ArgumentList? options) {
     if (options == null) return {};
 
     final result = <String, dynamic>{};
 
-    for (final arg in options.argumentList.arguments) {
+    for (final arg in options.arguments) {
       if (arg is! NamedArgument) continue;
 
       final name = arg.name.lexeme;
@@ -588,6 +591,19 @@ class EndpointSpec {
     _ => null,
   };
 }
+
+/// Returns the arguments of a constructor call written either as
+/// `HttpsOptions(...)` or as the dot shorthand `.new(...)`, or null when
+/// [expression] is not a constructor call.
+///
+/// Expects a resolved AST, where dot shorthand constructors are
+/// [DotShorthandConstructorInvocation]s.
+ArgumentList? constructorArguments(Argument? expression) =>
+    switch (expression) {
+      InstanceCreationExpression(:final argumentList) ||
+      DotShorthandConstructorInvocation(:final argumentList) => argumentList,
+      _ => null,
+    };
 
 /// Converts a camelCase or PascalCase string to UPPER_SNAKE_CASE.
 String toUpperSnakeCase(String input) {

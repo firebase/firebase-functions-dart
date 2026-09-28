@@ -56,7 +56,7 @@ class _SpecBuilder implements Builder {
     // file into a shared map, and cache each parsed AST for reuse in pass 2.
     // This enables cross-file resolution — e.g. options declared in
     // shared_options.dart can be referenced in server.dart.
-    final sharedOptionsVars = <String, InstanceCreationExpression>{};
+    final sharedOptionsVars = <String, ArgumentList>{};
     final astCache = <AssetId, CompilationUnit>{};
 
     // Unknown until a library of this package resolves.
@@ -144,20 +144,20 @@ class _Namespace {
   bool matches(String methodName) => methodNames.contains(methodName);
 }
 
-/// Lightweight AST visitor that collects top-level variable declarations whose
-/// initializers are [InstanceCreationExpression]s into [variableToOptionsExpr].
+/// Lightweight AST visitor that collects the constructor arguments of
+/// top-level variables initialized with an options constructor into
+/// [variableToOptionsExpr].
 /// Used in a pre-pass over all files to enable cross-file options resolution.
 class _OptionsVariableCollector extends RecursiveAstVisitor<void> {
   _OptionsVariableCollector(this.variableToOptionsExpr);
 
-  final Map<String, InstanceCreationExpression> variableToOptionsExpr;
+  final Map<String, ArgumentList> variableToOptionsExpr;
 
   @override
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     for (final variable in node.variables.variables) {
-      final initializer = variable.initializer;
-      if (initializer is InstanceCreationExpression) {
-        variableToOptionsExpr[variable.name.lexeme] = initializer;
+      if (constructorArguments(variable.initializer) case final args?) {
+        variableToOptionsExpr[variable.name.lexeme] = args;
       }
     }
     super.visitTopLevelVariableDeclaration(node);
@@ -168,15 +168,15 @@ class _OptionsVariableCollector extends RecursiveAstVisitor<void> {
 class _GlobalOptionsCollector extends RecursiveAstVisitor<void> {
   _GlobalOptionsCollector(this.variableToOptionsExpr);
 
-  final Map<String, InstanceCreationExpression> variableToOptionsExpr;
-  InstanceCreationExpression? globalOptions;
+  final Map<String, ArgumentList> variableToOptionsExpr;
+  ArgumentList? globalOptions;
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
     if (node.target == null && node.methodName.name == 'setGlobalOptions') {
       final firstArg = node.argumentList.arguments.firstOrNull;
-      if (firstArg is InstanceCreationExpression) {
-        globalOptions = firstArg;
+      if (constructorArguments(firstArg) case final args?) {
+        globalOptions = args;
       } else if (firstArg is SimpleIdentifier) {
         globalOptions = variableToOptionsExpr[firstArg.name] ?? globalOptions;
       }
@@ -188,8 +188,8 @@ class _GlobalOptionsCollector extends RecursiveAstVisitor<void> {
 /// AST visitor that discovers Firebase Functions declarations.
 class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   _FirebaseFunctionsVisitor(
-    Map<String, InstanceCreationExpression>? sharedOptionsVars, {
-    InstanceCreationExpression? globalOptions,
+    Map<String, ArgumentList>? sharedOptionsVars, {
+    ArgumentList? globalOptions,
   }) : _globalOptionsExpr = globalOptions {
     if (sharedOptionsVars != null) {
       _variableToOptionsExpr.addAll(sharedOptionsVars);
@@ -313,17 +313,18 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   final Map<String, ParamSpec> params = {};
   final Map<String, EndpointSpec> endpoints = {};
   late final List<_Namespace> namespaces;
-  final InstanceCreationExpression? _globalOptionsExpr;
+  final ArgumentList? _globalOptionsExpr;
 
   /// Maps variable names to their actual parameter names.
   /// e.g., 'minInstances' -> 'MIN_INSTANCES'
   final Map<String, String> _variableToParamName = {};
 
-  /// Maps variable names to their InstanceCreationExpression initializers.
+  /// Maps variable names to the arguments of their options constructor
+  /// initializers.
   /// Used to resolve options passed via variable references, e.g.:
   ///   const opts = HttpsOptions(region: Region(SupportedRegion.europeWest3));
   ///   firebase.https.onRequest(name: 'fn', options: opts, ...);
-  final Map<String, InstanceCreationExpression> _variableToOptionsExpr = {};
+  final Map<String, ArgumentList> _variableToOptionsExpr = {};
 
   @override
   void visitMethodInvocation(MethodInvocation node) {
@@ -386,13 +387,12 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     super.visitVariableDeclarationStatement(node);
   }
 
-  /// Tracks variables whose initializers are [InstanceCreationExpression]s,
-  /// so they can be resolved when passed as options via variable reference.
+  /// Tracks variables initialized with an options constructor, so they can be
+  /// resolved when passed as options via variable reference.
   void _trackOptionsVariables(VariableDeclarationList variables) {
     for (final variable in variables.variables) {
-      final initializer = variable.initializer;
-      if (initializer is InstanceCreationExpression) {
-        _variableToOptionsExpr[variable.name.lexeme] = initializer;
+      if (constructorArguments(variable.initializer) case final args?) {
+        _variableToOptionsExpr[variable.name.lexeme] = args;
       }
     }
   }
@@ -901,12 +901,12 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     );
   }
 
-  /// Extracts a `Map<String, String>` field from an [InstanceCreationExpression].
+  /// Extracts a `Map<String, String>` field from constructor arguments.
   Map<String, String>? _extractStringMapField(
-    InstanceCreationExpression node,
+    ArgumentList node,
     String fieldName,
   ) {
-    final arg = node.argumentList.arguments
+    final arg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == fieldName)
         .map((e) => e.argumentExpression)
@@ -929,20 +929,19 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   }
 
   /// Extracts TaskQueueRetryConfig from TaskQueueOptions.
-  Map<String, dynamic>? _extractTaskQueueRetryConfig(
-    InstanceCreationExpression node,
-  ) {
-    final retryConfigArg = node.argumentList.arguments
+  Map<String, dynamic>? _extractTaskQueueRetryConfig(ArgumentList node) {
+    final retryConfigArg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == 'retryConfig')
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (retryConfigArg is! InstanceCreationExpression) return null;
+    final retryConfigArgs = constructorArguments(retryConfigArg);
+    if (retryConfigArgs == null) return null;
 
     final config = <String, dynamic>{};
 
-    for (final arg in retryConfigArg.argumentList.arguments) {
+    for (final arg in retryConfigArgs.arguments) {
       if (arg is! NamedArgument) continue;
 
       final fieldName = arg.name.lexeme;
@@ -956,20 +955,19 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   }
 
   /// Extracts TaskQueueRateLimits from TaskQueueOptions.
-  Map<String, dynamic>? _extractTaskQueueRateLimits(
-    InstanceCreationExpression node,
-  ) {
-    final rateLimitsArg = node.argumentList.arguments
+  Map<String, dynamic>? _extractTaskQueueRateLimits(ArgumentList node) {
+    final rateLimitsArg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == 'rateLimits')
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (rateLimitsArg is! InstanceCreationExpression) return null;
+    final rateLimitsArgs = constructorArguments(rateLimitsArg);
+    if (rateLimitsArgs == null) return null;
 
     final config = <String, dynamic>{};
 
-    for (final arg in rateLimitsArg.argumentList.arguments) {
+    for (final arg in rateLimitsArgs.arguments) {
       if (arg is! NamedArgument) continue;
 
       final fieldName = arg.name.lexeme;
@@ -983,36 +981,35 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   }
 
   /// Extracts timeZone from ScheduleOptions.
-  String? _extractSchedulerTimeZone(InstanceCreationExpression node) {
-    final timeZoneArg = node.argumentList.arguments
+  String? _extractSchedulerTimeZone(ArgumentList node) {
+    final timeZoneArg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == 'timeZone')
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (timeZoneArg is InstanceCreationExpression) {
-      // TimeZone('America/New_York')
-      final args = timeZoneArg.argumentList.arguments;
-      if (args.firstOrNull case final StringLiteral firstArg) {
-        return firstArg.stringValue;
-      }
+    // TimeZone('America/New_York') or .new('America/New_York')
+    final args = constructorArguments(timeZoneArg)?.arguments;
+    if (args?.firstOrNull case final StringLiteral firstArg) {
+      return firstArg.stringValue;
     }
     return null;
   }
 
   /// Extracts RetryConfig from ScheduleOptions.
-  Map<String, dynamic>? _extractRetryConfig(InstanceCreationExpression node) {
-    final retryConfigArg = node.argumentList.arguments
+  Map<String, dynamic>? _extractRetryConfig(ArgumentList node) {
+    final retryConfigArg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == 'retryConfig')
         .map((e) => e.argumentExpression)
         .firstOrNull;
 
-    if (retryConfigArg is! InstanceCreationExpression) return null;
+    final retryConfigArgs = constructorArguments(retryConfigArg);
+    if (retryConfigArgs == null) return null;
 
     final config = <String, dynamic>{};
 
-    for (final arg in retryConfigArg.argumentList.arguments) {
+    for (final arg in retryConfigArgs.arguments) {
       if (arg is! NamedArgument) continue;
 
       final fieldName = arg.name.lexeme;
@@ -1027,20 +1024,18 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
   /// Extracts a value from a retry config option.
   dynamic _extractRetryConfigValue(Expression expression) {
-    if (expression is InstanceCreationExpression) {
-      final args = expression.argumentList.arguments;
-      if (args.isNotEmpty) {
-        final first = args.first;
-        if (first is IntegerLiteral) return first.value;
-        if (first is DoubleLiteral) return first.value;
-      }
+    final args = constructorArguments(expression)?.arguments;
+    if (args != null && args.isNotEmpty) {
+      final first = args.first;
+      if (first is IntegerLiteral) return first.value;
+      if (first is DoubleLiteral) return first.value;
     }
     return null;
   }
 
-  /// Extracts a boolean field from an InstanceCreationExpression.
-  bool? _extractBoolField(InstanceCreationExpression node, String fieldName) {
-    final arg = node.argumentList.arguments
+  /// Extracts a boolean field from constructor arguments.
+  bool? _extractBoolField(ArgumentList node, String fieldName) {
+    final arg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == fieldName)
         .map((e) => e.argumentExpression)
@@ -1116,10 +1111,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       }
 
       // Second argument is optional ParamOptions
-      if (args.length > 1 && args[1] is InstanceCreationExpression) {
-        paramOptions = _extractParamOptions(
-          args[1] as InstanceCreationExpression,
-        );
+      if (constructorArguments(args.elementAtOrNull(1)) case final options?) {
+        paramOptions = _extractParamOptions(options);
       }
     } else {
       // Standard parameter definitions: defineXxx('NAME', [ParamOptions])
@@ -1127,10 +1120,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       paramName = _extractStringLiteral(nameArg is Expression ? nameArg : null);
 
       // Second argument is optional ParamOptions (not used for secrets)
-      if (args.length > 1 && args[1] is InstanceCreationExpression) {
-        paramOptions = _extractParamOptions(
-          args[1] as InstanceCreationExpression,
-        );
+      if (constructorArguments(args.elementAtOrNull(1)) case final options?) {
+        paramOptions = _extractParamOptions(options);
       }
     }
 
@@ -1161,17 +1152,16 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   /// Checks if the parameter is a JSON secret.
   bool _isJsonSecret(String functionName) => functionName == 'defineJsonSecret';
 
-  /// Extracts ParamOptions from an InstanceCreationExpression.
-  ParamOptions? _extractParamOptions(InstanceCreationExpression node) =>
-      ParamOptions(
-        defaultValue: _extractDefaultValue(node),
-        label: _extractStringField(node, 'label'),
-        description: _extractStringField(node, 'description'),
-      );
+  /// Extracts ParamOptions from constructor arguments.
+  ParamOptions? _extractParamOptions(ArgumentList node) => ParamOptions(
+    defaultValue: _extractDefaultValue(node),
+    label: _extractStringField(node, 'label'),
+    description: _extractStringField(node, 'description'),
+  );
 
   /// Extracts the defaultValue field.
-  Object? _extractDefaultValue(InstanceCreationExpression node) {
-    final defaultValueArg = node.argumentList.arguments
+  Object? _extractDefaultValue(ArgumentList node) {
+    final defaultValueArg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == 'defaultValue')
         .map((e) => e.argumentExpression)
@@ -1183,11 +1173,8 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   }
 
   /// Extracts a string field from options.
-  String? _extractStringField(
-    InstanceCreationExpression node,
-    String fieldName,
-  ) {
-    final arg = node.argumentList.arguments
+  String? _extractStringField(ArgumentList node, String fieldName) {
+    final arg = node.arguments
         .whereType<NamedArgument>()
         .where((e) => e.name.lexeme == fieldName)
         .map((e) => e.argumentExpression)
@@ -1208,11 +1195,11 @@ extension on MethodInvocation {
   String? extractLiteralForArg(String name) =>
       _extractStringLiteral(findNamedArg(name));
 
-  InstanceCreationExpression? findOptionsArg([
-    Map<String, InstanceCreationExpression> variableToOptionsExpr = const {},
+  ArgumentList? findOptionsArg([
+    Map<String, ArgumentList> variableToOptionsExpr = const {},
   ]) {
     final options = findNamedArg('options');
-    if (options is InstanceCreationExpression) return options;
+    if (constructorArguments(options) case final args?) return args;
 
     // Resolve variable references, e.g., `options: opts` where
     // `const opts = HttpsOptions(...)` was declared earlier.

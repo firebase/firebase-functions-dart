@@ -81,13 +81,14 @@ final globalOptions = new GlobalOptions(
   });
 }
 
-InstanceCreationExpression _initializerFor(String source, String name) {
+ArgumentList _initializerFor(String source, String name) {
   final unit = parseString(content: source).unit;
   for (final declaration in unit.declarations) {
     if (declaration is! TopLevelVariableDeclaration) continue;
     for (final variable in declaration.variables.variables) {
       if (variable.name.lexeme == name) {
-        return variable.initializer! as InstanceCreationExpression;
+        return (variable.initializer! as InstanceCreationExpression)
+            .argumentList;
       }
     }
   }
