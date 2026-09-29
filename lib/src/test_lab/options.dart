@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// Options for Test Lab event handlers.
-class TestLabOptions extends GlobalOptions {
+class TestLabOptions extends EventHandlerOptions {
   const TestLabOptions({
     super.concurrency,
     super.cpu,
@@ -28,6 +28,7 @@ class TestLabOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

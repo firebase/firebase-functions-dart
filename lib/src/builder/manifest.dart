@@ -271,7 +271,7 @@ void _addTrigger(
       map['eventTrigger'] = <String, dynamic>{
         'eventType': 'google.cloud.pubsub.topic.v1.messagePublished',
         'eventFilters': {'topic': endpoint.topic},
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'firestore'
@@ -296,7 +296,7 @@ void _addTrigger(
             endpoint.documentPath;
       }
 
-      trigger['retry'] = false;
+      trigger['retry'] = options['retry'] ?? false;
       map['eventTrigger'] = trigger;
 
     case 'database'
@@ -313,7 +313,7 @@ void _addTrigger(
           'ref': normalizedRef,
           'instance': endpoint.instance ?? '*',
         },
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'alert' when endpoint.alertType != null:
@@ -324,7 +324,7 @@ void _addTrigger(
       map['eventTrigger'] = <String, dynamic>{
         'eventType': 'google.firebase.firebasealerts.alerts.v1.published',
         'eventFilters': filters,
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'blocking' when endpoint.blockingEventType != null:
@@ -355,7 +355,7 @@ void _addTrigger(
       map['eventTrigger'] = <String, dynamic>{
         'eventType': 'google.firebase.remoteconfig.remoteConfig.v1.updated',
         'eventFilters': <String, dynamic>{},
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'storage'
@@ -364,7 +364,7 @@ void _addTrigger(
       map['eventTrigger'] = <String, dynamic>{
         'eventType': _mapStorageEventType(endpoint.storageEventType!),
         'eventFilters': {'bucket': endpoint.storageBucket},
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'taskQueue':
@@ -411,7 +411,7 @@ void _addTrigger(
       final trigger = <String, dynamic>{
         'eventType': endpoint.eventarcEventType,
         'eventFilters': endpoint.eventarcFilters ?? <String, dynamic>{},
-        'retry': false,
+        'retry': options['retry'] ?? false,
         'channel':
             endpoint.eventarcChannel ??
             'locations/us-central1/channels/firebase',
@@ -422,7 +422,7 @@ void _addTrigger(
       map['eventTrigger'] = <String, dynamic>{
         'eventType': 'google.firebase.testlab.testMatrix.v1.completed',
         'eventFilters': <String, dynamic>{},
-        'retry': false,
+        'retry': options['retry'] ?? false,
       };
 
     case 'scheduler' when endpoint.schedule != null:

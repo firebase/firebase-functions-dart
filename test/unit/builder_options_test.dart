@@ -271,6 +271,80 @@ void main() {
       );
       expect(shorthand, equals(extract(shorthand: false)));
     });
+
+    test('extracts retry: true from Retry literal', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new PubSubOptions(
+    retry: Retry(true),
+  );
+}
+''', 'PubSubOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'onMessagePublished',
+        type: 'pubsub',
+        topic: 'my-topic',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), containsPair('retry', true));
+    });
+
+    test('extracts retry: false from Retry literal', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new PubSubOptions(
+    retry: Retry(false),
+  );
+}
+''', 'PubSubOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'onMessagePublished',
+        type: 'pubsub',
+        topic: 'my-topic',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), containsPair('retry', false));
+    });
+
+    test('omits retry when reset via Retry.reset()', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new PubSubOptions(
+    retry: Retry.reset(),
+  );
+}
+''', 'PubSubOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'onMessagePublished',
+        type: 'pubsub',
+        topic: 'my-topic',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), isNot(contains('retry')));
+    });
+
+    test('omits retry when not specified', () {
+      final options = _parseOptions('''
+void main() {
+  final options = new PubSubOptions();
+}
+''', 'PubSubOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'onMessagePublished',
+        type: 'pubsub',
+        topic: 'my-topic',
+        options: options,
+      );
+
+      expect(endpoint.extractOptions(), isNot(contains('retry')));
+    });
   });
 }
 

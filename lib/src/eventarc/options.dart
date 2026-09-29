@@ -17,7 +17,7 @@ import '../common/options.dart';
 /// Options for Eventarc event handlers.
 ///
 /// Extends [GlobalOptions] with Eventarc-specific fields.
-class EventarcTriggerOptions extends GlobalOptions {
+class EventarcTriggerOptions extends EventHandlerOptions {
   const EventarcTriggerOptions({
     this.channel,
     this.filters,
@@ -32,6 +32,7 @@ class EventarcTriggerOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

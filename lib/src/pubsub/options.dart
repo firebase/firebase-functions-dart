@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// Options for Pub/Sub event handlers.
-class PubSubOptions extends GlobalOptions {
+class PubSubOptions extends EventHandlerOptions {
   const PubSubOptions({
     super.concurrency,
     super.cpu,
@@ -28,6 +28,7 @@ class PubSubOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

@@ -1,5 +1,12 @@
 ## 0.8.0
 
+- Add `retry` option to event-handling triggers (Firestore, Realtime
+  Database, Storage, Pub/Sub, Remote Config, Eventarc, Test Lab, and Firebase
+  Alerts), matching the Node.js SDK's `EventHandlerOptions.retry`. The value
+  is written to `eventTrigger.retry` in the generated manifest; previously
+  these triggers always emitted `retry: false` with no way to override it.
+  Effective redelivery on deploy still requires Firebase CLI support that is
+  not yet available for Dart event triggers.
 - Fix `extractAuthToken` dropping custom claims from `AuthData.token` for
   verified (non-emulator) ID tokens; custom claims set via
   `auth.setCustomUserClaims()` are now included alongside the standard claims.

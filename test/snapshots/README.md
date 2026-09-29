@@ -103,7 +103,11 @@ eventTrigger:
 
 **Issue**: Missing `retry` field on event triggers.
 
-**Solution**: Added `retry: false` as default for Pub/Sub triggers.
+**Solution**: Added `retry: false` as the default for all event-trigger types
+(Pub/Sub, Firestore, Database, Storage, Alerts, Remote Config, Eventarc, Test
+Lab). The default can now be overridden via the `retry` option on each
+trigger's options class (e.g. `PubSubOptions(retry: Retry(true))`), matching
+the Node.js SDK's `EventHandlerOptions.retry`.
 
 ## Continuous Integration
 
