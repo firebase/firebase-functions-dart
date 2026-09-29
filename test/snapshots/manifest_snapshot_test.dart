@@ -2050,7 +2050,7 @@ void main() {
     });
   });
 
-  group('native build hook support', () {
+  group('Dart 3.13 fixture', () {
     // Declares `^3.13.0`, covering the `dart build cli` path that the
     // `dart_reference` fixture cannot.
     const fixture = 'test/fixtures/dart_native_reference';
@@ -2082,6 +2082,154 @@ void main() {
         endpoint!['command'],
         equals(['./build/cli/linux_x64/bundle/bin/server']),
       );
+    });
+
+    group('dot shorthand options', () {
+      test('applies setGlobalOptions(const .new(...))', () {
+        expect(_getEndpoint(manifest, 'nativeDemo')!['concurrency'], equals(7));
+      });
+
+      test('extracts inline options: const .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandInline')!;
+        expect(endpoint['availableMemoryMb'], equals(1024));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['private'],
+          }),
+        );
+      });
+
+      test('extracts options from a variable initialized with .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandVariable')!;
+        expect(endpoint['cpu'], equals('gcf_gen1'));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts options from a local variable initialized with .new', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandLocal')!;
+        expect(endpoint['timeoutSeconds'], equals(30));
+      });
+
+      test('extracts scheduler timeZone and retryConfig', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_0')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 0 * * *',
+            'timeZone': 'America/New_York',
+            'retryConfig': {'retryCount': 3, 'maxRetrySeconds': 60},
+          }),
+        );
+      });
+
+      test('extracts task queue retryConfig and rateLimits', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandTasks')!;
+        expect(
+          endpoint['taskQueueTrigger'],
+          equals({
+            'retryConfig': {'maxAttempts': 5},
+            'rateLimits': {'maxConcurrentDispatches': 10},
+          }),
+        );
+      });
+
+      test('extracts param options', () {
+        expect(
+          _getParam(manifest, 'SHORTHAND_MIN_INSTANCES'),
+          equals({
+            'name': 'SHORTHAND_MIN_INSTANCES',
+            'type': 'int',
+            'default': 1,
+          }),
+        );
+      });
+    });
+
+    group('const references', () {
+      test('extracts https options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferences')!;
+        expect(endpoint['timeoutSeconds'], equals(45));
+        expect(endpoint['serviceAccountEmail'], equals('const-account@'));
+        expect(endpoint['labels'], equals({'team': 'platform', 'env': 'prod'}));
+        expect(endpoint['region'], equals(['europe-west2']));
+        expect(endpoint['availableMemoryMb'], equals(2048));
+        expect(endpoint['cpu'], equals(2));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['a@example.com', 'b@example.com'],
+          }),
+        );
+      });
+
+      test('extracts option objects held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjects')!;
+        expect(endpoint['region'], equals(['asia-east1']));
+        expect(endpoint['availableMemoryMb'], equals(4096));
+        expect(endpoint['timeoutSeconds'], equals(90));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts scheduler configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_4')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 4 * * *',
+            'timeZone': 'Asia/Tokyo',
+            'retryConfig': {'retryCount': 2},
+          }),
+        );
+      });
+
+      test('extracts task queue configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjectTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 7}),
+        );
+      });
+
+      test('does not guess names for const-constructed params', () {
+        final endpoint = _getEndpoint(manifest, 'constParamOption')!;
+        expect(endpoint['availableMemoryMb'], isNull);
+      });
+
+      test('maps a custom const MemoryOption like the runtime does', () {
+        final endpoint = _getEndpoint(manifest, 'constCustomMemory')!;
+        expect(endpoint['availableMemoryMb'], equals(32768));
+      });
+
+      test('extracts scheduler options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_3')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 3 * * *',
+            'timeZone': 'Europe/London',
+            'retryConfig': {'retryCount': 4},
+          }),
+        );
+      });
+
+      test('extracts task queue options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferenceTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 6}),
+        );
+      });
     });
   });
 }

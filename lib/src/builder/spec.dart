@@ -19,6 +19,8 @@
 library;
 
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/constant/value.dart';
+import 'package:analyzer/dart/element/element.dart';
 
 /// Specification for a parameter.
 class ParamSpec {
@@ -74,6 +76,7 @@ class EndpointSpec {
     this.globalOptions,
     this.options,
     this.variableToParamName = const {},
+    this.constInitializers = const {},
   });
   final String name;
   // 'https', 'callable', 'pubsub', 'firestore', 'database', 'alert', 'blocking', 'scheduler', 'storage', 'taskQueue'
@@ -103,9 +106,15 @@ class EndpointSpec {
   final String? eventarcEventType; // For Eventarc: custom event type
   final String? eventarcChannel; // For Eventarc: channel ID
   final Map<String, String>? eventarcFilters; // For Eventarc: event filters
-  final InstanceCreationExpression? globalOptions;
-  final InstanceCreationExpression? options;
+  /// Arguments of the `setGlobalOptions(...)` options constructor.
+  final ArgumentList? globalOptions;
+
+  /// Arguments of the endpoint's options constructor.
+  final ArgumentList? options;
   final Map<String, String> variableToParamName;
+
+  /// Initializers of `const` variables, used to resolve option references.
+  final Map<VariableElement, Expression> constInitializers;
 
   /// Extracts options configuration from the AST.
   Map<String, dynamic> extractOptions() {
@@ -125,16 +134,19 @@ class EndpointSpec {
 
   static const Object _resetOption = Object();
 
-  Map<String, dynamic> _extractOptions(InstanceCreationExpression? options) {
+  Map<String, dynamic> _extractOptions(ArgumentList? options) {
     if (options == null) return {};
 
     final result = <String, dynamic>{};
 
-    for (final arg in options.argumentList.arguments) {
+    for (final arg in options.arguments) {
       if (arg is! NamedArgument) continue;
 
       final name = arg.name.lexeme;
-      final expr = arg.argumentExpression;
+      final expr = resolveConstInitializer(
+        arg.argumentExpression,
+        constInitializers,
+      );
 
       // Helper to reduce boilerplate: only adds to map if value exists
       void add(String key, dynamic Function(Expression expr) func) {
@@ -223,14 +235,36 @@ class EndpointSpec {
 
     // Extract literal value: Memory(MemoryOption.mb256) or Memory(.mb256)
     final args = _extractCallArguments(expression);
+
+    // A `const` variable holding a MemoryOption, e.g. `const m = .gb1`.
+    final constOption = _constVariable(
+      args?.firstOrNull,
+    )?.computeConstantValue();
+    if (constOption?.getField('value')?.toIntValue() case final mb?) {
+      // Matches `_MemoryLiteral`, which maps unlisted sizes to 32768.
+      return _memoryOptionSizes.contains(mb) ? mb : 32768;
+    }
+
     final enumName = _extractEnumValueName(args?.firstOrNull);
     if (enumName != null) return _memoryOptionToInt(enumName);
 
-    return switch (args?.firstOrNull) {
-      final IntegerLiteral i => i.value,
+    return switch (constValue(args?.firstOrNull)) {
+      final int i => i,
       _ => null,
     };
   }
+
+  static const _memoryOptionSizes = {
+    128,
+    256,
+    512,
+    1024,
+    2048,
+    4096,
+    8192,
+    16384,
+    32768,
+  };
 
   /// Converts MemoryOption enum to integer value.
   int? _memoryOptionToInt(String optionName) => switch (optionName) {
@@ -265,9 +299,8 @@ class EndpointSpec {
 
     // Extract literal double value: Cpu(1.0)
     final args = _extractCallArguments(expression);
-    return switch (args?.firstOrNull) {
-      final DoubleLiteral d => d.value,
-      final IntegerLiteral i => i.value,
+    return switch (constValue(args?.firstOrNull)) {
+      final num n => n,
       _ => null,
     };
   }
@@ -345,9 +378,7 @@ class EndpointSpec {
 
     // Extract literal: Option(123)
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final IntegerLiteral firstArg) {
-      return firstArg.value;
-    }
+    if (constValue(args?.firstOrNull) case final int value) return value;
 
     return null;
   }
@@ -365,9 +396,7 @@ class EndpointSpec {
 
     // Extract literal: Option('value')
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final StringLiteral firstArg) {
-      return firstArg.stringValue;
-    }
+    if (constValue(args?.firstOrNull) case final String value) return value;
 
     return null;
   }
@@ -385,9 +414,7 @@ class EndpointSpec {
 
     // Extract literal: Option(true)
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final BooleanLiteral firstArg) {
-      return firstArg.value;
-    }
+    if (constValue(args?.firstOrNull) case final bool value) return value;
 
     return null;
   }
@@ -438,12 +465,8 @@ class EndpointSpec {
 
     // Extract literal list
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final ListLiteral firstArg) {
-      return firstArg.elements
-          .whereType<StringLiteral>()
-          .map((e) => e.stringValue)
-          .nonNulls
-          .toList();
+    if (constValue(args?.firstOrNull) case final List<Object?> invokers) {
+      return invokers.whereType<String>().toList();
     }
 
     return null;
@@ -478,20 +501,13 @@ class EndpointSpec {
 
   /// Extracts labels map.
   Object? _extractLabels(Expression expression) {
-    if (expression is! SetOrMapLiteral) return null;
-    if (!expression.isMap) return null;
+    final map = constValue(expression);
+    if (map is! Map<Object?, Object?>) return null;
 
-    final labels = <String, String>{};
-    for (final element in expression.elements) {
-      if (element is MapLiteralEntry) {
-        final key = element.key;
-        final value = element.value;
-
-        if (key is StringLiteral && value is StringLiteral) {
-          labels[key.stringValue!] = value.stringValue!;
-        }
-      }
-    }
+    final labels = <String, String>{
+      for (final MapEntry(:key, :value) in map.entries)
+        if (key is String && value is String) key: value,
+    };
 
     return labels.isEmpty ? null : labels;
   }
@@ -580,14 +596,118 @@ class EndpointSpec {
   /// Extracts an enum value name from an expression, handling both
   /// fully-qualified (`SupportedRegion.europeWest3`) and shorthand
   /// (`.europeWest3`) syntax.
-  String? _extractEnumValueName(Argument? expression) => switch (expression) {
-    PrefixedIdentifier() => expression.identifier.name,
-    SimpleIdentifier() => expression.name,
-    PropertyAccess() => expression.propertyName.name,
-    DotShorthandPropertyAccess() => expression.propertyName.name,
+  ///
+  /// Also resolves a `const` variable holding an enum value.
+  String? _extractEnumValueName(Argument? expression) =>
+      _constEnumName(expression) ??
+      switch (expression) {
+        PrefixedIdentifier() => expression.identifier.name,
+        SimpleIdentifier() => expression.name,
+        PropertyAccess() => expression.propertyName.name,
+        DotShorthandPropertyAccess() => expression.propertyName.name,
+        _ => null,
+      };
+}
+
+/// Evaluates [expression] when it is a string, number, boolean, list or map
+/// literal, or a reference to a `const` variable holding one. Returns null
+/// otherwise, including for unresolved ASTs.
+Object? constValue(Argument? expression) {
+  final literal = switch (expression) {
+    StringLiteral() => expression.stringValue,
+    IntegerLiteral() => expression.value,
+    DoubleLiteral() => expression.value,
+    BooleanLiteral() => expression.value,
+    ListLiteral() =>
+      expression.elements
+          .whereType<Expression>()
+          .map(constValue)
+          .nonNulls
+          .toList(),
+    SetOrMapLiteral(isMap: true) => {
+      for (final entry in expression.elements.whereType<MapLiteralEntry>())
+        constValue(entry.key): constValue(entry.value),
+    },
     _ => null,
   };
+
+  return literal ??
+      _dartObjectValue(_constVariable(expression)?.computeConstantValue());
 }
+
+/// Follows references to `const` variables holding an option object, e.g.
+/// `region: myRegion`, back to the constructor call they were initialized with.
+///
+/// Other consts, such as maps and lists, are left for [constValue] to evaluate.
+Expression resolveConstInitializer(
+  Expression expression,
+  Map<VariableElement, Expression> constInitializers,
+) {
+  var resolved = expression;
+  // Bounded, since const initializers can chain but never cycle.
+  for (var i = 0; i < 16; i++) {
+    final initializer = constInitializers[_constVariable(resolved)];
+    if (initializer == null) break;
+    resolved = initializer;
+  }
+  if (constructorArguments(resolved) == null) return expression;
+  // Only const-constructed params reach here, and define*() is required.
+  final isParam = switch (resolved) {
+    InstanceCreationExpression(:final constructorName) =>
+      constructorName.name?.name == 'param',
+    DotShorthandConstructorInvocation(:final constructorName) =>
+      constructorName.name == 'param',
+    _ => false,
+  };
+  return isParam ? expression : resolved;
+}
+
+/// Returns the enum value name of a `const` variable holding an enum value.
+String? _constEnumName(Argument? expression) {
+  final variable = _constVariable(expression);
+  // Enum constants themselves are handled by their identifier name.
+  if (variable == null || variable is FieldElement && variable.isEnumConstant) {
+    return null;
+  }
+  return variable.computeConstantValue()?.getField('_name')?.toStringValue();
+}
+
+VariableElement? _constVariable(Argument? expression) {
+  var element = switch (expression) {
+    SimpleIdentifier() => expression.element,
+    PrefixedIdentifier() => expression.element,
+    PropertyAccess() => expression.propertyName.element,
+    _ => null,
+  };
+  if (element is PropertyAccessorElement) element = element.variable;
+  return element is VariableElement && element.isConst ? element : null;
+}
+
+Object? _dartObjectValue(DartObject? object) {
+  if (object == null) return null;
+  return object.toStringValue() ??
+      object.toIntValue() ??
+      object.toDoubleValue() ??
+      object.toBoolValue() ??
+      object.toListValue()?.map(_dartObjectValue).nonNulls.toList() ??
+      object.toMapValue()?.map(
+        (key, value) =>
+            MapEntry(_dartObjectValue(key), _dartObjectValue(value)),
+      );
+}
+
+/// Returns the arguments of a constructor call written either as
+/// `HttpsOptions(...)` or as the dot shorthand `.new(...)`, or null when
+/// [expression] is not a constructor call.
+///
+/// Expects a resolved AST, where dot shorthand constructors are
+/// [DotShorthandConstructorInvocation]s.
+ArgumentList? constructorArguments(Argument? expression) =>
+    switch (expression) {
+      InstanceCreationExpression(:final argumentList) ||
+      DotShorthandConstructorInvocation(:final argumentList) => argumentList,
+      _ => null,
+    };
 
 /// Converts a camelCase or PascalCase string to UPPER_SNAKE_CASE.
 String toUpperSnakeCase(String input) {
