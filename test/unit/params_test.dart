@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:io';
+
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/common/expression.dart';
 import 'package:firebase_functions/src/common/params.dart';
@@ -20,19 +22,16 @@ import 'package:test/test.dart';
 // Test enum for defineEnumList tests
 enum TestRegion { usCentral1, europeWest1, asiaNortheast1 }
 
-final class _WarningProbeParam extends Param<String> {
-  _WarningProbeParam(this.onToString) : super('WARNING_PROBE', null);
+final class _CapturingStdout implements Stdout {
+  _CapturingStdout(this.lines);
 
-  final void Function() onToString;
-
-  @override
-  String runtimeValue() => 'runtime value';
+  final List<String> lines;
 
   @override
-  String toString() {
-    onToString();
-    return super.toString();
-  }
+  void writeln([Object? object = '']) => lines.add('$object');
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
@@ -391,12 +390,23 @@ void main() {
     });
 
     test('Param.value observes the mocked deployment state', () {
-      FirebaseEnv.mockEnvironment = {'FUNCTIONS_CONTROL_API': 'true'};
-      var warningWasBuilt = false;
-      final param = _WarningProbeParam(() => warningWasBuilt = true);
+      FirebaseEnv.mockEnvironment = {
+        'FUNCTIONS_CONTROL_API': 'true',
+        'WARNING_PROBE': 'runtime value',
+      };
+      final param = defineString('WARNING_PROBE');
+      final lines = <String>[];
 
-      expect(param.value(), 'runtime value');
-      expect(warningWasBuilt, isTrue);
+      final value = IOOverrides.runZoned(
+        param.value,
+        stdout: () => _CapturingStdout(lines),
+      );
+
+      expect(value, 'runtime value');
+      expect(
+        lines,
+        contains(contains('params.WARNING_PROBE.value() invoked during')),
+      );
     });
 
     test('StringParam reads from mockEnvironment', () {
