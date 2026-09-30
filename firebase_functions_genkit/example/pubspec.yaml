@@ -1,0 +1,12 @@
+name: example
+
+resolution: workspace
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  firebase_functions: any
+  firebase_functions_genkit: any
+  genkit: any
+  genkit_google_genai: any
