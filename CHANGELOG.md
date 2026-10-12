@@ -6,6 +6,22 @@
   `define*()`, e.g. `defineSecret('API_KEY')`. Directly constructed params were
   missing from the manifest's `params:` and deployed under a name guessed from
   the variable.
+- Fix `functions.yaml` leaving out options written with dot shorthand, such as
+  `options: const .new(...)`, `memory: .new(.gb1)` or
+  `defineInt('MIN', const .new(defaultValue: 1))`. Functions using them were
+  deployed with the default settings.
+- Fix `functions.yaml` leaving out options that refer to a `const` variable,
+  including a static field or an import-prefixed name, such as
+  `options: shared.httpsOptions`, `region: myRegion` or
+  `defineInt('MIN', myParamOptions)`. A `const` options variable now also
+  resolves to its own declaration instead of a same-named variable in another
+  file.
+- Fix `functions.yaml` leaving out a custom `MemoryOption`, such as
+  `MemoryOption(3000)`. Its size is now emitted as declared, and firebase-tools
+  rejects sizes that Cloud Functions does not support.
+- Fix `.param()` options given a built-in param, such as
+  `ParamInput.projectId`, emitting `{{ params.UNKNOWN }}` instead of
+  `{{ params.PROJECT_ID }}`.
 
 ## 0.8.0
 

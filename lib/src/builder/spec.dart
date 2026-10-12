@@ -21,6 +21,7 @@ library;
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:source_gen/source_gen.dart';
 
 /// Specification for a parameter.
 class ParamSpec {
@@ -233,41 +234,37 @@ class EndpointSpec {
       return null; // Reset means use default
     }
 
-    // Extract literal value: Memory(MemoryOption.mb256) or Memory(.mb256)
-    final args = _extractCallArguments(expression);
-
-    // A `const` variable holding a MemoryOption, e.g. `const m = .gb1`.
-    final constOption = _constVariable(
-      args?.firstOrNull,
-    )?.computeConstantValue();
-    if (constOption?.getField('value')?.toIntValue() case final mb?) {
-      // Matches `_MemoryLiteral`, which maps unlisted sizes to 32768.
-      return _memoryOptionSizes.contains(mb) ? mb : 32768;
-    }
-
-    final enumName = _extractEnumValueName(args?.firstOrNull);
-    if (enumName != null) return _memoryOptionToInt(enumName);
-
-    return switch (constValue(args?.firstOrNull)) {
-      final int i => i,
-      _ => null,
-    };
+    // Extract literal value: Memory(MemoryOption.mb256), Memory(.mb256),
+    // Memory.fromOption(...) or Memory.fromInt(256)
+    final option = _extractCallArguments(expression)?.firstOrNull;
+    return _memoryOptionSize(option) ??
+        _memoryOptionToInt(_extractEnumValueName(option)) ??
+        switch (constValue(option)) {
+          final int mb => mb,
+          _ => null,
+        };
   }
 
-  static const _memoryOptionSizes = {
-    128,
-    256,
-    512,
-    1024,
-    2048,
-    4096,
-    8192,
-    16384,
-    32768,
-  };
+  /// Returns the size of a const `MemoryOption` written as `MemoryOption(n)`,
+  /// `.new(n)` or a reference to one, such as `MemoryOption.gb1` or a `const`
+  /// variable.
+  ///
+  /// The declared size is emitted as is, even when it is not one of the
+  /// predefined sizes, so that firebase-tools rejects it at deploy time.
+  int? _memoryOptionSize(Argument? option) {
+    if (constructorArguments(option) case final args?) {
+      return switch (constValue(args.arguments.firstOrNull)) {
+        final int mb => mb,
+        _ => null,
+      };
+    }
+    return _constVariable(
+      option,
+    )?.computeConstantValue()?.getField('value')?.toIntValue();
+  }
 
   /// Converts MemoryOption enum to integer value.
-  int? _memoryOptionToInt(String optionName) => switch (optionName) {
+  int? _memoryOptionToInt(String? optionName) => switch (optionName) {
     'mb128' => 128,
     'mb256' => 256,
     'mb512' => 512,
@@ -518,6 +515,10 @@ class EndpointSpec {
     if (args == null || args.isEmpty) return '{{ params.UNKNOWN }}';
 
     final firstArg = args.first;
+    // A const param, such as `ParamInput.projectId`, carries its own name.
+    if (_constParamName(firstArg) case final paramName?) {
+      return '{{ params.$paramName }}';
+    }
     if (firstArg is SimpleIdentifier) {
       // Look up the actual param name from the mapping
       final variableName = firstArg.name;
@@ -637,6 +638,7 @@ Object? constValue(Argument? expression) {
 
 /// Follows references to `const` variables holding an option object, e.g.
 /// `region: myRegion`, back to the constructor call they were initialized with.
+/// Static fields and import-prefixed names are followed too.
 ///
 /// Other consts, such as maps and lists, are left for [constValue] to evaluate.
 Expression resolveConstInitializer(
@@ -650,17 +652,25 @@ Expression resolveConstInitializer(
     if (initializer == null) break;
     resolved = initializer;
   }
-  if (constructorArguments(resolved) == null) return expression;
-  // define*() params are never const, so a const .param() can't be named.
-  final isParam = switch (resolved) {
-    InstanceCreationExpression(:final constructorName) =>
-      constructorName.name?.name == 'param',
-    DotShorthandConstructorInvocation(:final constructorName) =>
-      constructorName.name == 'param',
-    _ => false,
-  };
-  return isParam ? expression : resolved;
+  return constructorArguments(resolved) == null ? expression : resolved;
 }
+
+/// Returns the name of the const `Param` [expression] refers to, such as
+/// `PROJECT_ID` for `ParamInput.projectId`.
+String? _constParamName(Argument? expression) {
+  final object = _constVariable(expression)?.computeConstantValue();
+  final type = object?.type;
+  if (object == null ||
+      type == null ||
+      !_paramType.isAssignableFromType(type)) {
+    return null;
+  }
+  return ConstantReader(object).peek('name')?.stringValue;
+}
+
+const _paramType = TypeChecker.fromUrl(
+  'package:firebase_functions/src/common/params.dart#Param',
+);
 
 /// Returns the enum value name of a `const` variable holding an enum value.
 String? _constEnumName(Argument? expression) {

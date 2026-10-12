@@ -18,6 +18,8 @@
 
 import 'package:firebase_functions/firebase_functions.dart';
 
+import 'shared_options.dart' as shared;
+
 const constTimeout = 45;
 const constServiceAccount = 'const-account@';
 const constInvokers = ['a@example.com', 'b@example.com'];
@@ -38,6 +40,22 @@ const constInvokerOption = Invoker.public();
 const constTimeZoneOption = TimeZone('Asia/Tokyo');
 const constRetryConfig = RetryConfig(retryCount: RetryCount(2));
 const constTaskRetryConfig = TaskQueueRetryConfig(maxAttempts: MaxAttempts(7));
+
+const collidingOptions = HttpsOptions(memory: Memory(MemoryOption.mb512));
+
+class StaticOptions {
+  static const https = HttpsOptions(
+    region: Region(SupportedRegion.europeWest1),
+  );
+}
+
+const constBuiltinParamOption = ServiceAccount.param(ParamInput.projectId);
+
+const constParamOptions = ParamOptions<int>(
+  defaultValue: 2,
+  label: 'Const options',
+);
+final constOptionsParam = defineInt('CONST_PARAM_OPTIONS', constParamOptions);
 
 void registerConstReferenceFunctions(Firebase firebase) {
   firebase.https.onRequest(
@@ -85,6 +103,44 @@ void registerConstReferenceFunctions(Firebase firebase) {
     name: 'constCustomMemory',
     (request) async => Response.ok('ok'),
     options: const HttpsOptions(memory: Memory(constCustomMemory)),
+  );
+
+  firebase.https.onRequest(
+    name: 'customMemoryInline',
+    (request) async => Response.ok('ok'),
+    options: const HttpsOptions(memory: Memory(MemoryOption(1536))),
+  );
+
+  firebase.https.onRequest(
+    name: 'staticFieldOptions',
+    (request) async => Response.ok('ok'),
+    options: StaticOptions.https,
+  );
+
+  firebase.https.onRequest(
+    name: 'prefixedOptions',
+    (request) async => Response.ok('ok'),
+    options: shared.collidingOptions,
+  );
+
+  firebase.https.onRequest(
+    name: 'collidingOptions',
+    (request) async => Response.ok('ok'),
+    options: collidingOptions,
+  );
+
+  firebase.https.onRequest(
+    name: 'builtinParamOption',
+    (request) async => Response.ok('ok'),
+    options: const HttpsOptions(
+      serviceAccount: ServiceAccount.param(ParamInput.projectId),
+    ),
+  );
+
+  firebase.https.onRequest(
+    name: 'constBuiltinParamOption',
+    (request) async => Response.ok('ok'),
+    options: const HttpsOptions(serviceAccount: constBuiltinParamOption),
   );
 
   firebase.scheduler.onSchedule(

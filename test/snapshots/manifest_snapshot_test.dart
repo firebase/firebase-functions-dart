@@ -2085,7 +2085,7 @@ void main() {
     });
 
     group('dot shorthand options', () {
-      test('applies setGlobalOptions(const .new(...))', () {
+      test('applies setGlobalOptions() with a local const .new(...)', () {
         expect(_getEndpoint(manifest, 'nativeDemo')!['concurrency'], equals(7));
       });
 
@@ -2201,9 +2201,56 @@ void main() {
         );
       });
 
-      test('maps a custom const MemoryOption like the runtime does', () {
-        final endpoint = _getEndpoint(manifest, 'constCustomMemory')!;
-        expect(endpoint['availableMemoryMb'], equals(32768));
+      test('references a built-in param by its name', () {
+        for (final name in ['builtinParamOption', 'constBuiltinParamOption']) {
+          expect(
+            _getEndpoint(manifest, name)!['serviceAccountEmail'],
+            equals('{{ params.PROJECT_ID }}'),
+            reason: name,
+          );
+        }
+      });
+
+      test('emits the declared size of a custom MemoryOption', () {
+        // firebase-tools rejects unsupported sizes at deploy time.
+        for (final (name, size) in [
+          ('constCustomMemory', 3000),
+          ('customMemoryInline', 1536),
+        ]) {
+          expect(
+            _getEndpoint(manifest, name)!['availableMemoryMb'],
+            equals(size),
+            reason: name,
+          );
+        }
+      });
+
+      test('extracts options held in a static const field', () {
+        final endpoint = _getEndpoint(manifest, 'staticFieldOptions')!;
+        expect(endpoint['region'], equals(['europe-west1']));
+      });
+
+      test('resolves options by variable, not by name', () {
+        expect(
+          _getEndpoint(manifest, 'prefixedOptions')!['availableMemoryMb'],
+          equals(8192),
+        );
+        expect(
+          _getEndpoint(manifest, 'collidingOptions')!['availableMemoryMb'],
+          equals(512),
+        );
+      });
+
+      test('extracts ParamOptions held in a const variable', () {
+        expect(
+          _getParam(manifest, 'CONST_PARAM_OPTIONS'),
+          equals({
+            'name': 'CONST_PARAM_OPTIONS',
+            'type': 'int',
+            'default': 2,
+            'label': 'Const options',
+          }),
+        );
       });
 
       test('extracts scheduler options from const variables', () {
