@@ -19,6 +19,7 @@
 import 'package:firebase_functions/firebase_functions.dart';
 import 'package:native_reference/const_references.dart';
 import 'package:native_reference/dot_shorthand.dart';
+import 'package:native_reference/param_references.dart';
 
 void main(List<String> args) async {
   await runFunctions((firebase) {
@@ -28,5 +29,6 @@ void main(List<String> args) async {
     );
     registerDotShorthandFunctions(firebase);
     registerConstReferenceFunctions(firebase);
+    registerParamReferenceFunctions(firebase);
   });
 }

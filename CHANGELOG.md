@@ -1,11 +1,18 @@
 ## 0.9.0-wip
 
 - **BREAKING:** Param classes (`Param`, `SecretParam`, `JsonSecretParam`,
-  `StringParam`, `IntParam`, `DoubleParam`, `BooleanParam`, `ListParam` and
-  `EnumListParam`) can no longer be constructed, subclassed or implemented; use
-  `define*()`, e.g. `defineSecret('API_KEY')`. Directly constructed params were
-  missing from the manifest's `params:` and deployed under a name guessed from
-  the variable.
+  `StringParam`, `IntParam`, `DoubleParam`, `BooleanParam`, `ListParam`,
+  `EnumListParam` and `InternalExpression`) can no longer be constructed,
+  subclassed or implemented, including in `const` declarations. Define params
+  with `define*()` instead, e.g. `final apiKey = defineSecret('API_KEY')`.
+  Directly constructed params were missing from the manifest's `params:` and
+  deployed under a name guessed from the variable.
+- Fix secrets and `.param()` options referring to a param defined in another
+  file, in a static field, as a local variable or through an import prefix
+  using a name guessed from the variable, or `{{ params.UNKNOWN }}`, instead of
+  the name it was defined with. `define*()` calls made through an import
+  prefix, such as `params.defineSecret('API_KEY')`, are now listed in
+  `params:`.
 - Fix `functions.yaml` leaving out options written with dot shorthand, such as
   `options: const .new(...)`, `memory: .new(.gb1)` or
   `defineInt('MIN', const .new(defaultValue: 1))`. Functions using them were
@@ -23,9 +30,10 @@
   `MemoryOption(3000)`. Its size is now emitted as declared, and the build
   warns about sizes that Cloud Functions does not support, which firebase-tools
   rejects.
-- Fix `.param()` options given a built-in param, such as
-  `ParamInput.projectId`, emitting `{{ params.UNKNOWN }}` instead of
-  `{{ params.PROJECT_ID }}`.
+- Fix `.param()` options given a built-in param, such as `projectID` or
+  `ParamInput.projectId`, emitting a guessed name or `{{ params.UNKNOWN }}`
+  instead of `{{ params.PROJECT_ID }}`. `projectID`, `databaseURL`,
+  `storageBucket` and `gcloudProject` are now `const`.
 
 ## 0.8.0
 

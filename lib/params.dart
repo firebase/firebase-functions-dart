@@ -155,22 +155,22 @@ export 'src/common/params.dart'
 ///   },
 /// );
 /// ```
-final internal.Param<String> projectID = internal.ParamInput.projectId;
+const internal.Param<String> projectID = internal.ParamInput.projectId;
 
 /// Built-in parameter that resolves to the Realtime Database URL.
 ///
 /// Returns an empty string if Realtime Database is not configured for the project.
-final internal.Param<String> databaseURL = internal.ParamInput.databaseURL;
+const internal.Param<String> databaseURL = internal.ParamInput.databaseURL;
 
 /// Built-in parameter that resolves to the Cloud Storage bucket.
 ///
 /// Returns an empty string if Cloud Storage is not configured for the project.
-final internal.Param<String> storageBucket = internal.ParamInput.storageBucket;
+const internal.Param<String> storageBucket = internal.ParamInput.storageBucket;
 
 /// Built-in parameter that resolves to the GCloud project ID.
 ///
 /// This is an alias for [projectID] for compatibility.
-final internal.Param<String> gcloudProject = internal.ParamInput.gcloudProject;
+const internal.Param<String> gcloudProject = internal.ParamInput.gcloudProject;
 
 /// Resource input for selecting a Cloud Storage bucket.
 ///
