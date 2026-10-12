@@ -34,6 +34,27 @@ firebase.https.onRequest(
 );
 ```
 
+## Setting Parameters in Tests
+
+Params read their values from the environment. In tests, set them with
+`package:firebase_functions/testing.dart`, which replaces the process
+environment:
+
+```dart
+// Functions registered with runFunctionsTest see `environment` both when they
+// are registered and when the test client invokes them.
+final client = await runFunctionsTest(
+  adminApp: app,
+  environment: {'WELCOME_MESSAGE': 'Hi from a test'},
+  registerFunctions,
+);
+
+// Any other code reads them inside withEnvironment, including after an await.
+await withEnvironment({'API_KEY': 'test-key'}, () async {
+  expect(await signRequest(), contains('test-key'));
+});
+```
+
 ## Using Parameters in Options (Deploy-time)
 
 ```dart

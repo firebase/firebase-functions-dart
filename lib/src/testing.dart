@@ -43,6 +43,12 @@ export 'firebase.dart' show Firebase;
 /// one whose `Auth` service is wired to a mock certificate HTTP client (see
 /// `Auth.internal` and `FirebaseTokenVerifier`).
 ///
+/// The functions see [environment] instead of the process environment, both
+/// when [runner] registers them and when the client invokes them, so it sets
+/// the values of params and secrets, e.g. `{'API_KEY': 'test-key'}` for
+/// `defineSecret('API_KEY')`. `FIREBASE_PROJECT` defaults to the project ID
+/// of [adminApp].
+///
 /// Example:
 /// ```dart
 /// final client = await runFunctionsTest(
@@ -60,11 +66,13 @@ export 'firebase.dart' show Firebase;
 ///
 /// See also:
 /// - [FunctionsTestClient] for invoking registered functions.
+/// - [withEnvironment] for setting param values in other tests.
 /// - `EmulatorHelper` (in `test/e2e/helpers/emulator.dart`) for full E2E
 ///   testing with the Firebase emulator.
 Future<FunctionsTestClient> runFunctionsTest(
   FunctionsRunner runner, {
   required FirebaseApp adminApp,
+  Map<String, String> environment = const {},
 }) async {
   final projectId =
       adminApp.options.projectId ??
@@ -72,15 +80,33 @@ Future<FunctionsTestClient> runFunctionsTest(
         'adminApp must have a projectId set in its AppOptions.',
       ));
 
-  FirebaseEnv.mockEnvironment = {'FIREBASE_PROJECT': projectId};
-  try {
+  final testEnvironment = {'FIREBASE_PROJECT': projectId, ...environment};
+  return withEnvironment(testEnvironment, () async {
     final firebase = createTestFirebaseInternal(adminApp);
     await runner(firebase);
-    return FunctionsTestClient._(firebase);
-  } finally {
-    FirebaseEnv.mockEnvironment = null;
-  }
+    return FunctionsTestClient._(firebase, testEnvironment);
+  });
 }
+
+/// Runs [body] with [environment] in place of the process environment.
+///
+/// Params read their values from the environment, so this sets them for code
+/// that [body] runs, including after an `await`:
+///
+/// ```dart
+/// final apiKey = defineSecret('API_KEY');
+///
+/// test('signs requests with the API key', () async {
+///   await withEnvironment({'API_KEY': 'test-key'}, () async {
+///     expect(await signRequest(), contains('test-key'));
+///   });
+/// });
+/// ```
+///
+/// To test functions registered with [runFunctionsTest], pass the environment
+/// to it instead.
+R withEnvironment<R>(Map<String, String> environment, R Function() body) =>
+    FirebaseEnv.runWithEnvironment(environment, body);
 
 /// In-process test client returned by [runFunctionsTest].
 ///
@@ -90,9 +116,12 @@ Future<FunctionsTestClient> runFunctionsTest(
 /// This is the unit/integration-test counterpart to `EmulatorHelper` +
 /// `FunctionsHttpClient` used in E2E tests.
 class FunctionsTestClient {
-  FunctionsTestClient._(this._firebase);
+  FunctionsTestClient._(this._firebase, this._environment);
 
   final Firebase _firebase;
+
+  /// The environment the functions were registered with.
+  final Map<String, String> _environment;
 
   /// Invokes an `onCall` or `onCallWithData` function by [name].
   ///
@@ -147,6 +176,6 @@ class FunctionsTestClient {
   Future<Response> _invoke(String _, Request request) async {
     // ignore: invalid_use_of_visible_for_testing_member
     final testHandler = createTestHandler(_firebase);
-    return testHandler(request);
+    return withEnvironment(_environment, () async => testHandler(request));
   }
 }

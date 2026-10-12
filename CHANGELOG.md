@@ -6,7 +6,14 @@
   subclassed or implemented, including in `const` declarations. Define params
   with `define*()` instead, e.g. `final apiKey = defineSecret('API_KEY')`.
   Directly constructed params were missing from the manifest's `params:` and
-  deployed under a name guessed from the variable.
+  deployed under a name guessed from the variable. To set param values in
+  tests, use `withEnvironment()` or `runFunctionsTest(environment: ...)`.
+- Add `withEnvironment()` and an `environment` parameter to
+  `runFunctionsTest()` in `package:firebase_functions/testing.dart`, to set
+  the values of params and secrets in tests.
+- **BREAKING:** Functions invoked through `FunctionsTestClient` now see the
+  same environment as when `runFunctionsTest()` registered them, instead of
+  the process environment.
 - Fix secrets and `.param()` options referring to a param defined in another
   file, in a static field, as a local variable or through an import prefix
   using a name guessed from the variable, or `{{ params.UNKNOWN }}`, instead of
