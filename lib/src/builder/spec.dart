@@ -21,6 +21,7 @@ library;
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/constant/value.dart';
 import 'package:analyzer/dart/element/element.dart';
+import 'package:build/build.dart';
 import 'package:source_gen/source_gen.dart';
 
 /// Specification for a parameter.
@@ -186,7 +187,7 @@ class EndpointSpec {
         case 'secrets':
           add('secretEnvironmentVariables', _extractSecrets);
         case 'labels':
-          add('labels', _extractLabels);
+          add('labels', constStringMap);
         case 'omit':
           add('omit', _extractBool);
 
@@ -237,12 +238,21 @@ class EndpointSpec {
     // Extract literal value: Memory(MemoryOption.mb256), Memory(.mb256),
     // Memory.fromOption(...) or Memory.fromInt(256)
     final option = _extractCallArguments(expression)?.firstOrNull;
-    return _memoryOptionSize(option) ??
-        _memoryOptionToInt(_extractEnumValueName(option)) ??
+    final mb =
+        _memoryOptionSize(option) ??
+        _memoryOptionSizes[_extractEnumValueName(option)] ??
         switch (constValue(option)) {
           final int mb => mb,
           _ => null,
         };
+    if (mb != null && !_memoryOptionSizes.containsValue(mb)) {
+      log.warning(
+        'Function "$name" sets its memory to $mb MB, which Cloud Functions '
+        'does not support, so firebase-tools will reject it. Use one of: '
+        '${_memoryOptionSizes.values.join(', ')}.',
+      );
+    }
+    return mb;
   }
 
   /// Returns the size of a const `MemoryOption` written as `MemoryOption(n)`,
@@ -263,18 +273,18 @@ class EndpointSpec {
     )?.computeConstantValue()?.getField('value')?.toIntValue();
   }
 
-  /// Converts MemoryOption enum to integer value.
-  int? _memoryOptionToInt(String? optionName) => switch (optionName) {
-    'mb128' => 128,
-    'mb256' => 256,
-    'mb512' => 512,
-    'gb1' => 1024,
-    'gb2' => 2048,
-    'gb4' => 4096,
-    'gb8' => 8192,
-    'gb16' => 16384,
-    'gb32' => 32768,
-    _ => null,
+  /// The sizes, in MB, of the predefined `MemoryOption`s, which are the ones
+  /// Cloud Functions supports.
+  static const _memoryOptionSizes = {
+    'mb128': 128,
+    'mb256': 256,
+    'mb512': 512,
+    'gb1': 1024,
+    'gb2': 2048,
+    'gb4': 4096,
+    'gb8': 8192,
+    'gb16': 16384,
+    'gb32': 32768,
   };
 
   /// Extracts CPU option value.
@@ -496,19 +506,6 @@ class EndpointSpec {
     return variableToParamName[name] ?? toUpperSnakeCase(name);
   }
 
-  /// Extracts labels map.
-  Object? _extractLabels(Expression expression) {
-    final map = constValue(expression);
-    if (map is! Map<Object?, Object?>) return null;
-
-    final labels = <String, String>{
-      for (final MapEntry(:key, :value) in map.entries)
-        if (key is String && value is String) key: value,
-    };
-
-    return labels.isEmpty ? null : labels;
-  }
-
   /// Extracts parameter reference and generates CEL expression.
   String _extractParamReference(Expression expression) {
     final args = _extractCallArguments(expression);
@@ -610,11 +607,20 @@ class EndpointSpec {
       };
 }
 
-/// Evaluates [expression] when it is a string, number, boolean, list or map
-/// literal, or a reference to a `const` variable holding one. Returns null
-/// otherwise, including for unresolved ASTs.
+/// Evaluates [expression] when it is a constant string, number, boolean, list
+/// or map: a literal, a reference to a `const` variable, or any other const
+/// expression, such as one with spreads, collection `if`s or arithmetic.
+/// Returns null otherwise.
+///
+/// Unresolved ASTs can't be evaluated, so only their literals are read.
 Object? constValue(Argument? expression) {
-  final literal = switch (expression) {
+  if (expression is! Expression) return null;
+  final unit = expression.thisOrAncestorOfType<CompilationUnit>();
+  if (unit?.declaredFragment != null) {
+    return _dartObjectValue(expression.computeConstantValue()?.value);
+  }
+
+  return switch (expression) {
     StringLiteral() => expression.stringValue,
     IntegerLiteral() => expression.value,
     DoubleLiteral() => expression.value,
@@ -631,9 +637,20 @@ Object? constValue(Argument? expression) {
     },
     _ => null,
   };
+}
 
-  return literal ??
-      _dartObjectValue(_constVariable(expression)?.computeConstantValue());
+/// Evaluates [expression] as a const map, keeping its `String` to `String`
+/// entries. Returns null when there are none.
+Map<String, String>? constStringMap(Argument? expression) {
+  final map = constValue(expression);
+  if (map is! Map<Object?, Object?>) return null;
+
+  final strings = <String, String>{
+    for (final MapEntry(:key, :value) in map.entries)
+      if (key is String && value is String) key: value,
+  };
+
+  return strings.isEmpty ? null : strings;
 }
 
 /// Follows references to `const` variables holding an option object, e.g.

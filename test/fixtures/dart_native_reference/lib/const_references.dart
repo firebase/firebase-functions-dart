@@ -31,6 +31,8 @@ const constCpu = 2.0;
 const constCustomMemory = MemoryOption(3000);
 const constIntParam = IntParam('CONST_MEM', null);
 const constParamMemory = Memory.param(constIntParam);
+const constIsProd = true;
+const constAccountName = 'interpolated';
 const constTimeZone = 'Europe/London';
 const constRetryCount = 4;
 const constMaxAttempts = 6;
@@ -110,6 +112,17 @@ void registerConstReferenceFunctions(Firebase firebase) {
     name: 'constCustomMemory',
     (request) async => Response.ok('ok'),
     options: const HttpsOptions(memory: Memory(constCustomMemory)),
+  );
+
+  firebase.https.onRequest(
+    name: 'constExpressions',
+    (request) async => Response.ok('ok'),
+    options: const HttpsOptions(
+      timeoutSeconds: TimeoutSeconds(constTimeout * 2),
+      serviceAccount: ServiceAccount('$constAccountName@'),
+      invoker: Invoker([...constInvokers, 'c@example.com']),
+      labels: {...constLabels, if (constIsProd) 'env': 'prod'},
+    ),
   );
 
   firebase.https.onRequest(

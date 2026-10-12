@@ -912,7 +912,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
     if (optionsArg != null) {
       channel = _extractStringField(optionsArg, 'channel');
-      filters = _extractStringMapField(optionsArg, 'filters');
+      filters = constStringMap(optionsArg.namedArgument('filters'));
     }
 
     endpoints[functionName] = EndpointSpec(
@@ -942,24 +942,6 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
     );
-  }
-
-  /// Extracts a `Map<String, String>` field from constructor arguments.
-  Map<String, String>? _extractStringMapField(
-    ArgumentList node,
-    String fieldName,
-  ) {
-    final arg = node.namedArgument(fieldName);
-
-    final value = constValue(arg);
-    if (value is! Map<Object?, Object?>) return null;
-
-    final map = <String, String>{
-      for (final MapEntry(:key, :value) in value.entries)
-        if (key is String && value is String) key: value,
-    };
-
-    return map.isEmpty ? null : map;
   }
 
   /// Extracts TaskQueueRetryConfig from TaskQueueOptions.
