@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -20,10 +21,31 @@ import 'package:meta/meta.dart';
 /// Provides unified access to environment variables, emulator checks, and
 /// Google Cloud / Firebase configuration.
 class FirebaseEnv {
-  FirebaseEnv() : environment = mockEnvironment ?? Platform.environment;
+  FirebaseEnv()
+    : environment =
+          Zone.current[_environmentKey] as Map<String, String>? ??
+          mockEnvironment ??
+          Platform.environment;
 
   @internal
   static Map<String, String>? mockEnvironment;
+
+  /// Runs [body] with [environment] in place of the process environment, for
+  /// everything it reads through [FirebaseEnv], including param values.
+  ///
+  /// Callbacks that [body] schedules, such as the code after an `await`, see
+  /// [environment] too.
+  static R runWithEnvironment<R>(
+    Map<String, String> environment,
+    R Function() body,
+  ) => runZoned(
+    body,
+    zoneValues: {
+      _environmentKey: Map<String, String>.unmodifiable(environment),
+    },
+  );
+
+  static const _environmentKey = #firebaseFunctionsEnvironment;
 
   final Map<String, String> environment;
 

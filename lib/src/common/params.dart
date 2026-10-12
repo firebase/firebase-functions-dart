@@ -42,7 +42,7 @@ import 'expression.dart';
 /// );
 /// ```
 SecretParam defineSecret(String name) {
-  final param = SecretParam(name, null);
+  final param = SecretParam._(name, null);
   _registerParam(param);
   return param;
 }
@@ -73,7 +73,7 @@ SecretParam defineSecret(String name) {
 /// {"apiKey": "key_...", "webhookSecret": "secret_...", "clientId": "client_..."}
 /// ```
 JsonSecretParam<T> defineJsonSecret<T>(String name) {
-  final param = JsonSecretParam<T>(name);
+  final param = JsonSecretParam<T>._(name);
   _registerParam(param);
   return param;
 }
@@ -109,7 +109,7 @@ JsonSecretParam<T> defineJsonSecret<T>(String name) {
 /// );
 /// ```
 BooleanParam defineBoolean(String name, [ParamOptions<bool>? options]) {
-  final param = BooleanParam(name, options);
+  final param = BooleanParam._(name, options);
   _registerParam(param);
   return param;
 }
@@ -128,14 +128,14 @@ BooleanParam defineBoolean(String name, [ParamOptions<bool>? options]) {
 /// );
 /// ```
 IntParam defineInt(String name, [ParamOptions<int>? options]) {
-  final param = IntParam(name, options);
+  final param = IntParam._(name, options);
   _registerParam(param);
   return param;
 }
 
 /// Creates a double/float parameter.
 DoubleParam defineDouble(String name, [ParamOptions<double>? options]) {
-  final param = DoubleParam(name, options);
+  final param = DoubleParam._(name, options);
   _registerParam(param);
   return param;
 }
@@ -170,7 +170,7 @@ DoubleParam defineFloat(String name, [ParamOptions<double>? options]) {
 /// );
 /// ```
 StringParam defineString(String name, [ParamOptions<String>? options]) {
-  final param = StringParam(name, options);
+  final param = StringParam._(name, options);
   _registerParam(param);
   return param;
 }
@@ -188,7 +188,7 @@ StringParam defineString(String name, [ParamOptions<String>? options]) {
 /// );
 /// ```
 ListParam defineList(String name, [ParamOptions<List<String>>? options]) {
-  final param = ListParam(name, options);
+  final param = ListParam._(name, options);
   _registerParam(param);
   return param;
 }
@@ -223,7 +223,7 @@ EnumListParam<T> defineEnumList<T extends Enum>(
   final typeName = T.toString();
   final paramName = '${_toUpperSnakeCase(typeName)}_LIST';
 
-  final param = EnumListParam<T>(paramName, values, options);
+  final param = EnumListParam<T>._(paramName, values, options);
   _registerParam(param);
   return param;
 }
@@ -335,8 +335,8 @@ class WireParamSpec<T extends Object> {
 ///
 /// **Important**: Parameter values are read from the environment variables set
 /// by Cloud Functions or the Firebase emulator at runtime.
-abstract class Param<T extends Object> extends Expression<T> {
-  const Param(this.name, this.options);
+abstract base class Param<T extends Object> extends Expression<T> {
+  const Param._(this.name, this.options);
 
   /// The environment variable name for this parameter.
   final String name;
@@ -408,8 +408,8 @@ abstract class Param<T extends Object> extends Expression<T> {
 ///   },
 /// );
 /// ```
-class SecretParam extends Param<String> {
-  const SecretParam(super.name, super.options);
+final class SecretParam extends Param<String> {
+  const SecretParam._(super.name, super.options) : super._();
 
   @override
   String runtimeValue() {
@@ -463,8 +463,8 @@ class SecretParam extends Param<String> {
 ///   },
 /// );
 /// ```
-class JsonSecretParam<T> {
-  const JsonSecretParam(this.name);
+final class JsonSecretParam<T> {
+  const JsonSecretParam._(this.name);
 
   /// The environment variable name for this secret.
   final String name;
@@ -520,8 +520,8 @@ class JsonSecretParam<T> {
 /// A string parameter.
 ///
 /// Reads from environment variables at runtime.
-class StringParam extends Param<String> {
-  const StringParam(super.name, super.options);
+final class StringParam extends Param<String> {
+  const StringParam._(super.name, super.options) : super._();
 
   @override
   String runtimeValue() {
@@ -541,8 +541,8 @@ class StringParam extends Param<String> {
 /// final needsMoreCpu = memoryMb.greaterThan(1024);
 /// final cpuCount = needsMoreCpu.thenElse(2, 1);
 /// ```
-class IntParam extends Param<int> {
-  const IntParam(super.name, super.options);
+final class IntParam extends Param<int> {
+  const IntParam._(super.name, super.options) : super._();
 
   @override
   int runtimeValue() {
@@ -602,8 +602,8 @@ class IntParam extends Param<int> {
 /// // Use comparison in conditional
 /// final isHighThreshold = threshold.greaterThan(0.75);
 /// ```
-class DoubleParam extends Param<double> {
-  const DoubleParam(super.name, super.options);
+final class DoubleParam extends Param<double> {
+  const DoubleParam._(super.name, super.options) : super._();
 
   @override
   double runtimeValue() {
@@ -650,8 +650,8 @@ class DoubleParam extends Param<double> {
 ///
 /// Reads from environment variables at runtime. The value is considered
 /// `true` if the environment variable equals 'true' (case-sensitive).
-class BooleanParam extends Param<bool> {
-  const BooleanParam(super.name, super.options);
+final class BooleanParam extends Param<bool> {
+  const BooleanParam._(super.name, super.options) : super._();
 
   @override
   bool runtimeValue() {
@@ -684,8 +684,8 @@ class BooleanParam extends Param<bool> {
 /// Reads from environment variables at runtime and parses as JSON array.
 /// The environment variable should contain a JSON array of strings,
 /// e.g., `'["value1", "value2"]'`.
-class ListParam extends Param<List<String>> {
-  const ListParam(super.name, super.options);
+final class ListParam extends Param<List<String>> {
+  const ListParam._(super.name, super.options) : super._();
 
   @override
   List<String> runtimeValue() {
@@ -727,8 +727,8 @@ class ListParam extends Param<List<String>> {
 /// // At runtime
 /// final selectedRegions = regions.value(); // Returns List<Region>
 /// ```
-class EnumListParam<T extends Enum> extends Param<List<T>> {
-  const EnumListParam(super.name, this.enumValues, super.options);
+final class EnumListParam<T extends Enum> extends Param<List<T>> {
+  const EnumListParam._(super.name, this.enumValues, super.options) : super._();
 
   /// All possible values of the enum type.
   final List<T> enumValues;
@@ -793,8 +793,9 @@ class _EnumSelectParamInput<T extends Enum> extends ParamInput<List<T>> {
 ///
 /// These are special expressions that read from Firebase environment
 /// variables and are always available without being defined by the user.
-class InternalExpression extends Param<String> {
-  const InternalExpression._(String name, this._configKey) : super(name, null);
+final class InternalExpression extends Param<String> {
+  const InternalExpression._(String name, this._configKey)
+    : super._(name, null);
 
   final String _configKey;
 

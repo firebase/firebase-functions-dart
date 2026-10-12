@@ -2151,6 +2151,59 @@ void main() {
       });
     });
 
+    group('param references', () {
+      test('resolve to the name the param was defined with', () {
+        final endpoint = _getEndpoint(manifest, 'paramReferences')!;
+        // Defined in another file, as a local, in a static field and through
+        // an import prefix.
+        expect(
+          endpoint['minInstances'],
+          equals('{{ params.SHARED_MIN_INSTANCES }}'),
+        );
+        expect(
+          endpoint['maxInstances'],
+          equals('{{ params.LOCAL_PARAM_NAME }}'),
+        );
+        expect(
+          endpoint['availableMemoryMb'],
+          equals('{{ params.STATIC_MEMORY }}'),
+        );
+        expect(
+          endpoint['serviceAccountEmail'],
+          equals('{{ params.PREFIXED_PARAM }}'),
+        );
+        expect(
+          endpoint['secretEnvironmentVariables'],
+          equals([
+            {'key': 'SHARED_SECRET', 'secret': 'SHARED_SECRET'},
+          ]),
+        );
+      });
+
+      test('resolve in thenElse expressions', () {
+        final endpoint = _getEndpoint(manifest, 'paramExpressionReference')!;
+        expect(
+          endpoint['availableMemoryMb'],
+          equals('{{ params.SHARED_IS_LARGE ? 2048 : 512 }}'),
+        );
+      });
+
+      test('resolve the public built-in params', () {
+        final endpoint = _getEndpoint(manifest, 'publicBuiltinParamReference')!;
+        expect(
+          endpoint['serviceAccountEmail'],
+          equals('{{ params.PROJECT_ID }}'),
+        );
+      });
+
+      test('include define*() calls made through an import prefix', () {
+        expect(
+          _getParam(manifest, 'PREFIXED_PARAM'),
+          equals({'name': 'PREFIXED_PARAM', 'type': 'string'}),
+        );
+      });
+    });
+
     group('const references', () {
       test('extracts https options from const variables', () {
         final endpoint = _getEndpoint(manifest, 'constReferences')!;
@@ -2199,11 +2252,6 @@ void main() {
           (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
           equals({'maxAttempts': 7}),
         );
-      });
-
-      test('reads the name of a const-constructed param', () {
-        final endpoint = _getEndpoint(manifest, 'constParamOption')!;
-        expect(endpoint['availableMemoryMb'], equals('{{ params.CONST_MEM }}'));
       });
 
       test('references a built-in param by its name', () {
