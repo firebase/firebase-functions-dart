@@ -2259,6 +2259,11 @@ void main() {
         );
       });
 
+      test('discovers functions and options in part files', () {
+        final endpoint = _getEndpoint(manifest, 'partFunction')!;
+        expect(endpoint['availableMemoryMb'], equals(2048));
+      });
+
       test('extracts ParamOptions held in a const variable', () {
         expect(
           _getParam(manifest, 'CONST_PARAM_OPTIONS'),

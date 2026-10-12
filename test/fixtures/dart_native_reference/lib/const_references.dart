@@ -20,6 +20,8 @@ import 'package:firebase_functions/firebase_functions.dart';
 
 import 'shared_options.dart' as shared;
 
+part 'const_references_part.dart';
+
 const constTimeout = 45;
 const constServiceAccount = 'const-account@';
 const constInvokers = ['a@example.com', 'b@example.com'];
@@ -61,6 +63,8 @@ const constParamOptions = ParamOptions<int>(
 final constOptionsParam = defineInt('CONST_PARAM_OPTIONS', constParamOptions);
 
 void registerConstReferenceFunctions(Firebase firebase) {
+  _registerPartFunctions(firebase);
+
   firebase.https.onRequest(
     name: 'constReferences',
     (request) async => Response.ok('ok'),

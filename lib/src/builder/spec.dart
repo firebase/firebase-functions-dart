@@ -696,8 +696,18 @@ String? _constEnumName(Argument? expression) {
   if (variable == null || variable is FieldElement && variable.isEnumConstant) {
     return null;
   }
-  return variable.computeConstantValue()?.getField('_name')?.toStringValue();
+  final value = variable.computeConstantValue();
+  if (value?.type?.element case final EnumElement enumElement) {
+    for (final constant in enumElement.constants) {
+      if (constant.computeConstantValue() == value) return constant.name;
+    }
+  }
+  return null;
 }
+
+/// Whether [expression] refers to a `const` variable.
+bool isConstReference(Argument? expression) =>
+    _constVariable(expression) != null;
 
 VariableElement? _constVariable(Argument? expression) {
   var element = switch (expression) {
