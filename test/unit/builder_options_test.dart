@@ -16,6 +16,7 @@ import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 import 'package:firebase_functions/src/builder/spec.dart';
+import 'package:logging/logging.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -39,6 +40,34 @@ void main() {
         endpoint.extractOptions(),
         containsPair('availableMemoryMb', 1024),
       );
+    });
+
+    test('warns about a memory size Cloud Functions does not support', () {
+      final warnings = <String>[];
+      final subscription = Logger.root.onRecord
+          .where((record) => record.level == Level.WARNING)
+          .listen((record) => warnings.add(record.message));
+      addTearDown(subscription.cancel);
+
+      final options = _parseOptions('''
+void main() {
+  final options = new HttpsOptions(memory: Memory.fromInt(3000));
+}
+''', 'HttpsOptions');
+
+      final endpoint = EndpointSpec(
+        name: 'oddMemory',
+        type: 'https',
+        options: options,
+      );
+
+      expect(
+        endpoint.extractOptions(),
+        containsPair('availableMemoryMb', 3000),
+      );
+      expect(warnings, [
+        contains('Function "oddMemory" sets its memory to 3000 MB'),
+      ]);
     });
 
     test('extracts memory from Memory.fromOption factory', () {
@@ -274,11 +303,11 @@ void main() {
   });
 }
 
-InstanceCreationExpression _parseHttpsOptions(String content) {
+ArgumentList _parseHttpsOptions(String content) {
   return _parseOptions(content, 'HttpsOptions');
 }
 
-InstanceCreationExpression _parseOptions(String content, String typeName) {
+ArgumentList _parseOptions(String content, String typeName) {
   final result = parseString(content: content);
   final visitor = _InstanceCreationVisitor(typeName);
 
@@ -286,7 +315,7 @@ InstanceCreationExpression _parseOptions(String content, String typeName) {
 
   final node = visitor.node;
   expect(node, isNotNull);
-  return node!;
+  return node!.argumentList;
 }
 
 final class _InstanceCreationVisitor extends RecursiveAstVisitor<void> {
