@@ -58,7 +58,7 @@ class _SpecBuilder implements Builder {
     // shared_options.dart can be referenced in server.dart.
     final sharedOptionsVars = <String, ArgumentList>{};
     final constInitializers = <VariableElement, Expression>{};
-    final astCache = <AssetId, CompilationUnit>{};
+    final astCache = <CompilationUnit>[];
 
     // Unknown until a library of this package resolves.
     var features = const DartVersionFeatures.unknown();
@@ -75,31 +75,35 @@ class _SpecBuilder implements Builder {
       // `// @dart=` override must not change how the whole project is built.
       final version = library.languageVersion.package;
       features = DartVersionFeatures(version.major, version.minor);
-      final fragment = library.firstFragment;
-      final astNode = await resolver.astNodeFor(fragment, resolve: true);
-      if (astNode is! CompilationUnit) continue;
-      astCache[asset] = astNode;
-      astNode.accept(_VariableCollector(sharedOptionsVars, constInitializers));
+      // The library's own file, then its `part` files.
+      for (final fragment in library.fragments) {
+        final astNode = await resolver.astNodeFor(fragment, resolve: true);
+        if (astNode is! CompilationUnit) continue;
+        astCache.add(astNode);
+        astNode.accept(
+          _VariableCollector(sharedOptionsVars, constInitializers),
+        );
+      }
     }
 
     final globalOptionsCollector = _GlobalOptionsCollector(
       sharedOptionsVars,
       constInitializers,
     );
-    for (final ast in astCache.values) {
+    for (final ast in astCache) {
       ast.accept(globalOptionsCollector);
     }
     final globalOptions = globalOptionsCollector.globalOptions;
 
     // Pass 2: visit each file with the shared options map so that variable
     // references to options declared in other files can be resolved.
-    for (final entry in astCache.entries) {
+    for (final ast in astCache) {
       final visitor = _FirebaseFunctionsVisitor(
         sharedOptionsVars,
         globalOptions: globalOptions,
         constInitializers: constInitializers,
       );
-      entry.value.accept(visitor);
+      ast.accept(visitor);
       allParams.addAll(visitor.params);
       allEndpoints.addAll(visitor.endpoints);
     }
@@ -912,7 +916,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
     if (optionsArg != null) {
       channel = _extractStringField(optionsArg, 'channel');
-      filters = _extractStringMapField(optionsArg, 'filters');
+      filters = constStringMap(optionsArg.namedArgument('filters'));
     }
 
     endpoints[functionName] = EndpointSpec(
@@ -942,24 +946,6 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
     );
-  }
-
-  /// Extracts a `Map<String, String>` field from constructor arguments.
-  Map<String, String>? _extractStringMapField(
-    ArgumentList node,
-    String fieldName,
-  ) {
-    final arg = node.namedArgument(fieldName);
-
-    final value = constValue(arg);
-    if (value is! Map<Object?, Object?>) return null;
-
-    final map = <String, String>{
-      for (final MapEntry(:key, :value) in value.entries)
-        if (key is String && value is String) key: value,
-    };
-
-    return map.isEmpty ? null : map;
   }
 
   /// Extracts TaskQueueRetryConfig from TaskQueueOptions.
@@ -1215,7 +1201,9 @@ extension on MethodInvocation {
 /// `const` variables, including static fields and import-prefixed names, are
 /// followed through [constInitializers]. Other variables, e.g. `options: opts`
 /// where `final opts = HttpsOptions(...)` was declared earlier, are looked up
-/// by name in [variableToOptionsExpr].
+/// by name in [variableToOptionsExpr]. A `const` that can't be followed, such
+/// as one from another package, is not looked up by name, since the name
+/// could belong to a different variable.
 ArgumentList? _optionsArguments(
   Argument? options,
   Map<String, ArgumentList> variableToOptionsExpr,
@@ -1223,7 +1211,7 @@ ArgumentList? _optionsArguments(
 ) => switch (options) {
   final Expression options =>
     constructorArguments(resolveConstInitializer(options, constInitializers)) ??
-        (options is SimpleIdentifier
+        (options is SimpleIdentifier && !isConstReference(options)
             ? variableToOptionsExpr[options.name]
             : null),
   _ => null,

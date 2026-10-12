@@ -20,6 +20,8 @@ import 'package:firebase_functions/firebase_functions.dart';
 
 import 'shared_options.dart' as shared;
 
+part 'const_references_part.dart';
+
 const constTimeout = 45;
 const constServiceAccount = 'const-account@';
 const constInvokers = ['a@example.com', 'b@example.com'];
@@ -29,7 +31,8 @@ const constRegion = SupportedRegion.europeWest2;
 const constMemory = MemoryOption.gb2;
 const constCpu = 2.0;
 const constCustomMemory = MemoryOption(3000);
-
+const constIsProd = true;
+const constAccountName = 'interpolated';
 const constTimeZone = 'Europe/London';
 const constRetryCount = 4;
 const constMaxAttempts = 6;
@@ -58,6 +61,8 @@ const constParamOptions = ParamOptions<int>(
 final constOptionsParam = defineInt('CONST_PARAM_OPTIONS', constParamOptions);
 
 void registerConstReferenceFunctions(Firebase firebase) {
+  _registerPartFunctions(firebase);
+
   firebase.https.onRequest(
     name: 'constReferences',
     (request) async => Response.ok('ok'),
@@ -103,6 +108,17 @@ void registerConstReferenceFunctions(Firebase firebase) {
     name: 'constCustomMemory',
     (request) async => Response.ok('ok'),
     options: const HttpsOptions(memory: Memory(constCustomMemory)),
+  );
+
+  firebase.https.onRequest(
+    name: 'constExpressions',
+    (request) async => Response.ok('ok'),
+    options: const HttpsOptions(
+      timeoutSeconds: TimeoutSeconds(constTimeout * 2),
+      serviceAccount: ServiceAccount('$constAccountName@'),
+      invoker: Invoker([...constInvokers, 'c@example.com']),
+      labels: {...constLabels, if (constIsProd) 'env': 'prod'},
+    ),
   );
 
   firebase.https.onRequest(

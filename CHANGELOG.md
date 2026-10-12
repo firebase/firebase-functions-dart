@@ -11,14 +11,18 @@
   `defineInt('MIN', const .new(defaultValue: 1))`. Functions using them were
   deployed with the default settings.
 - Fix `functions.yaml` leaving out options that refer to a `const` variable,
-  including a static field or an import-prefixed name, such as
-  `options: shared.httpsOptions`, `region: myRegion` or
-  `defineInt('MIN', myParamOptions)`. A `const` options variable now also
+  including a static field or an import-prefixed name, or that use another
+  const expression, such as `options: shared.httpsOptions`,
+  `defineInt('MIN', myParamOptions)`, `labels: {...baseLabels, 'env': 'prod'}`
+  or `TimeoutSeconds(baseTimeout * 2)`. A `const` options variable now also
   resolves to its own declaration instead of a same-named variable in another
   file.
+- Fix `functions.yaml` leaving out functions and options declared in `part`
+  files.
 - Fix `functions.yaml` leaving out a custom `MemoryOption`, such as
-  `MemoryOption(3000)`. Its size is now emitted as declared, and firebase-tools
-  rejects sizes that Cloud Functions does not support.
+  `MemoryOption(3000)`. Its size is now emitted as declared, and the build
+  warns about sizes that Cloud Functions does not support, which firebase-tools
+  rejects.
 - Fix `.param()` options given a built-in param, such as
   `ParamInput.projectId`, emitting `{{ params.UNKNOWN }}` instead of
   `{{ params.PROJECT_ID }}`.

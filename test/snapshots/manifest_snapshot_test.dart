@@ -2225,6 +2225,19 @@ void main() {
         }
       });
 
+      test('evaluates const expressions', () {
+        final endpoint = _getEndpoint(manifest, 'constExpressions')!;
+        expect(endpoint['timeoutSeconds'], equals(90));
+        expect(endpoint['serviceAccountEmail'], equals('interpolated@'));
+        expect(endpoint['labels'], equals({'team': 'platform', 'env': 'prod'}));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['a@example.com', 'b@example.com', 'c@example.com'],
+          }),
+        );
+      });
+
       test('extracts options held in a static const field', () {
         final endpoint = _getEndpoint(manifest, 'staticFieldOptions')!;
         expect(endpoint['region'], equals(['europe-west1']));
@@ -2239,6 +2252,11 @@ void main() {
           _getEndpoint(manifest, 'collidingOptions')!['availableMemoryMb'],
           equals(512),
         );
+      });
+
+      test('discovers functions and options in part files', () {
+        final endpoint = _getEndpoint(manifest, 'partFunction')!;
+        expect(endpoint['availableMemoryMb'], equals(2048));
       });
 
       test('extracts ParamOptions held in a const variable', () {
