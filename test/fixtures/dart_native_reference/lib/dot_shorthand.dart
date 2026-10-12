@@ -29,7 +29,10 @@ const HttpsOptions shorthandVariableOptions = .new(
 );
 
 void registerDotShorthandFunctions(Firebase firebase) {
-  setGlobalOptions(const .new(concurrency: .new(7)));
+  // A local const, which is resolved like an inline `const .new(...)`.
+  // ignore: omit_local_variable_types
+  const GlobalOptions globalOptions = .new(concurrency: .new(7));
+  setGlobalOptions(globalOptions);
 
   firebase.https.onRequest(
     name: 'shorthandInline',
