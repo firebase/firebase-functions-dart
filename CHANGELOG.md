@@ -41,6 +41,9 @@
   `ParamInput.projectId`, emitting a guessed name or `{{ params.UNKNOWN }}`
   instead of `{{ params.PROJECT_ID }}`. `projectID`, `databaseURL`,
   `storageBucket` and `gcloudProject` are now `const`.
+- Resolve `FirebaseEnv.projectId` from `FIREBASE_CONFIG` (both inline JSON and
+  JSON file paths) before falling back to flat project ID environment variables,
+  and support `FIREBASE_CONFIG` file paths in built-in parameter expressions.
 
 ## 0.8.0
 

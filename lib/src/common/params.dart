@@ -801,16 +801,8 @@ final class InternalExpression extends Param<String> {
 
   @override
   String runtimeValue() {
-    if (FirebaseEnv().environment['FIREBASE_CONFIG'] case final String config) {
-      try {
-        if (jsonDecode(config) case final Map<String, dynamic> map) {
-          if (map[_configKey] case final String value) {
-            return value;
-          }
-        }
-      } on FormatException {
-        // ignore
-      }
+    if (FirebaseEnv().firebaseConfig?[_configKey] case final String value) {
+      return value;
     }
     return '';
   }
