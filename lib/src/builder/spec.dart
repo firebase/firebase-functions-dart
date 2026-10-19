@@ -560,6 +560,9 @@ class EndpointSpec {
     InstanceCreationExpression(:final argumentList) => argumentList.arguments,
     FunctionExpressionInvocation(:final argumentList) => argumentList.arguments,
     MethodInvocation(:final argumentList) => argumentList.arguments,
+    DotShorthandConstructorInvocation(:final argumentList) =>
+      argumentList.arguments,
+    DotShorthandInvocation(:final argumentList) => argumentList.arguments,
     _ => null,
   };
 
@@ -567,6 +570,10 @@ class EndpointSpec {
     InstanceCreationExpression(:final constructorName) =>
       constructorName.name?.name,
     MethodInvocation(:final methodName) => methodName.name,
+    // Dot shorthand: resolved as a constructor, unresolved as a member call.
+    DotShorthandConstructorInvocation(:final constructorName) =>
+      constructorName.name,
+    DotShorthandInvocation(:final memberName) => memberName.name,
     _ => null,
   };
 
