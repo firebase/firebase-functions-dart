@@ -19,6 +19,10 @@
 library;
 
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/constant/value.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:build/build.dart';
+import 'package:source_gen/source_gen.dart';
 
 /// Specification for a parameter.
 class ParamSpec {
@@ -74,6 +78,7 @@ class EndpointSpec {
     this.globalOptions,
     this.options,
     this.variableToParamName = const {},
+    this.constInitializers = const {},
   });
   final String name;
   // 'https', 'callable', 'pubsub', 'firestore', 'database', 'alert', 'blocking', 'scheduler', 'storage', 'taskQueue'
@@ -103,9 +108,15 @@ class EndpointSpec {
   final String? eventarcEventType; // For Eventarc: custom event type
   final String? eventarcChannel; // For Eventarc: channel ID
   final Map<String, String>? eventarcFilters; // For Eventarc: event filters
-  final InstanceCreationExpression? globalOptions;
-  final InstanceCreationExpression? options;
+  /// Arguments of the `setGlobalOptions(...)` options constructor.
+  final ArgumentList? globalOptions;
+
+  /// Arguments of the endpoint's options constructor.
+  final ArgumentList? options;
   final Map<String, String> variableToParamName;
+
+  /// Initializers of `const` variables, used to resolve option references.
+  final Map<VariableElement, Expression> constInitializers;
 
   /// Extracts options configuration from the AST.
   Map<String, dynamic> extractOptions() {
@@ -125,16 +136,19 @@ class EndpointSpec {
 
   static const Object _resetOption = Object();
 
-  Map<String, dynamic> _extractOptions(InstanceCreationExpression? options) {
+  Map<String, dynamic> _extractOptions(ArgumentList? options) {
     if (options == null) return {};
 
     final result = <String, dynamic>{};
 
-    for (final arg in options.argumentList.arguments) {
+    for (final arg in options.arguments) {
       if (arg is! NamedArgument) continue;
 
       final name = arg.name.lexeme;
-      final expr = arg.argumentExpression;
+      final expr = resolveConstInitializer(
+        arg.argumentExpression,
+        constInitializers,
+      );
 
       // Helper to reduce boilerplate: only adds to map if value exists
       void add(String key, dynamic Function(Expression expr) func) {
@@ -173,7 +187,7 @@ class EndpointSpec {
         case 'secrets':
           add('secretEnvironmentVariables', _extractSecrets);
         case 'labels':
-          add('labels', _extractLabels);
+          add('labels', constStringMap);
         case 'omit':
           add('omit', _extractBool);
 
@@ -221,29 +235,56 @@ class EndpointSpec {
       return null; // Reset means use default
     }
 
-    // Extract literal value: Memory(MemoryOption.mb256) or Memory(.mb256)
-    final args = _extractCallArguments(expression);
-    final enumName = _extractEnumValueName(args?.firstOrNull);
-    if (enumName != null) return _memoryOptionToInt(enumName);
-
-    return switch (args?.firstOrNull) {
-      final IntegerLiteral i => i.value,
-      _ => null,
-    };
+    // Extract literal value: Memory(MemoryOption.mb256), Memory(.mb256),
+    // Memory.fromOption(...) or Memory.fromInt(256)
+    final option = _extractCallArguments(expression)?.firstOrNull;
+    final mb =
+        _memoryOptionSize(option) ??
+        _memoryOptionSizes[_extractEnumValueName(option)] ??
+        switch (constValue(option)) {
+          final int mb => mb,
+          _ => null,
+        };
+    if (mb != null && !_memoryOptionSizes.containsValue(mb)) {
+      log.warning(
+        'Function "$name" sets its memory to $mb MB, which Cloud Functions '
+        'does not support, so firebase-tools will reject it. Use one of: '
+        '${_memoryOptionSizes.values.join(', ')}.',
+      );
+    }
+    return mb;
   }
 
-  /// Converts MemoryOption enum to integer value.
-  int? _memoryOptionToInt(String optionName) => switch (optionName) {
-    'mb128' => 128,
-    'mb256' => 256,
-    'mb512' => 512,
-    'gb1' => 1024,
-    'gb2' => 2048,
-    'gb4' => 4096,
-    'gb8' => 8192,
-    'gb16' => 16384,
-    'gb32' => 32768,
-    _ => null,
+  /// Returns the size of a const `MemoryOption` written as `MemoryOption(n)`,
+  /// `.new(n)` or a reference to one, such as `MemoryOption.gb1` or a `const`
+  /// variable.
+  ///
+  /// The declared size is emitted as is, even when it is not one of the
+  /// predefined sizes, so that firebase-tools rejects it at deploy time.
+  int? _memoryOptionSize(Argument? option) {
+    if (constructorArguments(option) case final args?) {
+      return switch (constValue(args.arguments.firstOrNull)) {
+        final int mb => mb,
+        _ => null,
+      };
+    }
+    return _constVariable(
+      option,
+    )?.computeConstantValue()?.getField('value')?.toIntValue();
+  }
+
+  /// The sizes, in MB, of the predefined `MemoryOption`s, which are the ones
+  /// Cloud Functions supports.
+  static const _memoryOptionSizes = {
+    'mb128': 128,
+    'mb256': 256,
+    'mb512': 512,
+    'gb1': 1024,
+    'gb2': 2048,
+    'gb4': 4096,
+    'gb8': 8192,
+    'gb16': 16384,
+    'gb32': 32768,
   };
 
   /// Extracts CPU option value.
@@ -265,9 +306,8 @@ class EndpointSpec {
 
     // Extract literal double value: Cpu(1.0)
     final args = _extractCallArguments(expression);
-    return switch (args?.firstOrNull) {
-      final DoubleLiteral d => d.value,
-      final IntegerLiteral i => i.value,
+    return switch (constValue(args?.firstOrNull)) {
+      final num n => n,
       _ => null,
     };
   }
@@ -345,9 +385,7 @@ class EndpointSpec {
 
     // Extract literal: Option(123)
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final IntegerLiteral firstArg) {
-      return firstArg.value;
-    }
+    if (constValue(args?.firstOrNull) case final int value) return value;
 
     return null;
   }
@@ -365,9 +403,7 @@ class EndpointSpec {
 
     // Extract literal: Option('value')
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final StringLiteral firstArg) {
-      return firstArg.stringValue;
-    }
+    if (constValue(args?.firstOrNull) case final String value) return value;
 
     return null;
   }
@@ -385,9 +421,7 @@ class EndpointSpec {
 
     // Extract literal: Option(true)
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final BooleanLiteral firstArg) {
-      return firstArg.value;
-    }
+    if (constValue(args?.firstOrNull) case final bool value) return value;
 
     return null;
   }
@@ -438,12 +472,8 @@ class EndpointSpec {
 
     // Extract literal list
     final args = _extractCallArguments(expression);
-    if (args?.firstOrNull case final ListLiteral firstArg) {
-      return firstArg.elements
-          .whereType<StringLiteral>()
-          .map((e) => e.stringValue)
-          .nonNulls
-          .toList();
+    if (constValue(args?.firstOrNull) case final List<Object?> invokers) {
+      return invokers.whereType<String>().toList();
     }
 
     return null;
@@ -476,32 +506,16 @@ class EndpointSpec {
     return variableToParamName[name] ?? toUpperSnakeCase(name);
   }
 
-  /// Extracts labels map.
-  Object? _extractLabels(Expression expression) {
-    if (expression is! SetOrMapLiteral) return null;
-    if (!expression.isMap) return null;
-
-    final labels = <String, String>{};
-    for (final element in expression.elements) {
-      if (element is MapLiteralEntry) {
-        final key = element.key;
-        final value = element.value;
-
-        if (key is StringLiteral && value is StringLiteral) {
-          labels[key.stringValue!] = value.stringValue!;
-        }
-      }
-    }
-
-    return labels.isEmpty ? null : labels;
-  }
-
   /// Extracts parameter reference and generates CEL expression.
   String _extractParamReference(Expression expression) {
     final args = _extractCallArguments(expression);
     if (args == null || args.isEmpty) return '{{ params.UNKNOWN }}';
 
     final firstArg = args.first;
+    // A const param, such as `ParamInput.projectId`, carries its own name.
+    if (_constParamName(firstArg) case final paramName?) {
+      return '{{ params.$paramName }}';
+    }
     if (firstArg is SimpleIdentifier) {
       // Look up the actual param name from the mapping
       final variableName = firstArg.name;
@@ -580,14 +594,157 @@ class EndpointSpec {
   /// Extracts an enum value name from an expression, handling both
   /// fully-qualified (`SupportedRegion.europeWest3`) and shorthand
   /// (`.europeWest3`) syntax.
-  String? _extractEnumValueName(Argument? expression) => switch (expression) {
-    PrefixedIdentifier() => expression.identifier.name,
-    SimpleIdentifier() => expression.name,
-    PropertyAccess() => expression.propertyName.name,
-    DotShorthandPropertyAccess() => expression.propertyName.name,
+  ///
+  /// Also resolves a `const` variable holding an enum value.
+  String? _extractEnumValueName(Argument? expression) =>
+      _constEnumName(expression) ??
+      switch (expression) {
+        PrefixedIdentifier() => expression.identifier.name,
+        SimpleIdentifier() => expression.name,
+        PropertyAccess() => expression.propertyName.name,
+        DotShorthandPropertyAccess() => expression.propertyName.name,
+        _ => null,
+      };
+}
+
+/// Evaluates [expression] when it is a constant string, number, boolean, list
+/// or map: a literal, a reference to a `const` variable, or any other const
+/// expression, such as one with spreads, collection `if`s or arithmetic.
+/// Returns null otherwise.
+///
+/// Unresolved ASTs can't be evaluated, so only their literals are read.
+Object? constValue(Argument? expression) {
+  if (expression is! Expression) return null;
+  final unit = expression.thisOrAncestorOfType<CompilationUnit>();
+  if (unit?.declaredFragment != null) {
+    return _dartObjectValue(expression.computeConstantValue()?.value);
+  }
+
+  return switch (expression) {
+    StringLiteral() => expression.stringValue,
+    IntegerLiteral() => expression.value,
+    DoubleLiteral() => expression.value,
+    BooleanLiteral() => expression.value,
+    ListLiteral() =>
+      expression.elements
+          .whereType<Expression>()
+          .map(constValue)
+          .nonNulls
+          .toList(),
+    SetOrMapLiteral(isMap: true) => {
+      for (final entry in expression.elements.whereType<MapLiteralEntry>())
+        constValue(entry.key): constValue(entry.value),
+    },
     _ => null,
   };
 }
+
+/// Evaluates [expression] as a const map, keeping its `String` to `String`
+/// entries. Returns null when there are none.
+Map<String, String>? constStringMap(Argument? expression) {
+  final map = constValue(expression);
+  if (map is! Map<Object?, Object?>) return null;
+
+  final strings = <String, String>{
+    for (final MapEntry(:key, :value) in map.entries)
+      if (key is String && value is String) key: value,
+  };
+
+  return strings.isEmpty ? null : strings;
+}
+
+/// Follows references to `const` variables holding an option object, e.g.
+/// `region: myRegion`, back to the constructor call they were initialized with.
+/// Static fields and import-prefixed names are followed too.
+///
+/// Other consts, such as maps and lists, are left for [constValue] to evaluate.
+Expression resolveConstInitializer(
+  Expression expression,
+  Map<VariableElement, Expression> constInitializers,
+) {
+  var resolved = expression;
+  // Bounded, since const initializers can chain but never cycle.
+  for (var i = 0; i < 16; i++) {
+    final initializer = constInitializers[_constVariable(resolved)];
+    if (initializer == null) break;
+    resolved = initializer;
+  }
+  return constructorArguments(resolved) == null ? expression : resolved;
+}
+
+/// Returns the name of the const `Param` [expression] refers to, such as
+/// `PROJECT_ID` for `ParamInput.projectId`.
+String? _constParamName(Argument? expression) {
+  final object = _constVariable(expression)?.computeConstantValue();
+  final type = object?.type;
+  if (object == null ||
+      type == null ||
+      !_paramType.isAssignableFromType(type)) {
+    return null;
+  }
+  return ConstantReader(object).peek('name')?.stringValue;
+}
+
+const _paramType = TypeChecker.fromUrl(
+  'package:firebase_functions/src/common/params.dart#Param',
+);
+
+/// Returns the enum value name of a `const` variable holding an enum value.
+String? _constEnumName(Argument? expression) {
+  final variable = _constVariable(expression);
+  // Enum constants themselves are handled by their identifier name.
+  if (variable == null || variable is FieldElement && variable.isEnumConstant) {
+    return null;
+  }
+  final value = variable.computeConstantValue();
+  if (value?.type?.element case final EnumElement enumElement) {
+    for (final constant in enumElement.constants) {
+      if (constant.computeConstantValue() == value) return constant.name;
+    }
+  }
+  return null;
+}
+
+/// Whether [expression] refers to a `const` variable.
+bool isConstReference(Argument? expression) =>
+    _constVariable(expression) != null;
+
+VariableElement? _constVariable(Argument? expression) {
+  var element = switch (expression) {
+    SimpleIdentifier() => expression.element,
+    PrefixedIdentifier() => expression.element,
+    PropertyAccess() => expression.propertyName.element,
+    _ => null,
+  };
+  if (element is PropertyAccessorElement) element = element.variable;
+  return element is VariableElement && element.isConst ? element : null;
+}
+
+Object? _dartObjectValue(DartObject? object) {
+  if (object == null) return null;
+  return object.toStringValue() ??
+      object.toIntValue() ??
+      object.toDoubleValue() ??
+      object.toBoolValue() ??
+      object.toListValue()?.map(_dartObjectValue).nonNulls.toList() ??
+      object.toMapValue()?.map(
+        (key, value) =>
+            MapEntry(_dartObjectValue(key), _dartObjectValue(value)),
+      );
+}
+
+/// Returns the arguments of a constructor call written either as
+/// `HttpsOptions(...)` or as the dot shorthand `.new(...)`, or null when
+/// [expression] is not a constructor call.
+///
+/// Expects a resolved AST, where dot shorthand constructors are
+/// [DotShorthandConstructorInvocation]s.
+ArgumentList? constructorArguments(Argument? expression) =>
+    switch (expression) {
+      InstanceCreationExpression(:final argumentList) ||
+      DotShorthandConstructorInvocation(:final argumentList) => argumentList,
+      _ => null,
+    };
 
 /// Converts a camelCase or PascalCase string to UPPER_SNAKE_CASE.
 String toUpperSnakeCase(String input) {

@@ -17,6 +17,8 @@
 // the project is built.
 
 import 'package:firebase_functions/firebase_functions.dart';
+import 'package:native_reference/const_references.dart';
+import 'package:native_reference/dot_shorthand.dart';
 
 void main(List<String> args) async {
   await runFunctions((firebase) {
@@ -24,5 +26,7 @@ void main(List<String> args) async {
       name: 'nativeDemo',
       (request) async => Response.ok('ok'),
     );
+    registerDotShorthandFunctions(firebase);
+    registerConstReferenceFunctions(firebase);
   });
 }
