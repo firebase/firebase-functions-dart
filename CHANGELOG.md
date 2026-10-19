@@ -20,6 +20,9 @@
 - Fix `.param()` options given a built-in param, such as
   `ParamInput.projectId`, emitting `{{ params.UNKNOWN }}` instead of
   `{{ params.PROJECT_ID }}`.
+- Resolve `FirebaseEnv.projectId` from `FIREBASE_CONFIG` (both inline JSON and
+  JSON file paths) before falling back to flat project ID environment variables,
+  and support `FIREBASE_CONFIG` file paths in built-in parameter expressions.
 
 ## 0.8.0
 

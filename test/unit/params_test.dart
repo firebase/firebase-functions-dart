@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import 'dart:io';
+
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/common/expression.dart';
 import 'package:firebase_functions/src/common/params.dart';
@@ -453,6 +455,22 @@ void main() {
       };
 
       expect(ParamInput.projectId.runtimeValue(), 'demo-project');
+    });
+
+    test('InternalExpression reads from FIREBASE_CONFIG file path', () {
+      final tempDir = Directory.systemTemp.createTempSync(
+        'firebase_params_test_',
+      );
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+      final configFile = File('${tempDir.path}/firebase_config.json')
+        ..writeAsStringSync(
+          '{"projectId":"file-project","storageBucket":"file-bucket"}',
+        );
+
+      FirebaseEnv.mockEnvironment = {'FIREBASE_CONFIG': configFile.path};
+
+      expect(ParamInput.projectId.runtimeValue(), 'file-project');
+      expect(ParamInput.storageBucket.runtimeValue(), 'file-bucket');
     });
   });
 
