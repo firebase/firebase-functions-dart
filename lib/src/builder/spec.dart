@@ -79,6 +79,7 @@ class EndpointSpec {
     this.options,
     this.variableToParamName = const {},
     this.constInitializers = const {},
+    this.paramNames = const {},
   });
   final String name;
   // 'https', 'callable', 'pubsub', 'firestore', 'database', 'alert', 'blocking', 'scheduler', 'storage', 'taskQueue'
@@ -117,6 +118,15 @@ class EndpointSpec {
 
   /// Initializers of `const` variables, used to resolve option references.
   final Map<VariableElement, Expression> constInitializers;
+
+  /// The names of the params that variables are defined as with `define*()`,
+  /// used to resolve param references wherever the variable is declared.
+  final Map<VariableElement, String> paramNames;
+
+  /// Returns the name of the param [reference] refers to, when it is a
+  /// variable defined with `define*()` or a built-in param.
+  String? _resolvedParamName(Argument? reference) =>
+      paramNames[_variable(reference)] ?? _constParamName(reference);
 
   /// Extracts options configuration from the AST.
   Map<String, dynamic> extractOptions() {
@@ -503,7 +513,9 @@ class EndpointSpec {
       _ => null,
     };
     if (name == null) return null;
-    return variableToParamName[name] ?? toUpperSnakeCase(name);
+    return _resolvedParamName(expression) ??
+        variableToParamName[name] ??
+        toUpperSnakeCase(name);
   }
 
   /// Extracts parameter reference and generates CEL expression.
@@ -512,8 +524,7 @@ class EndpointSpec {
     if (args == null || args.isEmpty) return '{{ params.UNKNOWN }}';
 
     final firstArg = args.first;
-    // A const param, such as `ParamInput.projectId`, carries its own name.
-    if (_constParamName(firstArg) case final paramName?) {
+    if (_resolvedParamName(firstArg) case final paramName?) {
       return '{{ params.$paramName }}';
     }
     if (firstArg is SimpleIdentifier) {
@@ -535,12 +546,14 @@ class EndpointSpec {
       final target = expression.target;
       final methodName = expression.methodName.name;
 
-      if (methodName == 'thenElse' && target is SimpleIdentifier) {
-        // Get the param name from the variable
-        final variableName = target.name;
-        final paramName =
-            variableToParamName[variableName] ?? toUpperSnakeCase(variableName);
-
+      final paramName =
+          _resolvedParamName(target) ??
+          switch (target) {
+            SimpleIdentifier(:final name) =>
+              variableToParamName[name] ?? toUpperSnakeCase(name),
+            _ => null,
+          };
+      if (methodName == 'thenElse' && paramName != null) {
         // Extract the two arguments
         final args = expression.argumentList.arguments;
         if (args.length >= 2) {
@@ -710,6 +723,12 @@ bool isConstReference(Argument? expression) =>
     _constVariable(expression) != null;
 
 VariableElement? _constVariable(Argument? expression) {
+  final variable = _variable(expression);
+  return variable != null && variable.isConst ? variable : null;
+}
+
+/// Returns the variable [expression] refers to, including through a getter.
+VariableElement? _variable(Argument? expression) {
   var element = switch (expression) {
     SimpleIdentifier() => expression.element,
     PrefixedIdentifier() => expression.element,
@@ -717,7 +736,7 @@ VariableElement? _constVariable(Argument? expression) {
     _ => null,
   };
   if (element is PropertyAccessorElement) element = element.variable;
-  return element is VariableElement && element.isConst ? element : null;
+  return element is VariableElement ? element : null;
 }
 
 Object? _dartObjectValue(DartObject? object) {

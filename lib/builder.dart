@@ -58,6 +58,7 @@ class _SpecBuilder implements Builder {
     // shared_options.dart can be referenced in server.dart.
     final sharedOptionsVars = <String, ArgumentList>{};
     final constInitializers = <VariableElement, Expression>{};
+    final paramNames = <VariableElement, String>{};
     final astCache = <CompilationUnit>[];
 
     // Unknown until a library of this package resolves.
@@ -81,7 +82,7 @@ class _SpecBuilder implements Builder {
         if (astNode is! CompilationUnit) continue;
         astCache.add(astNode);
         astNode.accept(
-          _VariableCollector(sharedOptionsVars, constInitializers),
+          _VariableCollector(sharedOptionsVars, constInitializers, paramNames),
         );
       }
     }
@@ -102,6 +103,7 @@ class _SpecBuilder implements Builder {
         sharedOptionsVars,
         globalOptions: globalOptions,
         constInitializers: constInitializers,
+        paramNames: paramNames,
       );
       ast.accept(visitor);
       allParams.addAll(visitor.params);
@@ -158,12 +160,19 @@ class _Namespace {
 /// - the constructor arguments of top-level variables initialized with an
 ///   options constructor, by name, into [variableToOptionsExpr];
 /// - the initializers of all `const` variables, by element, into
-///   [constInitializers].
+///   [constInitializers];
+/// - the names of the params that variables are defined as with `define*()`,
+///   by element, into [paramNames].
 class _VariableCollector extends RecursiveAstVisitor<void> {
-  _VariableCollector(this.variableToOptionsExpr, this.constInitializers);
+  _VariableCollector(
+    this.variableToOptionsExpr,
+    this.constInitializers,
+    this.paramNames,
+  );
 
   final Map<String, ArgumentList> variableToOptionsExpr;
   final Map<VariableElement, Expression> constInitializers;
+  final Map<VariableElement, String> paramNames;
 
   @override
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
@@ -181,6 +190,11 @@ class _VariableCollector extends RecursiveAstVisitor<void> {
     final initializer = node.initializer;
     if (node.isConst && element != null && initializer != null) {
       constInitializers[element] = initializer;
+    }
+    if (element != null) {
+      if (_definedParamNameOf(initializer) case final paramName?) {
+        paramNames[element] = paramName;
+      }
     }
     super.visitVariableDeclaration(node);
   }
@@ -215,8 +229,10 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     Map<String, ArgumentList>? sharedOptionsVars, {
     ArgumentList? globalOptions,
     Map<VariableElement, Expression> constInitializers = const {},
+    Map<VariableElement, String> paramNames = const {},
   }) : _globalOptionsExpr = globalOptions,
-       _constInitializers = constInitializers {
+       _constInitializers = constInitializers,
+       _paramNames = paramNames {
     if (sharedOptionsVars != null) {
       _variableToOptionsExpr.addAll(sharedOptionsVars);
     }
@@ -341,6 +357,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   late final List<_Namespace> namespaces;
   final ArgumentList? _globalOptionsExpr;
   final Map<VariableElement, Expression> _constInitializers;
+  final Map<VariableElement, String> _paramNames;
 
   /// Maps variable names to their actual parameter names.
   /// e.g., 'minInstances' -> 'MIN_INSTANCES'
@@ -361,7 +378,10 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     // `target` is null while `realTarget` points at the cascade receiver
     // (`firebase.https`). Regular invocations report the same value for both.
     final target = node.realTarget;
-    if (target != null) {
+    if (_paramDefinition(node) case (final functionName, final arguments)) {
+      // A parameter definition, e.g. defineInt(...) or params.defineInt(...).
+      _extractParamFromArgs(arguments, functionName);
+    } else if (target != null) {
       // Check against all namespaces
       for (final namespace in namespaces) {
         if (namespace.matches(methodName) && namespace.isNamespace(target)) {
@@ -370,10 +390,6 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
           break;
         }
       }
-    } else if (_isParamDefinition(methodName)) {
-      // Check for parameter definitions (top-level function calls with no
-      // target).
-      _extractParameterFromMethod(node, methodName);
     }
 
     super.visitMethodInvocation(node);
@@ -381,13 +397,9 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
 
   @override
   void visitFunctionExpressionInvocation(FunctionExpressionInvocation node) {
-    if (node.function case final SimpleIdentifier function) {
-      final functionName = function.name;
-
-      // Check for parameter definitions
-      if (_isParamDefinition(functionName)) {
-        _extractParameter(node, functionName);
-      }
+    // Check for parameter definitions
+    if (_paramDefinition(node) case (final functionName, final arguments)) {
+      _extractParamFromArgs(arguments, functionName);
     }
 
     super.visitFunctionExpressionInvocation(node);
@@ -435,75 +447,12 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
   void visitTopLevelVariableDeclaration(TopLevelVariableDeclaration node) {
     // Track variable declarations for param definitions
     for (final variable in node.variables.variables) {
-      final initializer = variable.initializer;
-
-      // Handle top-level function calls like defineInt(...), defineString(...)
-      // These can be either FunctionExpressionInvocation or MethodInvocation
-      String? functionName;
-      ArgumentList? argList;
-
-      if (initializer is FunctionExpressionInvocation) {
-        final function = initializer.function;
-        if (function is SimpleIdentifier) {
-          functionName = function.name;
-          argList = initializer.argumentList;
-        }
-      } else if (initializer is MethodInvocation &&
-          initializer.target == null) {
-        // Top-level function call (no target)
-        functionName = initializer.methodName.name;
-        argList = initializer.argumentList;
-      }
-
-      if (functionName != null &&
-          argList != null &&
-          _isParamDefinition(functionName)) {
-        // Extract the param name from the first argument
-        final args = argList.arguments;
-        if (args.isNotEmpty) {
-          // Handle defineEnumList differently - it derives name from enum type
-          if (functionName == 'defineEnumList') {
-            final valuesArg = args.first;
-            String? paramName;
-            if (valuesArg is PrefixedIdentifier) {
-              final enumTypeName = valuesArg.prefix.name;
-              paramName = '${toUpperSnakeCase(enumTypeName)}_LIST';
-            } else if (valuesArg is PropertyAccess) {
-              final target = valuesArg.target;
-              if (target is SimpleIdentifier) {
-                paramName = '${toUpperSnakeCase(target.name)}_LIST';
-              }
-            }
-            if (paramName != null) {
-              _variableToParamName[variable.name.lexeme] = paramName;
-            }
-          } else {
-            final nameArg = args.first;
-            final paramName = _extractStringLiteral(
-              nameArg is Expression ? nameArg : null,
-            );
-            if (paramName != null) {
-              // Map variable name to actual param name
-              _variableToParamName[variable.name.lexeme] = paramName;
-            }
-          }
-        }
+      if (_definedParamNameOf(variable.initializer) case final paramName?) {
+        _variableToParamName[variable.name.lexeme] = paramName;
       }
     }
     super.visitTopLevelVariableDeclaration(node);
   }
-
-  /// Checks if this is a parameter definition function.
-  bool _isParamDefinition(String name) =>
-      name == 'defineString' ||
-      name == 'defineInt' ||
-      name == 'defineDouble' ||
-      name == 'defineFloat' ||
-      name == 'defineBoolean' ||
-      name == 'defineList' ||
-      name == 'defineEnumList' ||
-      name == 'defineSecret' ||
-      name == 'defineJsonSecret';
 
   /// Extracts an HTTPS function declaration.
   void _extractHttpsFunction(MethodInvocation node, String methodName) {
@@ -522,6 +471,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: _findOptionsArg(node),
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -543,6 +493,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: _findOptionsArg(node),
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -582,6 +533,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -619,6 +571,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -654,6 +607,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -735,6 +689,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: _findOptionsArg(node),
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -757,6 +712,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: _findOptionsArg(node),
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -785,6 +741,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -827,6 +784,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -868,6 +826,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -896,6 +855,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -929,6 +889,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: optionsArg,
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -945,6 +906,7 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
       options: _findOptionsArg(node),
       variableToParamName: _variableToParamName,
       constInitializers: _constInitializers,
+      paramNames: _paramNames,
     );
   }
 
@@ -1071,72 +1033,22 @@ class _FirebaseFunctionsVisitor extends RecursiveAstVisitor<void> {
     return null;
   }
 
-  /// Extracts a parameter definition from FunctionExpressionInvocation.
-  void _extractParameter(
-    FunctionExpressionInvocation node,
-    String functionName,
-  ) {
-    _extractParamFromArgs(node.argumentList.arguments, functionName);
-  }
-
-  /// Extracts a parameter definition from MethodInvocation.
-  void _extractParameterFromMethod(MethodInvocation node, String functionName) {
-    _extractParamFromArgs(node.argumentList.arguments, functionName);
-  }
-
-  /// Common logic for extracting parameter definitions from arguments.
+  /// Extracts a parameter definition from a `define*()` call.
   void _extractParamFromArgs(NodeList<Argument> args, String functionName) {
-    if (args.isEmpty) return;
-
-    String? paramName;
-    ParamOptions? paramOptions;
-
-    // Handle defineEnumList which has a different signature:
-    // defineEnumList(EnumType.values, [ParamOptions])
-    if (functionName == 'defineEnumList') {
-      // First argument is the enum values (e.g., Region.values)
-      final valuesArg = args.first;
-      if (valuesArg is PrefixedIdentifier) {
-        // Extract the enum type name from "EnumType.values"
-        final enumTypeName = valuesArg.prefix.name;
-        paramName = '${toUpperSnakeCase(enumTypeName)}_LIST';
-      } else if (valuesArg is PropertyAccess) {
-        // Handle qualified access like mypackage.Region.values
-        final target = valuesArg.target;
-        if (target is PrefixedIdentifier) {
-          paramName = '${toUpperSnakeCase(target.identifier.name)}_LIST';
-        } else if (target is SimpleIdentifier) {
-          paramName = '${toUpperSnakeCase(target.name)}_LIST';
-        }
-      }
-
-      // Second argument is optional ParamOptions
-      if (constructorArguments(_resolveConst(args.elementAtOrNull(1)))
-          case final options?) {
-        paramOptions = _extractParamOptions(options);
-      }
-    } else {
-      // Standard parameter definitions: defineXxx('NAME', [ParamOptions])
-      final nameArg = args.first;
-      paramName = _extractStringLiteral(nameArg is Expression ? nameArg : null);
-
-      // Second argument is optional ParamOptions (not used for secrets)
-      if (constructorArguments(_resolveConst(args.elementAtOrNull(1)))
-          case final options?) {
-        paramOptions = _extractParamOptions(options);
-      }
-    }
-
+    final paramName = _definedParamName(functionName, args);
     if (paramName == null) return;
 
-    final paramType = _getParamType(functionName);
-    final isJsonSecret = _isJsonSecret(functionName);
+    // The optional second argument is the ParamOptions, e.g.
+    // defineInt('NAME', ParamOptions(...)) or defineEnumList(Region.values, ...).
+    final options = constructorArguments(
+      _resolveConst(args.elementAtOrNull(1)),
+    );
 
     params[paramName] = ParamSpec(
       name: paramName,
-      type: paramType,
-      options: paramOptions,
-      format: isJsonSecret ? 'json' : null,
+      type: _getParamType(functionName),
+      options: options == null ? null : _extractParamOptions(options),
+      format: _isJsonSecret(functionName) ? 'json' : null,
     );
   }
 
@@ -1216,6 +1128,72 @@ ArgumentList? _optionsArguments(
             : null),
   _ => null,
 };
+
+/// The functions that define a parameter.
+const _paramDefinitions = {
+  'defineString',
+  'defineInt',
+  'defineDouble',
+  'defineFloat',
+  'defineBoolean',
+  'defineList',
+  'defineEnumList',
+  'defineSecret',
+  'defineJsonSecret',
+};
+
+/// Returns the name and arguments of the `define*()` call [expression] is,
+/// such as `defineInt('MIN')`, or `params.defineInt('MIN')` through an import
+/// prefix.
+(String, NodeList<Argument>)? _paramDefinition(Expression? expression) {
+  final (name, arguments) = switch (expression) {
+    MethodInvocation(:final target, :final methodName, :final argumentList)
+        when target == null || _isImportPrefix(target) =>
+      (methodName.name, argumentList.arguments),
+    FunctionExpressionInvocation(
+      function: SimpleIdentifier(:final name),
+      :final argumentList,
+    ) =>
+      (name, argumentList.arguments),
+    _ => (null, null),
+  };
+  return name != null && arguments != null && _paramDefinitions.contains(name)
+      ? (name, arguments)
+      : null;
+}
+
+bool _isImportPrefix(Expression expression) =>
+    expression is SimpleIdentifier && expression.element is PrefixElement;
+
+/// Returns the name of the param that the `define*()` call [functionName] with
+/// [arguments] declares, e.g. `MIN` for `defineInt('MIN')` and `REGION_LIST`
+/// for `defineEnumList(Region.values)`.
+String? _definedParamName(String functionName, NodeList<Argument> arguments) {
+  final first = arguments.firstOrNull;
+  if (functionName != 'defineEnumList') {
+    return _extractStringLiteral(first is Expression ? first : null);
+  }
+  // defineEnumList(Region.values) or defineEnumList(prefix.Region.values)
+  final enumTypeName = switch (first) {
+    PrefixedIdentifier(:final prefix) => prefix.name,
+    PropertyAccess(target: PrefixedIdentifier(:final identifier)) =>
+      identifier.name,
+    PropertyAccess(target: SimpleIdentifier(:final name)) => name,
+    _ => null,
+  };
+  return enumTypeName == null ? null : '${toUpperSnakeCase(enumTypeName)}_LIST';
+}
+
+/// Returns the name of the param [initializer] defines, when it is a
+/// `define*()` call.
+String? _definedParamNameOf(Expression? initializer) =>
+    switch (_paramDefinition(initializer)) {
+      (final functionName, final arguments) => _definedParamName(
+        functionName,
+        arguments,
+      ),
+      null => null,
+    };
 
 /// Extracts a string literal or constant value.
 String? _extractStringLiteral(Expression? expression) {

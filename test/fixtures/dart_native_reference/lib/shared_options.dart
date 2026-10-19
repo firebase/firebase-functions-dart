@@ -12,9 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Options imported with a prefix by const_references.dart, which declares
-// another `collidingOptions`.
+// Options and params imported with a prefix by const_references.dart, which
+// declares another `collidingOptions`, and by param_references.dart.
 
 import 'package:firebase_functions/firebase_functions.dart';
 
 const collidingOptions = HttpsOptions(memory: Memory(MemoryOption.gb8));
+
+final sharedMinInstances = defineInt('SHARED_MIN_INSTANCES');
+final sharedSecret = defineSecret('SHARED_SECRET');
+final sharedIsLarge = defineBoolean('SHARED_IS_LARGE');
+
+class SharedParams {
+  static final memory = defineInt('STATIC_MEMORY');
+}
