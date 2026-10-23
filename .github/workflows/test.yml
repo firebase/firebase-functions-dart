@@ -182,7 +182,7 @@ jobs:
         run: dart pub upgrade
 
       - name: Download Dart manifest from builder-tests
-        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: dart-manifest
           path: test/fixtures/dart_reference
@@ -253,7 +253,7 @@ jobs:
         run: dart pub upgrade
 
       - name: Download Dart manifest from builder-tests
-        uses: actions/download-artifact@484a0b528fb4d7bd804637ccb632e47a0e638317
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
         with:
           name: dart-manifest
           path: test/fixtures/dart_reference
