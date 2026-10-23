@@ -24,7 +24,7 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
-  firebase_functions: ^0.8.0-wip
+  firebase_functions: ^0.9.0-wip
   # Ships a build hook compiling libsqlite3 from source, which
   # `dart compile exe` refuses to run.
   sqlite3: ^3.3.3

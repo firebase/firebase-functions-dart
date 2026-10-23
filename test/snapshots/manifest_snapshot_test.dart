@@ -2050,7 +2050,7 @@ void main() {
     });
   });
 
-  group('native build hook support', () {
+  group('Dart 3.13 fixture', () {
     // Declares `^3.13.0`, covering the `dart build cli` path that the
     // `dart_reference` fixture cannot.
     const fixture = 'test/fixtures/dart_native_reference';
@@ -2082,6 +2082,267 @@ void main() {
         endpoint!['command'],
         equals(['./build/cli/linux_x64/bundle/bin/server']),
       );
+    });
+
+    group('dot shorthand options', () {
+      test('applies setGlobalOptions() with a local const .new(...)', () {
+        expect(_getEndpoint(manifest, 'nativeDemo')!['concurrency'], equals(7));
+      });
+
+      test('extracts inline options: const .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandInline')!;
+        expect(endpoint['availableMemoryMb'], equals(1024));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['private'],
+          }),
+        );
+      });
+
+      test('extracts options from a variable initialized with .new(...)', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandVariable')!;
+        expect(endpoint['cpu'], equals('gcf_gen1'));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts options from a local variable initialized with .new', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandLocal')!;
+        expect(endpoint['timeoutSeconds'], equals(30));
+      });
+
+      test('extracts scheduler timeZone and retryConfig', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_0')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 0 * * *',
+            'timeZone': 'America/New_York',
+            'retryConfig': {'retryCount': 3, 'maxRetrySeconds': 60},
+          }),
+        );
+      });
+
+      test('extracts task queue retryConfig and rateLimits', () {
+        final endpoint = _getEndpoint(manifest, 'shorthandTasks')!;
+        expect(
+          endpoint['taskQueueTrigger'],
+          equals({
+            'retryConfig': {'maxAttempts': 5},
+            'rateLimits': {'maxConcurrentDispatches': 10},
+          }),
+        );
+      });
+
+      test('extracts param options', () {
+        expect(
+          _getParam(manifest, 'SHORTHAND_MIN_INSTANCES'),
+          equals({
+            'name': 'SHORTHAND_MIN_INSTANCES',
+            'type': 'int',
+            'default': 1,
+          }),
+        );
+      });
+    });
+
+    group('param references', () {
+      test('resolve to the name the param was defined with', () {
+        final endpoint = _getEndpoint(manifest, 'paramReferences')!;
+        // Defined in another file, as a local, in a static field and through
+        // an import prefix.
+        expect(
+          endpoint['minInstances'],
+          equals('{{ params.SHARED_MIN_INSTANCES }}'),
+        );
+        expect(
+          endpoint['maxInstances'],
+          equals('{{ params.LOCAL_PARAM_NAME }}'),
+        );
+        expect(
+          endpoint['availableMemoryMb'],
+          equals('{{ params.STATIC_MEMORY }}'),
+        );
+        expect(
+          endpoint['serviceAccountEmail'],
+          equals('{{ params.PREFIXED_PARAM }}'),
+        );
+        expect(
+          endpoint['secretEnvironmentVariables'],
+          equals([
+            {'key': 'SHARED_SECRET', 'secret': 'SHARED_SECRET'},
+          ]),
+        );
+      });
+
+      test('resolve in thenElse expressions', () {
+        final endpoint = _getEndpoint(manifest, 'paramExpressionReference')!;
+        expect(
+          endpoint['availableMemoryMb'],
+          equals('{{ params.SHARED_IS_LARGE ? 2048 : 512 }}'),
+        );
+      });
+
+      test('resolve the public built-in params', () {
+        final endpoint = _getEndpoint(manifest, 'publicBuiltinParamReference')!;
+        expect(
+          endpoint['serviceAccountEmail'],
+          equals('{{ params.PROJECT_ID }}'),
+        );
+      });
+
+      test('include define*() calls made through an import prefix', () {
+        expect(
+          _getParam(manifest, 'PREFIXED_PARAM'),
+          equals({'name': 'PREFIXED_PARAM', 'type': 'string'}),
+        );
+      });
+    });
+
+    group('const references', () {
+      test('extracts https options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferences')!;
+        expect(endpoint['timeoutSeconds'], equals(45));
+        expect(endpoint['serviceAccountEmail'], equals('const-account@'));
+        expect(endpoint['labels'], equals({'team': 'platform', 'env': 'prod'}));
+        expect(endpoint['region'], equals(['europe-west2']));
+        expect(endpoint['availableMemoryMb'], equals(2048));
+        expect(endpoint['cpu'], equals(2));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['a@example.com', 'b@example.com'],
+          }),
+        );
+      });
+
+      test('extracts option objects held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjects')!;
+        expect(endpoint['region'], equals(['asia-east1']));
+        expect(endpoint['availableMemoryMb'], equals(4096));
+        expect(endpoint['timeoutSeconds'], equals(90));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['public'],
+          }),
+        );
+      });
+
+      test('extracts scheduler configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_4')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 4 * * *',
+            'timeZone': 'Asia/Tokyo',
+            'retryConfig': {'retryCount': 2},
+          }),
+        );
+      });
+
+      test('extracts task queue configs held in const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constOptionObjectTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 7}),
+        );
+      });
+
+      test('references a built-in param by its name', () {
+        for (final name in ['builtinParamOption', 'constBuiltinParamOption']) {
+          expect(
+            _getEndpoint(manifest, name)!['serviceAccountEmail'],
+            equals('{{ params.PROJECT_ID }}'),
+            reason: name,
+          );
+        }
+      });
+
+      test('emits the declared size of a custom MemoryOption', () {
+        // firebase-tools rejects unsupported sizes at deploy time.
+        for (final (name, size) in [
+          ('constCustomMemory', 3000),
+          ('customMemoryInline', 1536),
+        ]) {
+          expect(
+            _getEndpoint(manifest, name)!['availableMemoryMb'],
+            equals(size),
+            reason: name,
+          );
+        }
+      });
+
+      test('evaluates const expressions', () {
+        final endpoint = _getEndpoint(manifest, 'constExpressions')!;
+        expect(endpoint['timeoutSeconds'], equals(90));
+        expect(endpoint['serviceAccountEmail'], equals('interpolated@'));
+        expect(endpoint['labels'], equals({'team': 'platform', 'env': 'prod'}));
+        expect(
+          endpoint['httpsTrigger'],
+          equals({
+            'invoker': ['a@example.com', 'b@example.com', 'c@example.com'],
+          }),
+        );
+      });
+
+      test('extracts options held in a static const field', () {
+        final endpoint = _getEndpoint(manifest, 'staticFieldOptions')!;
+        expect(endpoint['region'], equals(['europe-west1']));
+      });
+
+      test('resolves options by variable, not by name', () {
+        expect(
+          _getEndpoint(manifest, 'prefixedOptions')!['availableMemoryMb'],
+          equals(8192),
+        );
+        expect(
+          _getEndpoint(manifest, 'collidingOptions')!['availableMemoryMb'],
+          equals(512),
+        );
+      });
+
+      test('discovers functions and options in part files', () {
+        final endpoint = _getEndpoint(manifest, 'partFunction')!;
+        expect(endpoint['availableMemoryMb'], equals(2048));
+      });
+
+      test('extracts ParamOptions held in a const variable', () {
+        expect(
+          _getParam(manifest, 'CONST_PARAM_OPTIONS'),
+          equals({
+            'name': 'CONST_PARAM_OPTIONS',
+            'type': 'int',
+            'default': 2,
+            'label': 'Const options',
+          }),
+        );
+      });
+
+      test('extracts scheduler options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'onSchedule_0_3')!;
+        expect(
+          endpoint['scheduleTrigger'],
+          equals({
+            'schedule': '0 3 * * *',
+            'timeZone': 'Europe/London',
+            'retryConfig': {'retryCount': 4},
+          }),
+        );
+      });
+
+      test('extracts task queue options from const variables', () {
+        final endpoint = _getEndpoint(manifest, 'constReferenceTasks')!;
+        expect(
+          (endpoint['taskQueueTrigger'] as Map)['retryConfig'],
+          equals({'maxAttempts': 6}),
+        );
+      });
     });
   });
 }

@@ -16,11 +16,12 @@
 ///
 /// Provides `runFunctionsTest` and `FunctionsTestClient` for testing function
 /// handlers in-process without starting an HTTP server or the Firebase
-/// emulator.
+/// emulator, and `withEnvironment` for setting param values in tests.
 ///
 /// ```dart
 /// import 'package:firebase_functions/testing.dart';
 /// ```
 library;
 
-export 'src/testing.dart' show FunctionsTestClient, runFunctionsTest;
+export 'src/testing.dart'
+    show FunctionsTestClient, runFunctionsTest, withEnvironment;
