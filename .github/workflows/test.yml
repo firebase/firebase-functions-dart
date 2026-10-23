@@ -233,7 +233,7 @@ jobs:
           sdk: stable
 
       - name: Setup Java 21
-        uses: actions/setup-java@b150355f04079948b130c89635f82eb738274afe
+        uses: actions/setup-java@a78ec39f1243adc9be41d35a49593a4c665a604c
         with:
           distribution: temurin
           java-version: '21'
