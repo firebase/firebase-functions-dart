@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// Options for Cloud Storage event handlers.
-class StorageOptions extends GlobalOptions {
+class StorageOptions extends EventHandlerOptions {
   const StorageOptions({
     super.concurrency,
     super.cpu,
@@ -28,6 +28,7 @@ class StorageOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

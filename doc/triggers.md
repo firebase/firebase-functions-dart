@@ -142,6 +142,17 @@ firebase.pubsub.onMessagePublished(
 );
 ```
 
+### Retrying Failed Executions
+
+All event-handling triggers (Pub/Sub, Firestore, Realtime Database, Storage,
+Remote Config, Eventarc, Test Lab, and Firebase Alerts) accept a `retry`
+option, which is written to `eventTrigger.retry` in the generated manifest
+and defaults to `false`.
+
+**Deployment support is pending.** The option currently configures the manifest
+only. Deploying Dart event functions with `retry: true` requires Firebase CLI
+support that is not yet available.
+
 ## Firestore Triggers
 
 ```dart
