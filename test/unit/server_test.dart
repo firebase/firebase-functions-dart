@@ -154,7 +154,9 @@ void main() {
         final handler = handlerFor(
           (f) => f.https.onCall(
             name: 'greet',
-            options: const CallableOptions(corsMaxAgeSeconds: 600),
+            options: const CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
             (request, response) async => CallableResult('hi'),
           ),
         );
@@ -169,7 +171,9 @@ void main() {
           (f) => f.https.onCallWithData<Map<String, dynamic>, String>(
             name: 'typed',
             fromJson: (json) => json,
-            options: const CallableOptions(corsMaxAgeSeconds: 600),
+            options: const CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
             (request, response) async => 'hi',
           ),
         );
@@ -184,7 +188,7 @@ void main() {
             name: 'echo',
             options: const HttpsOptions(
               cors: Cors(['https://example.com', 'https://other.com']),
-              corsMaxAgeSeconds: 600,
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
             ),
             (request) async => Response.ok('ok'),
           ),
@@ -204,7 +208,9 @@ void main() {
         final handler = handlerFor(
           (f) => f.https.onRequest(
             name: 'echo',
-            options: const HttpsOptions(corsMaxAgeSeconds: 600),
+            options: const HttpsOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
             (request) async => Response.ok('ok'),
           ),
         );

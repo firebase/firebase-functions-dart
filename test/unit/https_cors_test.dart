@@ -255,6 +255,24 @@ void main() {
     });
   });
 
+  group('CorsConfig.resolveMaxAgeSeconds', () {
+    test('returns null when unset', () {
+      expect(const CorsConfig().resolveMaxAgeSeconds(), isNull);
+    });
+
+    test('resolves a literal', () {
+      const config = CorsConfig(maxAgeSeconds: CorsMaxAgeSeconds(600));
+      expect(config.resolveMaxAgeSeconds(), 600);
+    });
+
+    test('returns null when resolution fails', () {
+      const config = CorsConfig(
+        maxAgeSeconds: CorsMaxAgeSeconds.expression(_ThrowingExpression()),
+      );
+      expect(config.resolveMaxAgeSeconds(), isNull);
+    });
+  });
+
   group('applyCorsHeaders', () {
     test('leaves the response untouched when disabled', () {
       final original = Response.ok('body');
@@ -406,11 +424,11 @@ void main() {
   });
 }
 
-final class _ThrowingExpression extends Expression<List<Object>> {
+final class _ThrowingExpression<T extends Object> extends Expression<T> {
   const _ThrowingExpression();
 
   @override
-  List<Object> runtimeValue() => throw StateError('unavailable');
+  T runtimeValue() => throw StateError('unavailable');
 
   @override
   String toCEL() => 'broken';

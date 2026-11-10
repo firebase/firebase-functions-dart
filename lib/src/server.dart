@@ -169,7 +169,7 @@ bool _recordCorsDecision(
     slot
       ..decision = decision
       ..methods = cors.methods
-      ..maxAgeSeconds = cors.maxAgeSeconds;
+      ..maxAgeSeconds = cors.resolveMaxAgeSeconds();
   }
   return decision is! CorsOff;
 }

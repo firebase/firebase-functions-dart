@@ -53,7 +53,11 @@ class HttpsOptions extends GlobalOptions {
   /// is sent and browsers fall back to their default of 5 seconds, so every
   /// burst of cross-origin calls pays a new preflight round trip. Browsers cap
   /// the value (Chromium at 7200).
-  final int? corsMaxAgeSeconds;
+  ///
+  /// The value may also come from a parameter or expression, resolved once per
+  /// request. If resolution fails, the header is omitted and a warning is
+  /// logged.
+  final CorsMaxAgeSeconds? corsMaxAgeSeconds;
 }
 
 /// Options for callable functions (onCall).
@@ -114,5 +118,6 @@ class CallableOptions extends HttpsOptions {
 /// resolved once per request. If resolution fails, CORS is disabled for that
 /// request and a warning is logged.
 typedef Cors = Option<List<Object>>;
+typedef CorsMaxAgeSeconds = Option<int>;
 typedef ConsumeAppCheckToken = Option<bool>;
 typedef HeartBeatIntervalSeconds = Option<int>;
