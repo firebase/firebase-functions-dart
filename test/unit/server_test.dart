@@ -14,6 +14,7 @@
 
 import 'package:firebase_functions/src/common/environment.dart';
 import 'package:firebase_functions/src/common/expression.dart';
+import 'package:firebase_functions/src/common/options.dart';
 import 'package:firebase_functions/src/common/params.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/https.dart';
@@ -270,6 +271,90 @@ void main() {
 
         final response = await handler(preflight('/echo'));
         expect(response.headers.containsKey('access-control-max-age'), isFalse);
+      });
+
+      group('with setGlobalOptions', () {
+        tearDown(() => setGlobalOptions(const GlobalOptions()));
+
+        test('callable preflight uses the global corsMaxAgeSeconds', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+          });
+
+          final response = await handler(preflight('/greet'));
+          expect(response.statusCode, 204);
+          expect(response.headers['access-control-max-age'], '600');
+        });
+
+        test('function corsMaxAgeSeconds wins over the global one', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+            f.https.onCallWithData<Map<String, dynamic>, String>(
+              name: 'typed',
+              fromJson: (json) => json,
+              options: const CallableOptions(
+                corsMaxAgeSeconds: CorsMaxAgeSeconds(60),
+              ),
+              (request, response) async => 'hi',
+            );
+          });
+
+          final response = await handler(preflight('/typed'));
+          expect(response.headers['access-control-max-age'], '60');
+        });
+
+        test('global cors turns on an unconfigured onRequest', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(
+                cors: Cors(['https://example.com', 'https://other.com']),
+              ),
+            );
+            f.https.onRequest(
+              name: 'echo',
+              (request) async => Response.ok('ok'),
+            );
+          });
+
+          final allowed = await handler(get('/echo'));
+          expect(
+            allowed.headers['access-control-allow-origin'],
+            'https://example.com',
+          );
+
+          final denied = await handler(
+            get('/echo', origin: 'https://evil.com'),
+          );
+          expect(
+            denied.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
+
+        test('function cors wins over the global one', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(const GlobalOptions(cors: Cors(['*'])));
+            f.https.onRequest(
+              name: 'echo',
+              options: const HttpsOptions(cors: Cors(<Object>[])),
+              (request) async => Response.ok('ok'),
+            );
+          });
+
+          final response = await handler(get('/echo'));
+          expect(
+            response.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
       });
 
       test('emulator enableCors turns on an unconfigured onRequest', () async {

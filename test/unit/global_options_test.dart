@@ -58,6 +58,29 @@ final endpointOptions = new HttpsOptions(
       expect(endpoint['httpsTrigger'], equals({}));
     });
 
+    test('keeps global CORS options out of the manifest', () {
+      final globalOptions = _initializerFor('''
+final globalOptions = new GlobalOptions(
+  cors: new Cors(['https://example.com']),
+  corsMaxAgeSeconds: new CorsMaxAgeSeconds(600),
+);
+''', 'globalOptions');
+
+      final yaml = generateManifestYaml({}, {
+        'globalCorsEndpoint': EndpointSpec(
+          name: 'globalCorsEndpoint',
+          type: 'callable',
+          globalOptions: globalOptions,
+        ),
+      });
+      final manifest = loadYaml(yaml) as YamlMap;
+      final endpoint =
+          (manifest['endpoints'] as YamlMap)['globalcorsendpoint'] as YamlMap;
+
+      expect(endpoint.keys, isNot(contains('cors')));
+      expect(endpoint.keys, isNot(contains('corsMaxAgeSeconds')));
+    });
+
     test('does not emit reset values from global options', () {
       final globalOptions = _initializerFor('''
 final globalOptions = new GlobalOptions(
