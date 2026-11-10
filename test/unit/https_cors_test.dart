@@ -211,6 +211,50 @@ void main() {
     });
   });
 
+  group('Access-Control-Max-Age', () {
+    test('is sent on preflight when maxAgeSeconds is set', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        isPreflight: true,
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers['Access-Control-Max-Age'], '7200');
+    });
+
+    test('is not sent on the actual request', () {
+      final headers = corsHeadersFor(
+        _request(method: 'POST', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers.containsKey('Access-Control-Max-Age'), isFalse);
+    });
+
+    test('is not sent when unset', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        isPreflight: true,
+      );
+
+      expect(headers.containsKey('Access-Control-Max-Age'), isFalse);
+    });
+
+    test('is not sent when CORS is off', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsOff(),
+        isPreflight: true,
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers, isEmpty);
+    });
+  });
+
   group('applyCorsHeaders', () {
     test('leaves the response untouched when disabled', () {
       final original = Response.ok('body');

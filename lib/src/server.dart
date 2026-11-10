@@ -148,6 +148,7 @@ Handler createTestHandler(Firebase firebase) {
 final class _CorsSlot {
   CorsDecision decision = const CorsOff();
   List<String> methods = defaultCorsMethods;
+  int? maxAgeSeconds;
 }
 
 const _corsSlotKey = #firebaseFunctionsCorsSlot;
@@ -167,7 +168,8 @@ bool _recordCorsDecision(
   if (Zone.current[_corsSlotKey] case final _CorsSlot slot) {
     slot
       ..decision = decision
-      ..methods = cors.methods;
+      ..methods = cors.methods
+      ..maxAgeSeconds = cors.maxAgeSeconds;
   }
   return decision is! CorsOff;
 }
@@ -190,6 +192,7 @@ Handler corsResponseMiddleware(Handler innerHandler) => (request) async {
     slot.decision,
     isPreflight: request.method.toUpperCase() == 'OPTIONS',
     methods: slot.methods,
+    maxAgeSeconds: slot.maxAgeSeconds,
   );
 };
 
