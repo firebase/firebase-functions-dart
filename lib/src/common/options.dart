@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import '../https/options.dart' show Cors, CorsMaxAgeSeconds;
 import 'expression.dart';
 import 'params.dart';
 
@@ -65,10 +64,10 @@ class GlobalOptions {
 
   /// CORS configuration for HTTPS and callable functions.
   ///
-  /// See [Cors] for how the origin list is interpreted. When omitted, no CORS
+  /// See `Cors` for how the origin list is interpreted. When omitted, no CORS
   /// headers are emitted for `onRequest` functions; callable functions default
   /// to allowing any origin. Ignored by other function types.
-  final Cors? cors;
+  final Option<List<Object>>? cors;
 
   /// How long, in seconds, browsers may cache a preflight response.
   ///
@@ -81,7 +80,7 @@ class GlobalOptions {
   /// The value may also come from a parameter or expression, resolved once per
   /// request. If resolution fails, the header is omitted and a warning is
   /// logged.
-  final CorsMaxAgeSeconds? corsMaxAgeSeconds;
+  final Option<int>? corsMaxAgeSeconds;
 
   /// Amount of CPU to allocate to the function.
   final Cpu? cpu;
