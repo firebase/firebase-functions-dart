@@ -12,6 +12,9 @@
   `Access-Control-Max-Age` on preflight responses when CORS is on. Without it,
   browsers cache a preflight for 5 seconds and repeat it before almost every
   call.
+- Add `cors` and `corsMaxAgeSeconds` to `GlobalOptions`, so
+  `setGlobalOptions()` sets them for every HTTPS and callable function declared
+  after it. A function's own values still win.
 - Add `withEnvironment()` and an `environment` parameter to
   `runFunctionsTest()` in `package:firebase_functions/testing.dart`, to set
   the values of params and secrets in tests.

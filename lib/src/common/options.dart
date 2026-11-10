@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import '../https/options.dart' show Cors, CorsMaxAgeSeconds;
 import 'expression.dart';
 import 'params.dart';
 
@@ -21,7 +22,9 @@ GlobalOptions _globalOptions = const GlobalOptions();
 ///
 /// Per-function options override these defaults. For callable functions,
 /// [GlobalOptions.enforceAppCheck] is also used at runtime unless overridden by
-/// the callable's own options.
+/// the callable's own options. HTTPS and callable functions declared after this
+/// call also use [GlobalOptions.cors] and [GlobalOptions.corsMaxAgeSeconds]
+/// unless they set their own.
 void setGlobalOptions(GlobalOptions options) {
   _globalOptions = options;
 }
@@ -37,6 +40,8 @@ GlobalOptions getGlobalOptions() => _globalOptions;
 class GlobalOptions {
   const GlobalOptions({
     this.concurrency,
+    this.cors,
+    this.corsMaxAgeSeconds,
     this.cpu,
     this.enforceAppCheck,
     this.ingressSettings,
@@ -57,6 +62,26 @@ class GlobalOptions {
 
   /// Maximum number of concurrent requests per instance.
   final Concurrency? concurrency;
+
+  /// CORS configuration for HTTPS and callable functions.
+  ///
+  /// See [Cors] for how the origin list is interpreted. When omitted, no CORS
+  /// headers are emitted for `onRequest` functions; callable functions default
+  /// to allowing any origin. Ignored by other function types.
+  final Cors? cors;
+
+  /// How long, in seconds, browsers may cache a preflight response.
+  ///
+  /// Sent as `Access-Control-Max-Age` on `OPTIONS` responses when CORS is on,
+  /// like the `maxAge` option of the `cors` middleware. When omitted, no header
+  /// is sent and browsers fall back to their default of 5 seconds, so every
+  /// burst of cross-origin calls pays a new preflight round trip. Browsers cap
+  /// the value (Chromium at 7200). Ignored by other function types.
+  ///
+  /// The value may also come from a parameter or expression, resolved once per
+  /// request. If resolution fails, the header is omitted and a warning is
+  /// logged.
+  final CorsMaxAgeSeconds? corsMaxAgeSeconds;
 
   /// Amount of CPU to allocate to the function.
   final Cpu? cpu;
