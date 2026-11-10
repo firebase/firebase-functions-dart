@@ -150,6 +150,69 @@ void main() {
         expect(response.headers['access-control-allow-methods'], 'POST');
       });
 
+      test('callable preflight carries corsMaxAgeSeconds', () async {
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            options: const CallableOptions(corsMaxAgeSeconds: 600),
+            (request, response) async => CallableResult('hi'),
+          ),
+        );
+
+        final response = await handler(preflight('/greet'));
+        expect(response.statusCode, 204);
+        expect(response.headers['access-control-max-age'], '600');
+      });
+
+      test('typed callable preflight carries corsMaxAgeSeconds', () async {
+        final handler = handlerFor(
+          (f) => f.https.onCallWithData<Map<String, dynamic>, String>(
+            name: 'typed',
+            fromJson: (json) => json,
+            options: const CallableOptions(corsMaxAgeSeconds: 600),
+            (request, response) async => 'hi',
+          ),
+        );
+
+        final response = await handler(preflight('/typed'));
+        expect(response.headers['access-control-max-age'], '600');
+      });
+
+      test('onRequest sends corsMaxAgeSeconds on preflight only', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(
+              cors: Cors(['https://example.com', 'https://other.com']),
+              corsMaxAgeSeconds: 600,
+            ),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final preflightResponse = await handler(preflight('/echo'));
+        expect(preflightResponse.headers['access-control-max-age'], '600');
+
+        final getResponse = await handler(get('/echo'));
+        expect(
+          getResponse.headers.containsKey('access-control-max-age'),
+          isFalse,
+        );
+      });
+
+      test('corsMaxAgeSeconds is ignored when CORS is off', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(corsMaxAgeSeconds: 600),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final response = await handler(preflight('/echo'));
+        expect(response.headers.containsKey('access-control-max-age'), isFalse);
+      });
+
       test('emulator enableCors turns on an unconfigured onRequest', () async {
         final handler = handlerFor(
           (f) => f.https.onRequest(
