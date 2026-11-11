@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// Options for Firebase Alerts handlers.
-class AlertOptions extends GlobalOptions {
+class AlertOptions extends EventHandlerOptions {
   const AlertOptions({
     this.appId,
     super.concurrency,
@@ -29,6 +29,7 @@ class AlertOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

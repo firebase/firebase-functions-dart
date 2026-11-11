@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// DocumentOptions extend GlobalOptions with provided document and optional database and namespace.
-class DocumentOptions extends GlobalOptions {
+class DocumentOptions extends EventHandlerOptions {
   const DocumentOptions({
     required this.document,
     this.database,
@@ -31,6 +31,7 @@ class DocumentOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,

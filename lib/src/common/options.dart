@@ -127,6 +127,34 @@ class GlobalOptions {
   final VpcConnectorEgressSettings? vpcConnectorEgressSettings;
 }
 
+/// Additional options available on any event-handling function.
+///
+/// Matches the `EventHandlerOptions` interface from the Node.js SDK.
+abstract class EventHandlerOptions extends GlobalOptions {
+  const EventHandlerOptions({
+    this.retry,
+    super.concurrency,
+    super.cpu,
+    super.ingressSettings,
+    super.invoker,
+    super.labels,
+    super.minInstances,
+    super.maxInstances,
+    super.memory,
+    super.omit,
+    super.preserveExternalChanges,
+    super.region,
+    super.secrets,
+    super.serviceAccount,
+    super.timeoutSeconds,
+    super.vpcConnector,
+    super.vpcConnectorEgressSettings,
+  });
+
+  /// Whether failed executions should be delivered again. Defaults to `false`.
+  final Retry? retry;
+}
+
 /// Base class for all option types.
 ///
 /// Options can be:
@@ -204,6 +232,7 @@ typedef Instances = DeployOption<int>;
 typedef Omit = Option<bool>;
 typedef PreserveExternalChanges = Option<bool>;
 typedef Region = DeployOption<SupportedRegion>;
+typedef Retry = DeployOption<bool>;
 
 /// Service account to run the function as.
 ///

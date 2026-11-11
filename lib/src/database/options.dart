@@ -17,7 +17,7 @@ import '../common/options.dart';
 /// ReferenceOptions extend GlobalOptions with provided ref and optional instance.
 ///
 /// Used to configure Realtime Database event triggers.
-class ReferenceOptions extends GlobalOptions {
+class ReferenceOptions extends EventHandlerOptions {
   const ReferenceOptions({
     this.instance,
     super.concurrency,
@@ -31,6 +31,7 @@ class ReferenceOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,
