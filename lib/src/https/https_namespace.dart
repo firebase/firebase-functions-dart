@@ -57,7 +57,10 @@ class HttpsNamespace extends FunctionsNamespace {
       external: true,
       // onRequest is opt-in: no CORS headers unless `cors` is set (or the
       // emulator's enableCors debug feature is on). Matches the Node.js SDK.
-      cors: _corsConfig(options),
+      cors: CorsConfig(
+        option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
+      ),
     );
   }
 
@@ -145,8 +148,9 @@ class HttpsNamespace extends FunctionsNamespace {
         );
       },
       // Callables default to allowing any origin, and only ever accept POST.
-      cors: _corsConfig(
-        options,
+      cors: CorsConfig(
+        option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
         methods: callableCorsMethods,
         enabledByDefault: true,
       ),
@@ -239,8 +243,9 @@ class HttpsNamespace extends FunctionsNamespace {
         );
       },
       // Callables default to allowing any origin, and only ever accept POST.
-      cors: _corsConfig(
-        options,
+      cors: CorsConfig(
+        option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
         methods: callableCorsMethods,
         enabledByDefault: true,
       ),
@@ -314,21 +319,4 @@ class HttpsNamespace extends FunctionsNamespace {
       rethrow;
     }
   }
-}
-
-/// Resolves a function's CORS settings, falling back to [setGlobalOptions].
-///
-/// Read when the function is declared, like the deploy-time global options.
-CorsConfig _corsConfig(
-  HttpsOptions? options, {
-  List<String> methods = defaultCorsMethods,
-  bool enabledByDefault = false,
-}) {
-  final global = getGlobalOptions();
-  return CorsConfig(
-    option: options?.cors ?? global.cors,
-    maxAgeSeconds: options?.corsMaxAgeSeconds ?? global.corsMaxAgeSeconds,
-    methods: methods,
-    enabledByDefault: enabledByDefault,
-  );
 }

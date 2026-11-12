@@ -107,6 +107,20 @@ firebase.https.onRequest(
 );
 ```
 
+`cors` and `corsMaxAgeSeconds` can also be set globally. They apply to HTTPS and
+callable functions, and are read on each request.
+
+```dart
+setGlobalOptions(
+  const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(3600)),
+);
+```
+
+A global `cors` turns CORS on for every `onRequest` function that sets no `cors`
+of its own. The SDK then answers their `OPTIONS` requests with a 204, and those
+requests never reach the handler. To keep handling `OPTIONS` in a function, give
+it `cors: Cors(<Object>[])`.
+
 ## Function Service Account
 
 Use the `serviceAccount` option to choose which service account a function runs

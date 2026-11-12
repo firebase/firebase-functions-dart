@@ -339,6 +339,36 @@ void main() {
           );
         });
 
+        test('global options set after a function still apply', () async {
+          final handler = handlerFor((f) {
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+          });
+
+          final response = await handler(preflight('/greet'));
+          expect(response.headers['access-control-max-age'], '600');
+        });
+
+        test('global cors answers onRequest preflights itself', () async {
+          var handlerCalls = 0;
+          final handler = handlerFor((f) {
+            setGlobalOptions(const GlobalOptions(cors: Cors(['*'])));
+            f.https.onRequest(name: 'echo', (request) async {
+              handlerCalls++;
+              return Response.ok('ok');
+            });
+          });
+
+          final response = await handler(preflight('/echo'));
+          expect(response.statusCode, 204);
+          expect(handlerCalls, 0);
+        });
+
         test('function cors wins over the global one', () async {
           final handler = handlerFor((f) {
             setGlobalOptions(const GlobalOptions(cors: Cors(['*'])));
