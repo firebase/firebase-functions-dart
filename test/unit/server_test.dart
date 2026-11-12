@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:firebase_functions/src/common/environment.dart';
+import 'package:firebase_functions/src/common/expression.dart';
 import 'package:firebase_functions/src/common/params.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/https.dart';
@@ -201,6 +202,37 @@ void main() {
 
         final response = await handler(preflight('/greet'));
         expect(response.headers['access-control-max-age'], '900');
+      });
+
+      test('corsMaxAgeSeconds is resolved on preflights only', () async {
+        final maxAge = _CountingExpression(600);
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            // ignore: non_const_argument_for_const_parameter
+            options: CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds.expression(maxAge),
+            ),
+            (request, response) async => CallableResult('hi'),
+          ),
+        );
+
+        await handler(
+          Request(
+            'POST',
+            Uri.parse('http://localhost/greet'),
+            headers: {
+              'origin': 'https://example.com',
+              'content-type': 'application/json',
+            },
+            body: '{"data":null}',
+          ),
+        );
+        expect(maxAge.calls, 0);
+
+        final response = await handler(preflight('/greet'));
+        expect(response.headers['access-control-max-age'], '600');
+        expect(maxAge.calls, 1);
       });
 
       test('onRequest sends corsMaxAgeSeconds on preflight only', () async {
@@ -436,4 +468,20 @@ void main() {
       });
     });
   });
+}
+
+final class _CountingExpression extends Expression<int> {
+  _CountingExpression(this.result);
+
+  final int result;
+  int calls = 0;
+
+  @override
+  int runtimeValue() {
+    calls++;
+    return result;
+  }
+
+  @override
+  String toCEL() => 'counting';
 }
