@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:firebase_functions/src/common/environment.dart';
+import 'package:firebase_functions/src/common/params.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/https.dart';
 import 'package:firebase_functions/src/server.dart';
@@ -40,9 +41,11 @@ void main() {
       Handler handlerFor(
         void Function(Firebase) register, {
         bool emulatorCors = false,
+        Map<String, String> environment = const {},
       }) {
         FirebaseEnv.mockEnvironment = {
           'FIREBASE_PROJECT': 'demo-test',
+          ...environment,
           if (emulatorCors)
             'FIREBASE_DEBUG_FEATURES':
                 '{"enableCors":true,"skipTokenVerification":true}',
@@ -180,6 +183,24 @@ void main() {
 
         final response = await handler(preflight('/typed'));
         expect(response.headers['access-control-max-age'], '600');
+      });
+
+      test('callable preflight reads corsMaxAgeSeconds from a param', () async {
+        final maxAge = defineInt('CORS_MAX_AGE_SECONDS');
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            // ignore: non_const_argument_for_const_parameter
+            options: CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds.param(maxAge),
+            ),
+            (request, response) async => CallableResult('hi'),
+          ),
+          environment: {'CORS_MAX_AGE_SECONDS': '900'},
+        );
+
+        final response = await handler(preflight('/greet'));
+        expect(response.headers['access-control-max-age'], '900');
       });
 
       test('onRequest sends corsMaxAgeSeconds on preflight only', () async {
