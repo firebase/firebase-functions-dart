@@ -16,7 +16,9 @@
   `setGlobalOptions()` sets them for every HTTPS and callable function. A
   function's own values still win. A global `cors` also turns CORS on for
   `onRequest` functions without their own, so the SDK answers their `OPTIONS`
-  requests before the handler runs.
+  requests before the handler runs, and replaces the callables' default of
+  allowing any origin. **BREAKING:** a class that implements `GlobalOptions`
+  must add the two getters.
 - Add `withEnvironment()` and an `environment` parameter to
   `runFunctionsTest()` in `package:firebase_functions/testing.dart`, to set
   the values of params and secrets in tests.

@@ -311,6 +311,34 @@ void main() {
           expect(response.headers['access-control-max-age'], '60');
         });
 
+        test('global cors replaces the callable allow-any default', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(
+                cors: Cors(['https://example.com', 'https://other.com']),
+              ),
+            );
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+          });
+
+          final allowed = await handler(preflight('/greet'));
+          expect(
+            allowed.headers['access-control-allow-origin'],
+            'https://example.com',
+          );
+
+          final denied = await handler(
+            preflight('/greet', origin: 'https://evil.com'),
+          );
+          expect(
+            denied.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
+
         test('global cors turns on an unconfigured onRequest', () async {
           final handler = handlerFor((f) {
             setGlobalOptions(
