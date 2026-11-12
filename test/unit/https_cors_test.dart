@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import 'package:firebase_functions/src/common/expression.dart';
+import 'package:firebase_functions/src/common/options.dart';
 import 'package:firebase_functions/src/https/cors.dart';
 import 'package:firebase_functions/src/https/options.dart';
 import 'package:shelf/shelf.dart';
@@ -32,6 +33,8 @@ Request _request({
 );
 
 void main() {
+  tearDown(() => setGlobalOptions(const GlobalOptions()));
+
   group('corsHeadersFor', () {
     test('wildcard emits a literal star and no Vary', () {
       // Mirrors `cors: '*'`: the response does not depend on the origin.

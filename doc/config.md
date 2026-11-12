@@ -119,7 +119,8 @@ setGlobalOptions(
 A global `cors` turns CORS on for every `onRequest` function that sets no `cors`
 of its own. The SDK then answers their `OPTIONS` requests with a 204, and those
 requests never reach the handler. To keep handling `OPTIONS` in a function, give
-it `cors: Cors(<Object>[])`.
+it `cors: Cors(<Object>[])`. A global `cors` also replaces the callables' default
+of allowing any origin.
 
 ## Function Service Account
 

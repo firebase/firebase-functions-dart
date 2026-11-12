@@ -17,7 +17,7 @@ import 'params.dart';
 
 GlobalOptions _globalOptions = const GlobalOptions();
 
-/// Sets default options applied to all subsequently declared functions.
+/// Sets default options for every function.
 ///
 /// Per-function options override these defaults. For callable functions,
 /// [GlobalOptions.enforceAppCheck] is also used at runtime unless overridden by
@@ -30,7 +30,8 @@ void setGlobalOptions(GlobalOptions options) {
 
 /// Gets the current default options.
 ///
-/// This is used internally by trigger registration.
+/// This is used internally by trigger registration, and by HTTPS and callable
+/// functions on each request.
 GlobalOptions getGlobalOptions() => _globalOptions;
 
 /// Global options that apply to all function types.
@@ -71,7 +72,8 @@ class GlobalOptions {
   /// Set globally, this turns CORS on for every `onRequest` function that sets
   /// no `cors` of its own. The SDK then answers their `OPTIONS` requests with a
   /// 204, and those requests never reach the handler. To keep handling
-  /// `OPTIONS` in a function, give it `cors: Cors(<Object>[])`.
+  /// `OPTIONS` in a function, give it `cors: Cors(<Object>[])`. It also
+  /// replaces the callables' default of allowing any origin.
   final Option<List<Object>>? cors;
 
   /// How long, in seconds, browsers may cache a preflight response.
