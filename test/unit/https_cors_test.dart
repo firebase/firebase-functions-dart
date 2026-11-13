@@ -211,6 +211,68 @@ void main() {
     });
   });
 
+  group('Access-Control-Max-Age', () {
+    test('is sent on preflight when maxAgeSeconds is set', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        isPreflight: true,
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers['Access-Control-Max-Age'], '7200');
+    });
+
+    test('is not sent on the actual request', () {
+      final headers = corsHeadersFor(
+        _request(method: 'POST', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers.containsKey('Access-Control-Max-Age'), isFalse);
+    });
+
+    test('is not sent when unset', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsReflectAny(),
+        isPreflight: true,
+      );
+
+      expect(headers.containsKey('Access-Control-Max-Age'), isFalse);
+    });
+
+    test('is not sent when CORS is off', () {
+      final headers = corsHeadersFor(
+        _request(method: 'OPTIONS', origin: 'https://a.com'),
+        const CorsOff(),
+        isPreflight: true,
+        maxAgeSeconds: 7200,
+      );
+
+      expect(headers, isEmpty);
+    });
+  });
+
+  group('CorsConfig.resolveMaxAgeSeconds', () {
+    test('returns null when unset', () {
+      expect(const CorsConfig().resolveMaxAgeSeconds(), isNull);
+    });
+
+    test('resolves a literal', () {
+      const config = CorsConfig(maxAgeSeconds: CorsMaxAgeSeconds(600));
+      expect(config.resolveMaxAgeSeconds(), 600);
+    });
+
+    test('returns null when resolution fails', () {
+      const config = CorsConfig(
+        maxAgeSeconds: CorsMaxAgeSeconds.expression(_ThrowingExpression()),
+      );
+      expect(config.resolveMaxAgeSeconds(), isNull);
+    });
+  });
+
   group('applyCorsHeaders', () {
     test('leaves the response untouched when disabled', () {
       final original = Response.ok('body');
@@ -362,11 +424,11 @@ void main() {
   });
 }
 
-final class _ThrowingExpression extends Expression<List<Object>> {
+final class _ThrowingExpression<T extends Object> extends Expression<T> {
   const _ThrowingExpression();
 
   @override
-  List<Object> runtimeValue() => throw StateError('unavailable');
+  T runtimeValue() => throw StateError('unavailable');
 
   @override
   String toCEL() => 'broken';
