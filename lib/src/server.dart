@@ -148,6 +148,7 @@ Handler createTestHandler(Firebase firebase) {
 final class _CorsSlot {
   CorsDecision decision = const CorsOff();
   List<String> methods = defaultCorsMethods;
+  CorsConfig? config;
 }
 
 const _corsSlotKey = #firebaseFunctionsCorsSlot;
@@ -167,7 +168,8 @@ bool _recordCorsDecision(
   if (Zone.current[_corsSlotKey] case final _CorsSlot slot) {
     slot
       ..decision = decision
-      ..methods = cors.methods;
+      ..methods = cors.methods
+      ..config = cors;
   }
   return decision is! CorsOff;
 }
@@ -184,12 +186,18 @@ Handler corsResponseMiddleware(Handler innerHandler) => (request) async {
     zoneValues: {_corsSlotKey: slot},
   );
 
+  final isPreflight = request.method.toUpperCase() == 'OPTIONS';
   return applyCorsHeaders(
     request,
     response,
     slot.decision,
-    isPreflight: request.method.toUpperCase() == 'OPTIONS',
+    isPreflight: isPreflight,
     methods: slot.methods,
+    // Only a preflight with CORS on carries the header, so a param is not
+    // resolved, nor a resolution failure logged, on any other request.
+    maxAgeSeconds: isPreflight && slot.decision is! CorsOff
+        ? slot.config?.resolveMaxAgeSeconds()
+        : null,
   );
 };
 

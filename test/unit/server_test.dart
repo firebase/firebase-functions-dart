@@ -13,6 +13,9 @@
 // limitations under the License.
 
 import 'package:firebase_functions/src/common/environment.dart';
+import 'package:firebase_functions/src/common/expression.dart';
+import 'package:firebase_functions/src/common/options.dart';
+import 'package:firebase_functions/src/common/params.dart';
 import 'package:firebase_functions/src/firebase.dart';
 import 'package:firebase_functions/src/https/https.dart';
 import 'package:firebase_functions/src/server.dart';
@@ -40,9 +43,11 @@ void main() {
       Handler handlerFor(
         void Function(Firebase) register, {
         bool emulatorCors = false,
+        Map<String, String> environment = const {},
       }) {
         FirebaseEnv.mockEnvironment = {
           'FIREBASE_PROJECT': 'demo-test',
+          ...environment,
           if (emulatorCors)
             'FIREBASE_DEBUG_FEATURES':
                 '{"enableCors":true,"skipTokenVerification":true}',
@@ -148,6 +153,266 @@ void main() {
         final response = await handler(preflight('/greet'));
         expect(response.statusCode, 204);
         expect(response.headers['access-control-allow-methods'], 'POST');
+      });
+
+      test('callable preflight carries corsMaxAgeSeconds', () async {
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            options: const CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
+            (request, response) async => CallableResult('hi'),
+          ),
+        );
+
+        final response = await handler(preflight('/greet'));
+        expect(response.statusCode, 204);
+        expect(response.headers['access-control-max-age'], '600');
+      });
+
+      test('typed callable preflight carries corsMaxAgeSeconds', () async {
+        final handler = handlerFor(
+          (f) => f.https.onCallWithData<Map<String, dynamic>, String>(
+            name: 'typed',
+            fromJson: (json) => json,
+            options: const CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
+            (request, response) async => 'hi',
+          ),
+        );
+
+        final response = await handler(preflight('/typed'));
+        expect(response.headers['access-control-max-age'], '600');
+      });
+
+      test('callable preflight reads corsMaxAgeSeconds from a param', () async {
+        final maxAge = defineInt('CORS_MAX_AGE_SECONDS');
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            // ignore: non_const_argument_for_const_parameter
+            options: CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds.param(maxAge),
+            ),
+            (request, response) async => CallableResult('hi'),
+          ),
+          environment: {'CORS_MAX_AGE_SECONDS': '900'},
+        );
+
+        final response = await handler(preflight('/greet'));
+        expect(response.headers['access-control-max-age'], '900');
+      });
+
+      test('corsMaxAgeSeconds is resolved on preflights only', () async {
+        final maxAge = _CountingExpression(600);
+        final handler = handlerFor(
+          (f) => f.https.onCall(
+            name: 'greet',
+            // ignore: non_const_argument_for_const_parameter
+            options: CallableOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds.expression(maxAge),
+            ),
+            (request, response) async => CallableResult('hi'),
+          ),
+        );
+
+        await handler(
+          Request(
+            'POST',
+            Uri.parse('http://localhost/greet'),
+            headers: {
+              'origin': 'https://example.com',
+              'content-type': 'application/json',
+            },
+            body: '{"data":null}',
+          ),
+        );
+        expect(maxAge.calls, 0);
+
+        final response = await handler(preflight('/greet'));
+        expect(response.headers['access-control-max-age'], '600');
+        expect(maxAge.calls, 1);
+      });
+
+      test('onRequest sends corsMaxAgeSeconds on preflight only', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(
+              cors: Cors(['https://example.com', 'https://other.com']),
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final preflightResponse = await handler(preflight('/echo'));
+        expect(preflightResponse.headers['access-control-max-age'], '600');
+
+        final getResponse = await handler(get('/echo'));
+        expect(
+          getResponse.headers.containsKey('access-control-max-age'),
+          isFalse,
+        );
+      });
+
+      test('corsMaxAgeSeconds is ignored when CORS is off', () async {
+        final handler = handlerFor(
+          (f) => f.https.onRequest(
+            name: 'echo',
+            options: const HttpsOptions(
+              corsMaxAgeSeconds: CorsMaxAgeSeconds(600),
+            ),
+            (request) async => Response.ok('ok'),
+          ),
+        );
+
+        final response = await handler(preflight('/echo'));
+        expect(response.headers.containsKey('access-control-max-age'), isFalse);
+      });
+
+      group('with setGlobalOptions', () {
+        tearDown(() => setGlobalOptions(const GlobalOptions()));
+
+        test('callable preflight uses the global corsMaxAgeSeconds', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+          });
+
+          final response = await handler(preflight('/greet'));
+          expect(response.statusCode, 204);
+          expect(response.headers['access-control-max-age'], '600');
+        });
+
+        test('function corsMaxAgeSeconds wins over the global one', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+            f.https.onCallWithData<Map<String, dynamic>, String>(
+              name: 'typed',
+              fromJson: (json) => json,
+              options: const CallableOptions(
+                corsMaxAgeSeconds: CorsMaxAgeSeconds(60),
+              ),
+              (request, response) async => 'hi',
+            );
+          });
+
+          final response = await handler(preflight('/typed'));
+          expect(response.headers['access-control-max-age'], '60');
+        });
+
+        test('global cors replaces the callable allow-any default', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(
+                cors: Cors(['https://example.com', 'https://other.com']),
+              ),
+            );
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+          });
+
+          final allowed = await handler(preflight('/greet'));
+          expect(
+            allowed.headers['access-control-allow-origin'],
+            'https://example.com',
+          );
+
+          final denied = await handler(
+            preflight('/greet', origin: 'https://evil.com'),
+          );
+          expect(
+            denied.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
+
+        test('global cors turns on an unconfigured onRequest', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(
+              const GlobalOptions(
+                cors: Cors(['https://example.com', 'https://other.com']),
+              ),
+            );
+            f.https.onRequest(
+              name: 'echo',
+              (request) async => Response.ok('ok'),
+            );
+          });
+
+          final allowed = await handler(get('/echo'));
+          expect(
+            allowed.headers['access-control-allow-origin'],
+            'https://example.com',
+          );
+
+          final denied = await handler(
+            get('/echo', origin: 'https://evil.com'),
+          );
+          expect(
+            denied.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
+
+        test('global options set after a function still apply', () async {
+          final handler = handlerFor((f) {
+            f.https.onCall(
+              name: 'greet',
+              (request, response) async => CallableResult('hi'),
+            );
+            setGlobalOptions(
+              const GlobalOptions(corsMaxAgeSeconds: CorsMaxAgeSeconds(600)),
+            );
+          });
+
+          final response = await handler(preflight('/greet'));
+          expect(response.headers['access-control-max-age'], '600');
+        });
+
+        test('global cors answers onRequest preflights itself', () async {
+          var handlerCalls = 0;
+          final handler = handlerFor((f) {
+            setGlobalOptions(const GlobalOptions(cors: Cors(['*'])));
+            f.https.onRequest(name: 'echo', (request) async {
+              handlerCalls++;
+              return Response.ok('ok');
+            });
+          });
+
+          final response = await handler(preflight('/echo'));
+          expect(response.statusCode, 204);
+          expect(handlerCalls, 0);
+        });
+
+        test('function cors wins over the global one', () async {
+          final handler = handlerFor((f) {
+            setGlobalOptions(const GlobalOptions(cors: Cors(['*'])));
+            f.https.onRequest(
+              name: 'echo',
+              options: const HttpsOptions(cors: Cors(<Object>[])),
+              (request) async => Response.ok('ok'),
+            );
+          });
+
+          final response = await handler(get('/echo'));
+          expect(
+            response.headers.containsKey('access-control-allow-origin'),
+            isFalse,
+          );
+        });
       });
 
       test('emulator enableCors turns on an unconfigured onRequest', () async {
@@ -346,4 +611,20 @@ void main() {
       });
     });
   });
+}
+
+final class _CountingExpression extends Expression<int> {
+  _CountingExpression(this.result);
+
+  final int result;
+  int calls = 0;
+
+  @override
+  int runtimeValue() {
+    calls++;
+    return result;
+  }
+
+  @override
+  String toCEL() => 'counting';
 }

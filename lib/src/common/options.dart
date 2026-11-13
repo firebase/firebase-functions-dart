@@ -17,18 +17,21 @@ import 'params.dart';
 
 GlobalOptions _globalOptions = const GlobalOptions();
 
-/// Sets default options applied to all subsequently declared functions.
+/// Sets default options for every function.
 ///
 /// Per-function options override these defaults. For callable functions,
 /// [GlobalOptions.enforceAppCheck] is also used at runtime unless overridden by
-/// the callable's own options.
+/// the callable's own options. HTTPS and callable functions also read
+/// [GlobalOptions.cors] and [GlobalOptions.corsMaxAgeSeconds] on each request,
+/// unless they set their own.
 void setGlobalOptions(GlobalOptions options) {
   _globalOptions = options;
 }
 
 /// Gets the current default options.
 ///
-/// This is used internally by trigger registration.
+/// This is used internally by trigger registration, and by HTTPS and callable
+/// functions on each request.
 GlobalOptions getGlobalOptions() => _globalOptions;
 
 /// Global options that apply to all function types.
@@ -37,6 +40,8 @@ GlobalOptions getGlobalOptions() => _globalOptions;
 class GlobalOptions {
   const GlobalOptions({
     this.concurrency,
+    this.cors,
+    this.corsMaxAgeSeconds,
     this.cpu,
     this.enforceAppCheck,
     this.ingressSettings,
@@ -57,6 +62,32 @@ class GlobalOptions {
 
   /// Maximum number of concurrent requests per instance.
   final Concurrency? concurrency;
+
+  /// CORS configuration for HTTPS and callable functions.
+  ///
+  /// See `Cors` for how the origin list is interpreted. When omitted, no CORS
+  /// headers are emitted for `onRequest` functions; callable functions default
+  /// to allowing any origin. Ignored by other function types.
+  ///
+  /// Set globally, this turns CORS on for every `onRequest` function that sets
+  /// no `cors` of its own. The SDK then answers their `OPTIONS` requests with a
+  /// 204, and those requests never reach the handler. To keep handling
+  /// `OPTIONS` in a function, give it `cors: Cors(<Object>[])`. It also
+  /// replaces the callables' default of allowing any origin.
+  final Option<List<Object>>? cors;
+
+  /// How long, in seconds, browsers may cache a preflight response.
+  ///
+  /// Sent as `Access-Control-Max-Age` on `OPTIONS` responses when CORS is on,
+  /// like the `maxAge` option of the `cors` middleware. When omitted, no header
+  /// is sent and browsers fall back to their default of 5 seconds, so every
+  /// burst of cross-origin calls pays a new preflight round trip. Browsers cap
+  /// the value (Chromium at 7200). Ignored by other function types.
+  ///
+  /// The value may also come from a parameter or expression, resolved once per
+  /// request. If resolution fails, the header is omitted and a warning is
+  /// logged.
+  final Option<int>? corsMaxAgeSeconds;
 
   /// Amount of CPU to allocate to the function.
   final Cpu? cpu;

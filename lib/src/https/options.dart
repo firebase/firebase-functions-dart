@@ -35,15 +35,9 @@ class HttpsOptions extends GlobalOptions {
     super.timeoutSeconds,
     super.vpcConnector,
     super.vpcConnectorEgressSettings,
-    this.cors,
+    super.cors,
+    super.corsMaxAgeSeconds,
   });
-
-  /// CORS configuration for the function.
-  ///
-  /// See [Cors] for how the origin list is interpreted. When omitted, no CORS
-  /// headers are emitted for `onRequest` functions; callable functions default
-  /// to allowing any origin.
-  final Cors? cors;
 }
 
 /// Options for callable functions (onCall).
@@ -67,6 +61,7 @@ class CallableOptions extends HttpsOptions {
     super.vpcConnector,
     super.vpcConnectorEgressSettings,
     super.cors,
+    super.corsMaxAgeSeconds,
     this.consumeAppCheckToken,
     this.heartBeatIntervalSeconds,
   });
@@ -103,5 +98,6 @@ class CallableOptions extends HttpsOptions {
 /// resolved once per request. If resolution fails, CORS is disabled for that
 /// request and a warning is logged.
 typedef Cors = Option<List<Object>>;
+typedef CorsMaxAgeSeconds = Option<int>;
 typedef ConsumeAppCheckToken = Option<bool>;
 typedef HeartBeatIntervalSeconds = Option<int>;
