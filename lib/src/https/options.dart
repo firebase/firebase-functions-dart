@@ -36,6 +36,7 @@ class HttpsOptions extends GlobalOptions {
     super.vpcConnector,
     super.vpcConnectorEgressSettings,
     this.cors,
+    this.corsMaxAgeSeconds,
   });
 
   /// CORS configuration for the function.
@@ -44,6 +45,19 @@ class HttpsOptions extends GlobalOptions {
   /// headers are emitted for `onRequest` functions; callable functions default
   /// to allowing any origin.
   final Cors? cors;
+
+  /// How long, in seconds, browsers may cache a preflight response.
+  ///
+  /// Sent as `Access-Control-Max-Age` on `OPTIONS` responses when CORS is on,
+  /// like the `maxAge` option of the `cors` middleware. When omitted, no header
+  /// is sent and browsers fall back to their default of 5 seconds, so every
+  /// burst of cross-origin calls pays a new preflight round trip. Browsers cap
+  /// the value (Chromium at 7200).
+  ///
+  /// The value may also come from a parameter or expression, resolved once per
+  /// request. If resolution fails, the header is omitted and a warning is
+  /// logged.
+  final CorsMaxAgeSeconds? corsMaxAgeSeconds;
 }
 
 /// Options for callable functions (onCall).
@@ -67,6 +81,7 @@ class CallableOptions extends HttpsOptions {
     super.vpcConnector,
     super.vpcConnectorEgressSettings,
     super.cors,
+    super.corsMaxAgeSeconds,
     this.consumeAppCheckToken,
     this.heartBeatIntervalSeconds,
   });
@@ -103,5 +118,6 @@ class CallableOptions extends HttpsOptions {
 /// resolved once per request. If resolution fails, CORS is disabled for that
 /// request and a warning is logged.
 typedef Cors = Option<List<Object>>;
+typedef CorsMaxAgeSeconds = Option<int>;
 typedef ConsumeAppCheckToken = Option<bool>;
 typedef HeartBeatIntervalSeconds = Option<int>;

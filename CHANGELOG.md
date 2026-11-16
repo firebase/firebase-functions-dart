@@ -8,6 +8,10 @@
   Directly constructed params were missing from the manifest's `params:` and
   deployed under a name guessed from the variable. To set param values in
   tests, use `withEnvironment()` or `runFunctionsTest(environment: ...)`.
+- Add `corsMaxAgeSeconds` to `HttpsOptions` and `CallableOptions`, sent as
+  `Access-Control-Max-Age` on preflight responses when CORS is on. Without it,
+  browsers cache a preflight for 5 seconds and repeat it before almost every
+  call.
 - Add `withEnvironment()` and an `environment` parameter to
   `runFunctionsTest()` in `package:firebase_functions/testing.dart`, to set
   the values of params and secrets in tests.

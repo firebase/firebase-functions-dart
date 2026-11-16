@@ -57,7 +57,10 @@ class HttpsNamespace extends FunctionsNamespace {
       external: true,
       // onRequest is opt-in: no CORS headers unless `cors` is set (or the
       // emulator's enableCors debug feature is on). Matches the Node.js SDK.
-      cors: CorsConfig(option: options?.cors),
+      cors: CorsConfig(
+        option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
+      ),
     );
   }
 
@@ -147,6 +150,7 @@ class HttpsNamespace extends FunctionsNamespace {
       // Callables default to allowing any origin, and only ever accept POST.
       cors: CorsConfig(
         option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
         methods: callableCorsMethods,
         enabledByDefault: true,
       ),
@@ -241,6 +245,7 @@ class HttpsNamespace extends FunctionsNamespace {
       // Callables default to allowing any origin, and only ever accept POST.
       cors: CorsConfig(
         option: options?.cors,
+        maxAgeSeconds: options?.corsMaxAgeSeconds,
         methods: callableCorsMethods,
         enabledByDefault: true,
       ),
