@@ -8,6 +8,10 @@
   Directly constructed params were missing from the manifest's `params:` and
   deployed under a name guessed from the variable. To set param values in
   tests, use `withEnvironment()` or `runFunctionsTest(environment: ...)`.
+- Fix Identity blocking functions rejecting every request in production with
+  `Invalid JWT: unknown "kid"`. The token verifier fetched Google's OAuth2
+  keys instead of the `securetoken@system.gserviceaccount.com` keys that sign
+  Auth Blocking tokens.
 - Add `corsMaxAgeSeconds` to `HttpsOptions` and `CallableOptions`, sent as
   `Access-Control-Max-Age` on preflight responses when CORS is on. Without it,
   browsers cache a preflight for 5 seconds and repeat it before almost every

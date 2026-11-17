@@ -21,9 +21,14 @@ import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:http/http.dart' as http;
 
-/// URL to fetch Google's public keys in JWK format for JWT verification.
-/// This endpoint returns keys directly as JWKs, no certificate parsing needed.
-const _googleJwksUrl = 'https://www.googleapis.com/oauth2/v3/certs';
+/// URL to fetch the public keys, in JWK format, that sign Auth Blocking JWTs.
+///
+/// Identity Platform signs these tokens with the
+/// `securetoken@system.gserviceaccount.com` service account, like Firebase ID
+/// tokens. This is the JWK form of the x509 endpoint the Node.js Admin SDK
+/// uses, so no certificate parsing is needed.
+const _googleJwksUrl =
+    'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com';
 
 /// Cache duration for Google keys (1 hour default).
 const _keysCacheDuration = Duration(hours: 1);
