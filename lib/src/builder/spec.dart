@@ -200,6 +200,8 @@ class EndpointSpec {
           add('labels', constStringMap);
         case 'omit':
           add('omit', _extractBool);
+        case 'retry':
+          add('retry', _extractBool);
 
         // Runtime-only options (not exported to manifest):
         // - cors: Handled by Functions Framework at runtime

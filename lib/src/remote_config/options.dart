@@ -15,7 +15,7 @@
 import '../common/options.dart';
 
 /// Options for Remote Config event handlers.
-class RemoteConfigOptions extends GlobalOptions {
+class RemoteConfigOptions extends EventHandlerOptions {
   const RemoteConfigOptions({
     super.concurrency,
     super.cpu,
@@ -28,6 +28,7 @@ class RemoteConfigOptions extends GlobalOptions {
     super.omit,
     super.preserveExternalChanges,
     super.region,
+    super.retry,
     super.secrets,
     super.serviceAccount,
     super.timeoutSeconds,
