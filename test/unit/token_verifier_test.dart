@@ -15,6 +15,9 @@
 import 'dart:convert';
 
 import 'package:firebase_functions/src/identity/token_verifier.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -170,6 +173,41 @@ void main() {
 
         // Should not throw - beforeSendSms doesn't require sub
         await verifier.verifyToken(jwt);
+      });
+    });
+
+    group('production mode', () {
+      setUp(AuthBlockingTokenVerifier.clearCertificateCache);
+      tearDown(AuthBlockingTokenVerifier.clearCertificateCache);
+
+      test('fetches the securetoken service account keys', () async {
+        final requested = <Uri>[];
+        final verifier = AuthBlockingTokenVerifier(
+          projectId: 'demo-test',
+          httpClient: MockClient((request) async {
+            requested.add(request.url);
+            return http.Response(jsonEncode({'keys': <Object>[]}), 200);
+          }),
+        );
+
+        await expectLater(
+          verifier.verifyToken(
+            _createTestJwt({
+              'iss': 'https://securetoken.google.com/demo-test',
+              'aud': 'run.app',
+              'sub': 'user-123',
+              'exp': _futureTimestamp(),
+            }),
+            audience: 'run.app',
+          ),
+          throwsA(isA<HttpResponseException>()),
+        );
+
+        expect(requested, [
+          Uri.parse(
+            'https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com',
+          ),
+        ]);
       });
     });
 
