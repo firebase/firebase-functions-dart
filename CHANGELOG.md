@@ -55,6 +55,11 @@
 - Resolve `FirebaseEnv.projectId` from `FIREBASE_CONFIG` (both inline JSON and
   JSON file paths) before falling back to flat project ID environment variables,
   and support `FIREBASE_CONFIG` file paths in built-in parameter expressions.
+- Fix 2nd gen Auth blocking functions rejecting every request after their
+  first deploy with `Invalid token audience`. The Firebase CLI registers the
+  `cloudfunctions.net` URL when it creates the function and the `run.app` URL
+  when it updates it, so a token can carry either audience. Both are now
+  accepted, as in the Node.js SDK.
 
 ## 0.8.0
 

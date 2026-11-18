@@ -20,6 +20,7 @@ import 'dart:convert';
 import 'package:dart_jsonwebtoken/dart_jsonwebtoken.dart';
 import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:http/http.dart' as http;
+import 'package:meta/meta.dart';
 
 /// URL to fetch Google's public keys in JWK format for JWT verification.
 /// This endpoint returns keys directly as JWKs, no certificate parsing needed.
@@ -123,7 +124,7 @@ class AuthBlockingTokenVerifier {
     final payload = decoded.payload as Map<String, dynamic>;
 
     // Validate Firebase-specific claims
-    _validateClaims(payload, audience);
+    validateClaims(payload, audience);
 
     return payload;
   }
@@ -202,7 +203,8 @@ class AuthBlockingTokenVerifier {
   }
 
   /// Validates JWT claims.
-  void _validateClaims(Map<String, dynamic> payload, String? audience) {
+  @visibleForTesting
+  void validateClaims(Map<String, dynamic> payload, String? audience) {
     // Validate issuer
     final iss = payload['iss'] as String?;
     if (iss != _expectedIssuer) {
@@ -211,25 +213,20 @@ class AuthBlockingTokenVerifier {
       );
     }
 
-    // Validate audience
+    // Validate audience. The Firebase CLI registers a 2nd gen function with
+    // its cloudfunctions.net URL on create and its run.app URL on update, so
+    // a function verified with [audience] also accepts the default audience.
     final aud = payload['aud'];
-    final expectedAudience = audience ?? _defaultAudience;
+    final expectedAudiences = {?audience, _defaultAudience};
 
-    bool audienceValid;
-    if (aud is String) {
-      audienceValid = aud == expectedAudience || aud.contains(expectedAudience);
-    } else if (aud is List) {
-      audienceValid = aud.any(
-        (a) =>
-            a == expectedAudience || (a as String).contains(expectedAudience),
-      );
-    } else {
-      audienceValid = false;
-    }
+    bool isExpected(Object? value) =>
+        value is String && expectedAudiences.any(value.contains);
+    final audienceValid = aud is List ? aud.any(isExpected) : isExpected(aud);
 
     if (!audienceValid) {
       throw HttpResponseException.unauthorized(
-        message: 'Invalid token audience. Expected $expectedAudience, got $aud',
+        message:
+            'Invalid token audience. Expected ${expectedAudiences.join(' or ')}, got $aud',
       );
     }
 
