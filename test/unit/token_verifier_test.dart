@@ -15,6 +15,7 @@
 import 'dart:convert';
 
 import 'package:firebase_functions/src/identity/token_verifier.dart';
+import 'package:google_cloud_shelf/google_cloud_shelf.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -170,6 +171,73 @@ void main() {
 
         // Should not throw - beforeSendSms doesn't require sub
         await verifier.verifyToken(jwt);
+      });
+    });
+
+    group('audience', () {
+      final verifier = AuthBlockingTokenVerifier(projectId: 'test-project');
+
+      Map<String, dynamic> claims(Object aud) => {
+        'iss': 'https://securetoken.google.com/test-project',
+        'aud': aud,
+        'sub': 'user-123',
+        'exp': _futureTimestamp(),
+        'iat': _nowTimestamp(),
+        'event_type': 'beforeCreate',
+      };
+
+      test('accepts the run.app URL when run.app is expected', () {
+        verifier.validateClaims(
+          claims('https://beforecreate-abc123-ey.a.run.app'),
+          'run.app',
+        );
+      });
+
+      test('accepts the cloudfunctions.net URL when run.app is expected', () {
+        verifier.validateClaims(
+          claims(
+            'https://europe-west3-test-project.cloudfunctions.net/beforecreate',
+          ),
+          'run.app',
+        );
+      });
+
+      test('accepts the cloudfunctions.net URL by default', () {
+        verifier.validateClaims(
+          claims(
+            'https://europe-west3-test-project.cloudfunctions.net/beforecreate',
+          ),
+          null,
+        );
+      });
+
+      test('rejects a run.app URL by default', () {
+        expect(
+          () => verifier.validateClaims(
+            claims('https://beforecreate-abc123-ey.a.run.app'),
+            null,
+          ),
+          throwsA(isA<HttpResponseException>()),
+        );
+      });
+
+      test('rejects another project', () {
+        expect(
+          () => verifier.validateClaims(
+            claims(
+              'https://europe-west3-other-project.cloudfunctions.net/beforecreate',
+            ),
+            'run.app',
+          ),
+          throwsA(isA<HttpResponseException>()),
+        );
+      });
+
+      test('accepts a list holding an expected audience', () {
+        verifier.validateClaims(
+          claims(['other', 'https://beforecreate-abc123-ey.a.run.app']),
+          'run.app',
+        );
       });
     });
 
