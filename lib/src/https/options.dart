@@ -35,29 +35,9 @@ class HttpsOptions extends GlobalOptions {
     super.timeoutSeconds,
     super.vpcConnector,
     super.vpcConnectorEgressSettings,
-    this.cors,
-    this.corsMaxAgeSeconds,
+    super.cors,
+    super.corsMaxAgeSeconds,
   });
-
-  /// CORS configuration for the function.
-  ///
-  /// See [Cors] for how the origin list is interpreted. When omitted, no CORS
-  /// headers are emitted for `onRequest` functions; callable functions default
-  /// to allowing any origin.
-  final Cors? cors;
-
-  /// How long, in seconds, browsers may cache a preflight response.
-  ///
-  /// Sent as `Access-Control-Max-Age` on `OPTIONS` responses when CORS is on,
-  /// like the `maxAge` option of the `cors` middleware. When omitted, no header
-  /// is sent and browsers fall back to their default of 5 seconds, so every
-  /// burst of cross-origin calls pays a new preflight round trip. Browsers cap
-  /// the value (Chromium at 7200).
-  ///
-  /// The value may also come from a parameter or expression, resolved once per
-  /// request. If resolution fails, the header is omitted and a warning is
-  /// logged.
-  final CorsMaxAgeSeconds? corsMaxAgeSeconds;
 }
 
 /// Options for callable functions (onCall).
